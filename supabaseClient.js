@@ -28,8 +28,8 @@
     if (typeof create !== 'function') throw new Error('Supabase client library failed to load.');
 
     // Config (replace with your project values if not already set)
-    const SUPABASE_URL = 'https://deggmigeevsdyxqcbpuz.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlZ2dtaWdlZXZzZHl4cWNicHV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NjE1NDgsImV4cCI6MjA3ODEzNzU0OH0.3Cvlflm9zKFWpZtMfSlgBpY8CBP7u_Pfph9A03QdSP0';
+    const SUPABASE_URL = '%%SUPABASE_URL%%';
+    const SUPABASE_ANON_KEY = '%%SUPABASE_ANON_KEY%%';
 
     if (SUPABASE_URL.startsWith('%%') || SUPABASE_ANON_KEY.startsWith('%%')){
       console.warn('[YoBASIC] Supabase URL/key not configured. Remote examples/shared will be disabled.');
