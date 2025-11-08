@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YoBASIC</title>
+    <!-- Bootstrap CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- jQuery & jQuery Terminal -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+
+    <script src="https://unpkg.com/js-polyfills/keyboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
+
+    <script src="vfs.js"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="identity.js"></script>
+    <script src="provider-examples.js"></script>
+    <script src="provider-shared.js"></script>
+    <script src="basic.js"></script>
+    <style>
+        :root { --nav-height: 56px; }
+        html, body { height: 100%; }
+        body {
+            background: #0b1b3b; /* subtle QBasic navy vibe */
+            color: #e6f0ff;
+            font-family: "Courier New", Consolas, "Lucida Console", monospace;
+        }
+        .navbar-brand, .nav-link, .dropdown-item { user-select: none; }
+        .qb-underline { text-decoration: underline; }
+        /* layout */
+        #work-area { height: calc(100vh - var(--nav-height)); margin-top: var(--nav-height); }
+        #editor-pane { background: #031634; }
+        #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; }
+        #terminal-pane, #terminal { height: 100%; }
+        /* jQuery Terminal theme tweaks */
+        #terminal .terminal { --size: 1rem; }
+        .terminal, .terminal .terminal-output { background: #001a33; color: #e6f0ff; }
+        .terminal .prompt { color: #9ad1ff; }
+        .terminal .cursor { background: #9ad1ff; }
+        /* Buttons */
+        .toolbar .btn { margin-left: .25rem; }
+    </style>
+</head>
+<body>
+<nav id="topnav" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">🌱YoBASIC</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item dropdown">
+                    <a id="menu-file" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">File</a>
+                    <ul class="dropdown-menu" aria-labelledby="menu-file">
+                        <li><a class="dropdown-item" href="#" data-action="file-new" data-key="n"><span class="qb-underline">N</span>ew</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="file-open" data-key="o"><span class="qb-underline">O</span>pen</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="file-save" data-key="s"><span class="qb-underline">S</span>ave</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="file-saveas" data-key="a">Save <span class="qb-underline">A</span>s</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" data-action="file-close" data-key="c"><span class="qb-underline">C</span>lose</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a id="menu-tools" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Tools</a>
+                    <ul class="dropdown-menu" aria-labelledby="menu-tools">
+                        <li><a class="dropdown-item" href="#" data-action="tool-1" data-key="1">Tool 1</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="tool-2" data-key="2">Tool 2</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="tool-3" data-key="3">Tool 3</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a id="menu-help" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Help</a>
+                    <ul class="dropdown-menu" aria-labelledby="menu-help">
+                        <li><a class="dropdown-item" href="#" data-action="help-1" data-key="1">Help 1</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="help-2" data-key="2">Help 2</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="help-3" data-key="3">Help 3</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" data-action="about" data-key="a">About</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="toolbar d-flex ms-auto">
+                <button id="btn-run" class="btn btn-outline-light btn-sm" title="Run (execute program)"><i class="bi bi-play-fill me-1"></i>Run</button>
+                <button id="btn-clear" class="btn btn-outline-success btn-sm" title="Clear Output"><i class="bi bi-ban-fill me-1"></i>Clear</button>
+                <button id="btn-bug" class="btn btn-outline-warning btn-sm" title="Toggle Tron/Troff (Debug Mode)"><i class="bi bi-bug-fill me-1"></i>Tron/Troff</button>
+                <button id="btn-build" class="btn btn-outline-info btn-sm" title="Build"><i class="bi bi-hammer me-1"></i>Build</button>
+                <button id="btn-settings" class="btn btn-outline-light btn-sm" title="Settings"><i class="bi bi-gear-fill me-1"></i>Settings</button>
+                <button id="btn-identity" class="btn btn-outline-primary btn-sm ms-2" title="Identity"><i class="bi bi-person-badge me-1"></i><span id="identity-label">Login</span></button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div id="work-area" class="container-fluid p-0">
+    <div id="editor-pane" class="d-none p-2 border-bottom" style="height: 60%;">
+        <textarea id="editor" spellcheck="false"></textarea>
+    </div>
+    <div id="terminal-pane" class="p-0" style="height: calc(100vh - var(--nav-height));">
+        <div id="terminal" class="h-100"></div>
+    </div>
+</div>
+
+<!-- About Modal -->
+<div class="modal fade" id="modalAbout" tabindex="-1" aria-labelledby="aboutLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="aboutLabel">About</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>YoBASIC is a subset of the Basil🌿 programming language and presented here as an interactive learning tool for beginners and a sandbox for experienced developers.</p>
+        <p>Both the Editor and the file I/O functions in BASIC make use of a simulated file system that uses local storage in your browser and will persist between sessions. </p>
+        <p><a class="link-info" href="https://basilbasic.com" target="_blank" rel="noopener">Visit basilbasic.com</a></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Identity Modal -->
+<div class="modal fade" id="modalIdentity" tabindex="-1" aria-labelledby="identityLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="identityLabel">Identity</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="identity-status" class="mb-3 small text-secondary">You are not logged in.</div>
+        <div id="identity-forms">
+          <ul class="nav nav-tabs" id="identityTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tab-login-tab" data-bs-toggle="tab" data-bs-target="#tab-login" type="button" role="tab" aria-controls="tab-login" aria-selected="true">Log In</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-signup-tab" data-bs-toggle="tab" data-bs-target="#tab-signup" type="button" role="tab" aria-controls="tab-signup" aria-selected="false">Create Identity</button>
+            </li>
+          </ul>
+          <div class="tab-content p-3">
+            <div class="tab-pane fade show active" id="tab-login" role="tabpanel" aria-labelledby="tab-login-tab">
+              <div class="mb-2">
+                <label class="form-label">Username or Email</label>
+                <input id="login-username" type="text" class="form-control form-control-sm" placeholder="yourname or you@example.com" />
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Password</label>
+                <input id="login-password" type="password" class="form-control form-control-sm" />
+              </div>
+              <button id="btn-login" type="button" class="btn btn-primary">Log In</button>
+            </div>
+            <div class="tab-pane fade" id="tab-signup" role="tabpanel" aria-labelledby="tab-signup-tab">
+              <div class="mb-2">
+                <label class="form-label">Username</label>
+                <input id="signup-username" type="text" class="form-control form-control-sm" placeholder="yourname" />
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Email</label>
+                <input id="signup-email" type="email" class="form-control form-control-sm" placeholder="you@example.com" />
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Password</label>
+                <input id="signup-password" type="password" class="form-control form-control-sm" />
+              </div>
+              <div class="form-text text-secondary mb-2">After signing up, check your email and confirm your address, then return here to log in.</div>
+              <button id="btn-signup" type="button" class="btn btn-success">Create Identity</button>
+            </div>
+          </div>
+        </div>
+        <div id="identity-loggedin" class="d-none">
+          <p>You are <span id="whoami"></span>.</p>
+          <button id="btn-logout" type="button" class="btn btn-warning">Log Out</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="modalSettings" tabindex="-1" aria-labelledby="settingsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="settingsLabel">Settings</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-appearance-tab" data-bs-toggle="tab" data-bs-target="#tab-appearance" type="button" role="tab" aria-controls="tab-appearance" aria-selected="true">Appearance</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-2-tab" data-bs-toggle="tab" data-bs-target="#tab-2" type="button" role="tab" aria-controls="tab-2" aria-selected="false">Tab 2</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-3-tab" data-bs-toggle="tab" data-bs-target="#tab-3" type="button" role="tab" aria-controls="tab-3" aria-selected="false">Tab 3</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-4-tab" data-bs-toggle="tab" data-bs-target="#tab-4" type="button" role="tab" aria-controls="tab-4" aria-selected="false">Tab 4</button>
+          </li>
+        </ul>
+        <div class="tab-content p-3">
+          <div class="tab-pane fade show active" id="tab-appearance" role="tabpanel" aria-labelledby="tab-appearance-tab">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <h6>Editor</h6>
+                <div class="mb-2">
+                  <label class="form-label">Font Face</label>
+                  <select id="editor-font" class="form-select form-select-sm">
+                    <option>Courier New</option>
+                    <option>Consolas</option>
+                    <option>Fira Code</option>
+                    <option>Monaco</option>
+                    <option>Lucida Console</option>
+                    <option>IBM Plex Mono</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Font Size (px)</label>
+                  <input id="editor-size" type="number" min="10" max="48" step="1" class="form-control form-control-sm" />
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Font Color</label>
+                  <input id="editor-color" type="color" class="form-control form-control-color form-control-sm" />
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Background</label>
+                  <input id="editor-bg" type="color" class="form-control form-control-color form-control-sm" />
+                </div>
+              </div>
+              <div class="col-md-6">
+                <h6>Terminal</h6>
+                <div class="mb-2">
+                  <label class="form-label">Font Face</label>
+                  <select id="terminal-font" class="form-select form-select-sm">
+                    <option>Courier New</option>
+                    <option>Consolas</option>
+                    <option>Fira Code</option>
+                    <option>Monaco</option>
+                    <option>Lucida Console</option>
+                    <option>IBM Plex Mono</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Font Size (px)</label>
+                  <input id="terminal-size" type="number" min="10" max="48" step="1" class="form-control form-control-sm" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="tab-2" role="tabpanel" aria-labelledby="tab-2-tab">
+            <p class="text-muted">No content yet.</p>
+          </div>
+          <div class="tab-pane fade" id="tab-3" role="tabpanel" aria-labelledby="tab-3-tab">
+            <p class="text-muted">No content yet.</p>
+          </div>
+          <div class="tab-pane fade" id="tab-4" role="tabpanel" aria-labelledby="tab-4-tab">
+            <p class="text-muted">No content yet.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-settings" type="button" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Open Dialog -->
+<div class="modal fade" id="modalOpen" tabindex="-1" aria-labelledby="openLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="openLabel">OPEN</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-4 border-end">
+            <div class="list-group" id="open-folders">
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark active" data-folder="Root">Root</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="examples">examples</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="data">data</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="shared">shared</button>
+              <div id="open-shared-owners" class="mt-2"></div>
+            </div>
+          </div>
+          <div class="col-8">
+            <div class="small text-secondary mb-2">Double-click to open.</div>
+            <div class="list-group" id="open-files" style="max-height: 50vh; overflow:auto"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-open-ok" type="button" class="btn btn-primary" disabled>Open</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save As Dialog -->
+<div class="modal fade" id="modalSaveAs" tabindex="-1" aria-labelledby="saveasLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title" id="saveasLabel">SAVE FILE</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-4 border-end">
+            <div class="list-group" id="save-folders">
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark active" data-folder="Root">Root</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="examples" disabled>examples</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="data" disabled>data</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="shared">shared</button>
+            </div>
+          </div>
+          <div class="col-8">
+            <div class="mb-2">
+              <label class="form-label">File name</label>
+              <input id="saveas-name" type="text" class="form-control form-control-sm" placeholder="MYPROGRAM.BAS" />
+              <div class="form-text text-secondary">Programs are saved in Root as .BAS files.</div>
+            </div>
+            <div id="save-files" class="list-group" style="max-height: 50vh; overflow:auto"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-saveas-ok" type="button" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap Bundle (with Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function(){
+    var __EVAL = (s) => eval(`void (__EVAL = ${__EVAL}); ${s}`);
+    let term, basic;
+    let debugOn = true;
+    let currentMenu = null; // bootstrap.Dropdown instance
+
+    // VFS and editor current file state
+    let vfs = null;
+    let currentFileName = null;
+    let currentFileReadOnly = false;
+
+    function setNavHeight() {
+        const h = document.getElementById('topnav').offsetHeight || 56;
+        document.body.style.setProperty('--nav-height', h + 'px');
+        // adjust terminal pane height depending on editor visibility
+        const editorVisible = !document.getElementById('editor-pane').classList.contains('d-none');
+        const tp = document.getElementById('terminal-pane');
+        if (editorVisible) {
+            // editor 60%, terminal 40% of remaining work area
+            document.getElementById('editor-pane').style.height = '60%';
+            tp.style.height = '40%';
+        } else {
+            // terminal fills the work area when editor hidden
+            tp.style.height = '100%';
+        }
+        if (term) term.resize();
+    }
+
+    function saveCode(value) {
+        try { localStorage.setItem('basic_editor_code', value ?? document.getElementById('editor').value); } catch(e) {}
+    }
+    function loadCode() {
+        try { return localStorage.getItem('basic_editor_code'); } catch(e) { return null; }
+    }
+
+    function saveSettings(obj) {
+        try { localStorage.setItem('basic_settings', JSON.stringify(obj)); } catch(e) {}
+    }
+    function loadSettings() {
+        try { return JSON.parse(localStorage.getItem('basic_settings') || '{}'); } catch(e) { return {}; }
+    }
+
+    function applySettings(s) {
+        const editor = document.getElementById('editor');
+        if (s.editor) {
+            if (s.editor.fontFamily) editor.style.fontFamily = s.editor.fontFamily + ", monospace";
+            if (s.editor.fontSize) editor.style.fontSize = s.editor.fontSize + 'px';
+            if (s.editor.color) editor.style.color = s.editor.color;
+            if (s.editor.bg) editor.style.backgroundColor = s.editor.bg;
+        }
+        if (s.terminal) {
+            const fam = s.terminal.fontFamily ? (s.terminal.fontFamily + ", monospace") : null;
+            const size = s.terminal.fontSize ? (s.terminal.fontSize + 'px') : null;
+            if (fam) { $('#terminal, #terminal .terminal').css('font-family', fam); }
+            if (size) { $('#terminal, #terminal .terminal').css('font-size', size); }
+            if (term) term.resize();
+        }
+    }
+
+    function openMenuById(id) {
+        const trigger = document.getElementById(id);
+        if (!trigger) return;
+        const dd = bootstrap.Dropdown.getOrCreateInstance(trigger);
+        dd.show();
+        currentMenu = dd;
+        // focus the trigger to direct subsequent keystrokes
+        trigger.focus();
+    }
+    function closeCurrentMenu() {
+        if (currentMenu) { currentMenu.hide(); currentMenu = null; }
+    }
+
+    // --- VFS integration and File menu actions ---
+    function menuAction(action) {
+        switch(action) {
+            case 'file-new':
+                onFileNew();
+                break;
+            case 'file-open':
+                showOpenDialog();
+                break;
+            case 'file-save':
+                onFileSave();
+                break;
+            case 'file-saveas':
+                showSaveAsDialog();
+                break;
+            case 'file-close':
+                closeEditor(true);
+                break;
+            case 'tool-1':
+                alert('Menu item Tool 1 goes here');
+                break;
+            case 'tool-2':
+                alert('Menu item Tool 2 goes here');
+                break;
+            case 'tool-3':
+                alert('Menu item Tool 3 goes here');
+                break;
+            case 'help-1':
+                alert('Menu item Help 1 goes here');
+                break;
+            case 'help-2':
+                alert('Menu item Help 2 goes here');
+                break;
+            case 'help-3':
+                alert('Menu item Help 3 goes here');
+                break;
+            case 'about':
+                const about = new bootstrap.Modal(document.getElementById('modalAbout'));
+                about.show();
+                break;
+        }
+    }
+
+    function openEditor() {
+        const pane = document.getElementById('editor-pane');
+        const wasHidden = pane.classList.contains('d-none');
+        pane.classList.remove('d-none');
+        setNavHeight();
+        const textarea = document.getElementById('editor');
+        if (wasHidden && textarea.value.trim() === ''){
+            let code = loadCode();
+            if (!code || code.trim().length === 0) {
+                code = 'PRINTLN "Hello World"\n';
+            }
+            textarea.value = code; // only overwrite the first time we open in this session
+        }
+        setTimeout(() => textarea.focus(), 0);
+    }
+
+    function closeEditor(clear) {
+        if (clear) { document.getElementById('editor').value = ''; saveCode(''); }
+        document.getElementById('editor-pane').classList.add('d-none');
+        setNavHeight();
+        // reset current file state when closing
+        currentFileName = null; currentFileReadOnly = false;
+        // return focus to terminal
+        if (term) setTimeout(() => term.focus(true), 0);
+    }
+
+    function runProgram() {
+        // Pass VFS to interpreter before running
+        if (basic) basic.vfs = vfs;
+        const code = document.getElementById('editor').value || '';
+        if (!term) return;
+        if (code.trim().length === 0) return;
+        // Execute whole program using interpreter's runProgram to support control blocks
+        basic.setTerm(term);
+        try {
+            const outLines = basic.runProgram(code);
+            if (outLines && outLines.length) {
+                outLines.forEach(l => { if (l && l.length) term.echo(l); });
+            }
+        } catch(e) {
+            term.error(String(e && e.message ? e.message : e));
+        }
+        term.focus(true);
+    }
+
+    function toggleDebug() {
+        debugOn = !debugOn;
+        const cmd = debugOn ? 'DEBUGON' : 'DEBUGOFF';
+        term.exec(cmd);
+    }
+    function toggleClear() {
+        const cmd = 'clear';
+        term.exec(cmd);
+    }
+
+    // Wire DOM
+    $(function(){
+        // Instantiate VFS and expose globally
+        vfs = new VirtualFileSystem({ localStorageKey: 'yobasic.vfs' });
+        vfs.loadFromLocalStorage();
+        window.__vfsInstance__ = vfs;
+        // Set up Supabase-backed providers
+        (async ()=>{
+            try{
+                // Attempt to initialize Supabase (will noop if not configured)
+                await getSupabase();
+                const examplesProvider = new SupabaseExamplesProvider();
+                const sharedProvider = new SupabaseSharedProvider(Identity);
+                vfs.setProviders({ examples: examplesProvider, shared: sharedProvider });
+                await Identity.initializeFromSession();
+                updateIdentityUi();
+            }catch(e){ console.warn('[YoBASIC] Supabase init failed', e); }
+        })();
+
+        // Initialize terminal in dedicated div
+        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: true, vfs });
+        term = $('#terminal').terminal(function(command) {
+            if (command !== '') {
+                try {
+                    basic.setTerm(term);
+                    var out = basic.lineExecute(command);
+                    if (out) {
+                        String(out).split(/\n/).forEach(line => { if (line.length) this.echo(line); });
+                    }
+                } catch(e) {
+                    this.error(new String(e));
+                }
+            }
+        }, {
+            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1981-2025\nTRACE is ON (TRON).',
+            name: 'js_demo',
+            prompt: "\nOK\n\n"
+        });
+
+        // Height + focus
+        setNavHeight();
+        window.addEventListener('resize', setNavHeight);
+        // Default: focus terminal
+        term.focus(true);
+
+        // Restore settings
+        const settings = loadSettings();
+        // populate settings UI
+        $('#editor-font').val(settings.editor?.fontFamily || 'Courier New');
+        $('#editor-size').val(settings.editor?.fontSize || 16);
+        $('#editor-color').val(settings.editor?.color || '#e6f0ff');
+        $('#editor-bg').val(settings.editor?.bg || '#031634');
+        $('#terminal-font').val(settings.terminal?.fontFamily || 'Courier New');
+        $('#terminal-size').val(settings.terminal?.fontSize || 16);
+        applySettings(settings);
+
+        // Autosave editor content
+        $('#editor').on('input', function(){ saveCode(this.value); });
+
+        // Menu item clicks
+        $('.dropdown-item').on('click', function(e){ e.preventDefault(); const action = this.dataset.action; closeCurrentMenu(); menuAction(action); });
+
+        // Open dialog interactions
+        $('#open-folders').on('click', '.list-group-item[data-folder]', function(){
+            $('#open-folders .list-group-item').removeClass('active');
+            $(this).addClass('active');
+            renderOpenFiles($(this).data('folder'));
+        });
+        $('#open-files').on('click', '.list-group-item', function(){
+            $('#open-files .list-group-item').removeClass('active');
+            $(this).addClass('active');
+            $('#btn-open-ok').prop('disabled', false);
+        });
+        $('#open-files').on('dblclick', '.list-group-item', function(){ $('#btn-open-ok').trigger('click'); });
+        $('#btn-open-ok').on('click', async function(){
+            const $sel = $('#open-files .list-group-item.active');
+            if ($sel.length === 0) return;
+            const fullName = $sel.data('fullname');
+            const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
+            const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
+            if (!file) return;
+            if (file.kind !== 'program'){
+                // Open data files as plain text (documented in code comment)
+                openEditor();
+                $('#editor').val(file.content);
+                currentFileName = file.name; currentFileReadOnly = !!file.readOnly;
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen')).hide();
+                return;
+            }
+            openEditor();
+            $('#editor').val(file.content);
+            currentFileName = file.name; currentFileReadOnly = !!file.readOnly;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen')).hide();
+        });
+
+        // Save As dialog interactions
+        $('#save-folders').on('click', '.list-group-item', function(){
+            // Only Root enabled for saving program files now
+            $('#save-folders .list-group-item').removeClass('active');
+            $(this).addClass('active');
+            renderSaveFiles($(this).data('folder'));
+        });
+        $('#save-files').on('click', '.list-group-item', function(){
+            $('#save-files .list-group-item').removeClass('active');
+            $(this).addClass('active');
+            const name = $(this).data('fullname');
+            $('#saveas-name').val(name);
+        });
+        $('#btn-saveas-ok').on('click', function(){ doSaveAs(); });
+
+        // Toolbar buttons
+        $('#btn-run').on('click', function(){ runProgram(); });
+        $('#btn-bug').on('click', function(){ toggleDebug(); });
+        $('#btn-clear').on('click', function(){ toggleClear(); });
+        $('#btn-build').on('click', function(){ alert('Build Goes Here'); });
+        $('#btn-settings').on('click', function(){ new bootstrap.Modal(document.getElementById('modalSettings')).show(); });
+
+        // Save settings
+        $('#btn-save-settings').on('click', function(){
+            const s = {
+                editor: {
+                    fontFamily: $('#editor-font').val(),
+                    fontSize: parseInt($('#editor-size').val(), 10) || 16,
+                    color: $('#editor-color').val(),
+                    bg: $('#editor-bg').val()
+                },
+                terminal: {
+                    fontFamily: $('#terminal-font').val(),
+                    fontSize: parseInt($('#terminal-size').val(), 10) || 16
+                }
+            };
+            saveSettings(s);
+            applySettings(s);
+        });
+
+        // Identity button
+        $('#btn-identity').on('click', function(){
+            updateIdentityUi();
+            new bootstrap.Modal(document.getElementById('modalIdentity')).show();
+        });
+        // Identity actions
+        $('#btn-login').on('click', async function(){
+            const u = $('#login-username').val().trim();
+            const p = $('#login-password').val();
+            try{
+                await Identity.login(u, p);
+                updateIdentityUi();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalIdentity')).hide();
+                term && term.echo && term.echo('[Logged in] ' + Identity.getCurrentUser().username);
+            }catch(e){ alert(String(e.message || e)); }
+        });
+        $('#btn-signup').on('click', async function(){
+            const u = $('#signup-username').val().trim();
+            const e = $('#signup-email').val().trim();
+            const p = $('#signup-password').val();
+            try{
+                const res = await Identity.signup(u, e, p);
+                if (res && res.needsConfirmation){
+                    alert('Check your email (' + e + ') and confirm your address, then return here to Log In.');
+                    // Switch to Login tab and prefill with email
+                    const loginTabBtn = document.getElementById('tab-login-tab');
+                    if (loginTabBtn){
+                        // Bootstrap 5 Tab API
+                        if (bootstrap && bootstrap.Tab){ bootstrap.Tab.getOrCreateInstance(loginTabBtn).show(); }
+                        else { loginTabBtn.click(); }
+                    }
+                    $('#login-username').val(e);
+                    return;
+                }
+                updateIdentityUi();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalIdentity')).hide();
+                term && term.echo && term.echo('[Identity created] ' + (Identity.getCurrentUser()?.username || u));
+            }catch(e){ alert(String(e.message || e)); }
+        });
+        $('#btn-logout').on('click', async function(){
+            try{ await Identity.logout(); updateIdentityUi(); }
+            catch(e){}
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalIdentity')).hide();
+            term && term.echo && term.echo('[Logged out]');
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e){
+            // Open menus with Alt+F/T/H
+            if (e.altKey && !e.ctrlKey && !e.metaKey) {
+                const k = e.key.toLowerCase();
+                if (k === 'f') { e.preventDefault(); openMenuById('menu-file'); return; }
+                if (k === 't') { e.preventDefault(); openMenuById('menu-tools'); return; }
+                if (k === 'h') { e.preventDefault(); openMenuById('menu-help'); return; }
+            }
+            // Ctrl+S shortcut to Save
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); onFileSave(); return; }
+            // If a dropdown is open, handle hotkeys for items
+            if (currentMenu) {
+                const k = e.key.toLowerCase();
+                if (/^[a-z0-9]$/.test(k)) {
+                    e.preventDefault();
+                    const trigger = currentMenu._element; // anchor
+                    const menuId = trigger.getAttribute('aria-controls') || trigger.getAttribute('data-bs-target');
+                    // find menu via nextElementSibling (Bootstrap renders immediately after trigger)
+                    const menu = trigger.nextElementSibling?.classList.contains('dropdown-menu') ? trigger.nextElementSibling : null;
+                    if (menu) {
+                        const item = menu.querySelector(`[data-key="${k}"]`);
+                        if (item) { item.click(); }
+                    }
+                }
+                if (e.key === 'Escape') { closeCurrentMenu(); }
+            }
+        }, true);
+    });
+
+    function updateIdentityUi(){
+        const me = Identity.getCurrentUser && Identity.getCurrentUser();
+        if (me){
+            $('#identity-status').text(`You are logged in as ${me.username}.`);
+            $('#identity-forms').addClass('d-none');
+            $('#identity-loggedin').removeClass('d-none');
+            $('#whoami').text(me.username);
+            $('#identity-label').text(me.username);
+            // Enable Shared in Save As
+            $('#save-folders [data-folder="shared"]').prop('disabled', false);
+        } else {
+            $('#identity-status').text('You are not logged in.');
+            $('#identity-forms').removeClass('d-none');
+            $('#identity-loggedin').addClass('d-none');
+            $('#identity-label').text('Login');
+            // Disable Shared in Save As (still visible for info)
+            $('#save-folders [data-folder="shared"]').prop('disabled', false); // allow viewing guidance
+        }
+    }
+
+    // --- Dialog helpers and file operations ---
+    function labelForFile(f){
+        const isExample = String(f.name).toLowerCase().startsWith('examples/');
+        const isData = String(f.name).toLowerCase().startsWith('data/');
+        const isShared = String(f.name).toLowerCase().startsWith('shared/');
+        const base = f.name.includes('/') ? f.name.split('/').pop() : f.name;
+        const ro = f.readOnly ? ' [RO]' : '';
+        const tag = isExample ? ' [EXAMPLE]' : (isData ? ' [DATA]' : (isShared ? ' [SHARED]' : ''));
+        return base + tag + ro;
+    }
+    async function renderOpenFiles(folder){
+        const list = $('#open-files').empty();
+        if (folder === 'shared'){
+            // show owners list in left column under folders
+            await renderSharedOwners();
+            // By default, do not list files until an owner is clicked
+            list.append('<div class="list-group-item list-group-item-dark disabled">Select a user from the Shared list to view files.</div>');
+            $('#btn-open-ok').prop('disabled', true);
+            return;
+        }
+        // clear shared owners panel when not browsing shared
+        if (folder !== 'shared'){ $('#open-shared-owners').empty(); }
+        const isRemote = (folder === 'examples');
+        const files = isRemote ? (await vfs.listByFolderAsync(folder)) : vfs.listByFolder(folder);
+        list.empty();
+        files.forEach(f => {
+            const disabled = (folder === 'data' && f.kind !== 'data') ? ' disabled' : '';
+            const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark${disabled}" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+            list.append($item);
+        });
+        $('#btn-open-ok').prop('disabled', true);
+    }
+    async function renderSharedOwners(){
+        const c = $('#open-shared-owners').empty();
+        const prov = vfs && vfs.providers && vfs.providers.shared;
+        if (!prov){ c.append('<div class="text-secondary small">Shared disabled.</div>'); return; }
+        const owners = await (prov.listOwners ? prov.listOwners() : []);
+        if (!owners.length){ c.append('<div class="text-secondary small">No shared users yet.</div>'); return; }
+        c.append('<div class="small text-secondary">Users</div>');
+        owners.forEach(owner=>{
+            const btn = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-owner="${owner}">shared/${owner}</button>`);
+            btn.on('click', async function(){
+                $('#open-folders .list-group-item').removeClass('active');
+                $(this).addClass('active');
+                const files = await prov.listFilesForOwner(owner);
+                const list = $('#open-files').empty();
+                files.forEach(f=>{
+                    const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+                    list.append($item);
+                });
+                $('#btn-open-ok').prop('disabled', true);
+            });
+            c.append(btn);
+        });
+    }
+    async function renderSaveFiles(folder){
+        const list = $('#save-files').empty();
+        if (folder === 'shared'){
+            const me = Identity.getCurrentUser && Identity.getCurrentUser();
+            if (!me){ list.append('<div class="list-group-item list-group-item-dark disabled">Log in to save to your shared folder.</div>'); return; }
+            // list my existing shared files
+            const prov = vfs && vfs.providers && vfs.providers.shared;
+            if (!prov){ list.append('<div class="list-group-item list-group-item-dark disabled">Shared is not available.</div>'); return; }
+            const files = await prov.listFilesForOwner(me.username);
+            files.forEach(f=>{
+                const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+                list.append($item);
+            });
+            return;
+        }
+        if (folder !== 'Root'){
+            list.append('<div class="list-group-item list-group-item-dark disabled">Choose Root to save program files.</div>');
+            return;
+        }
+        const files = vfs.listByFolder('Root').filter(f=>f.kind==='program');
+        files.forEach(f => {
+            const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+            list.append($item);
+        });
+    }
+    function showOpenDialog(){
+        renderOpenFiles('Root');
+        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen'));
+        m.show();
+    }
+    function showSaveAsDialog(){
+        $('#saveas-name').val(currentFileName && !currentFileReadOnly ? (currentFileName.includes('/')? currentFileName.split('/').pop() : currentFileName) : '');
+        renderSaveFiles('Root');
+        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs'));
+        m.show();
+        setTimeout(()=>document.getElementById('saveas-name').focus(), 0);
+    }
+    function normalizeBasName(name){
+        let n = String(name||'').trim();
+        if (n.length === 0) return null;
+        if (!/\.bas$/i.test(n)) n += '.BAS';
+        return n;
+    }
+    function onFileNew(){
+        openEditor();
+        document.getElementById('editor').value = '';
+        saveCode('');
+        currentFileName = null; currentFileReadOnly = false;
+    }
+    async function onFileSave(){
+        // Direct save if current file exists and is writable
+        if (currentFileName && !currentFileReadOnly){
+            const content = document.getElementById('editor').value || '';
+            if (/^shared\//i.test(currentFileName)){
+                await vfs.writeProgramAsync(currentFileName, content);
+            } else {
+                vfs.writeProgram(currentFileName, content);
+                vfs.saveToLocalStorage();
+            }
+            term && term.echo && term.echo('[Saved] ' + currentFileName);
+            return;
+        }
+        // Otherwise Save As
+        showSaveAsDialog();
+    }
+    async function doSaveAs(){
+        const folderBtn = document.querySelector('#save-folders .list-group-item.active');
+        const folder = folderBtn ? folderBtn.getAttribute('data-folder') : 'Root';
+        const nameInput = document.getElementById('saveas-name');
+        const normalizedBase = normalizeBasName(nameInput.value);
+        if (!normalizedBase){ alert('Please enter a file name.'); return; }
+        let targetName = normalizedBase;
+        if (folder === 'shared'){
+            const me = Identity.getCurrentUser && Identity.getCurrentUser();
+            if (!me){ alert('Log in to save to Shared.'); return; }
+            targetName = `shared/${me.username}/${normalizedBase}`;
+        } else if (folder !== 'Root'){
+            alert('Choose Root or Shared to save program files.');
+            return;
+        }
+        // Check existing (local for Root, remote for Shared)
+        let existing = null;
+        if (/^shared\//i.test(targetName)){
+            existing = await vfs.getFileAsync(targetName);
+        } else {
+            existing = vfs.getFile(targetName);
+        }
+        if (existing){
+            if (existing.readOnly){ alert('This file is read-only. Use a different name.'); return; }
+            if (!confirm('File already exists. Overwrite?')) return;
+        }
+        const content = document.getElementById('editor').value || '';
+        if (/^shared\//i.test(targetName)){
+            await vfs.writeProgramAsync(targetName, content);
+            currentFileName = targetName; currentFileReadOnly = false;
+        } else {
+            vfs.writeProgram(targetName, content);
+            vfs.saveToLocalStorage();
+            currentFileName = targetName; currentFileReadOnly = false;
+        }
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
+        term && term.echo && term.echo('[Saved] ' + targetName);
+    }
+})();
+</script>
+</body>
+</html>
