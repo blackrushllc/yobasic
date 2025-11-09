@@ -87,7 +87,7 @@
         if (/^DO\b/i.test(ln)) return 'DO';
         if (/^FOR\b/i.test(ln)) return 'FOR';
         if (/^SELECT\s+CASE\b/i.test(ln)) return 'SELECT';
-        if (/^FUNC\b/i.test(ln)) return 'FUNC';
+        if (/^(FUNC|FUNCTION)\b/i.test(ln)) return 'FUNC';
         if (/^SUB\b/i.test(ln)) return 'SUB';
         if (/^TRY\b/i.test(ln)) return 'TRY';
         if (/^FOREACH\b/i.test(ln)) return 'FOREACH';
@@ -98,7 +98,7 @@
         if (/^LOOP\b/i.test(ln)) return 'DO';
         if (/^NEXT\b/i.test(ln)) return 'FOR';
         if (/^END\s+SELECT\b/i.test(ln)) return 'SELECT';
-        if (/^END\s+FUNC\b/i.test(ln)) return 'FUNC';
+        if (/^END\s+(FUNC|FUNCTION)\b/i.test(ln)) return 'FUNC';
         if (/^END\s+SUB\b/i.test(ln)) return 'SUB';
         if (/^END\s+TRY\b/i.test(ln)) return 'TRY';
         if (/^NEXT\b/i.test(ln)) return 'FOREACH';
@@ -183,7 +183,7 @@
           if (stmtLine === ''){ i++; continue; }
 
           // Skip function/sub bodies at top-level execution
-          if (/^FUNC\b/i.test(stmtLine) || /^SUB\b/i.test(stmtLine)){
+          if (/^(FUNC|FUNCTION)\b/i.test(stmtLine) || /^SUB\b/i.test(stmtLine)){
             const endIdx = this._findEndFuncOrSub(lines, i);
             i = endIdx + 1; // skip
             continue;
@@ -194,6 +194,9 @@
 
           // END statement (terminate program/unit)
           if (/^END\b\s*$/i.test(stmtLine)) { break; }
+
+          // DECLARE SUB/FUNCTION/FUNC ... (forward declarations) -> no-op at runtime
+          if (/^DECLARE\b\s+(SUB|FUNC|FUNCTION)\b/i.test(stmtLine)) { i++; continue; }
 
           // GOTO
           if (/^GOTO\s+/i.test(stmtLine)){
@@ -735,14 +738,14 @@
       if (/^PRINTLN\b/i.test(stmt)){
         const argsStr = stmt.replace(/^PRINTLN\b/i, '').trim();
         const values = this._parseCommaExprList(argsStr);
-        const text = values.map(v=>this._toString(v)).join('\t');
+        const text = this._formatPrint(values, '\t');
         this.echo(text); // println -> each as line
         return;
       }
       if (/^PRINT\b/i.test(stmt)){
         const argsStr = stmt.replace(/^PRINT\b/i, '').trim();
         const values = this._parseCommaExprList(argsStr);
-        const text = values.map(v=>this._toString(v)).join('\t');
+        const text = this._formatPrint(values, '\t');
         this.echo(text);
         return;
       }
@@ -826,7 +829,7 @@
       if (!h) throw new Error(`Handle #${handle} is not open`);
       if (!(h.mode === 'OUTPUT' || h.mode === 'APPEND')) throw new Error('PRINT# requires OUTPUT/APPEND mode');
       const values = this._parseCommaExprList(argsStr);
-      const text = values.map(v=>this._toString(v)).join('\t');
+      const text = this._formatPrint(values, '\t');
       // BASIC PRINT usually ends with newline; follow that
       h.bufferOut = h.bufferOut || [];
       h.bufferOut.push(text);
@@ -888,6 +891,7 @@
     _callFuncBuiltIn(name, args){
       const upper = String(name).toUpperCase();
       switch (upper){
+        // --- File I/O helpers ---
         case 'EOF': {
           if (!args || args.length < 1) return true;
           const fileNo = Number(args[0]);
@@ -899,12 +903,175 @@
           }
           return true;
         }
+        // --- Core string functions ---
         case 'LEN': return (args && args.length) ? String(args[0]).length : 0;
         case 'INT': return (args && args.length) ? (parseInt(args[0],10)|0) : 0;
         case 'STR': return (args && args.length) ? String(args[0]) : '';
+        case 'MID$':
+        case 'MID': {
+          const s = String(args && args[0] != null ? args[0] : '');
+          const start = Number(args && args[1] != null ? args[1] : 1) | 0; // 1-based
+          const count = (args && args.length >= 3) ? (Number(args[2])|0) : (s.length - (start-1));
+          if (start <= 0) return '';
+          const i0 = (start - 1);
+          if (i0 >= s.length) return '';
+          return s.substr(i0, Math.max(0, count));
+        }
+        case 'LEFT$':
+        case 'LEFT': {
+          const s = String(args && args[0] != null ? args[0] : '');
+          const n = Math.max(0, Number(args && args[1] != null ? args[1] : 0) | 0);
+          return s.substr(0, n);
+        }
+        case 'RIGHT$':
+        case 'RIGHT': {
+          const s = String(args && args[0] != null ? args[0] : '');
+          const n = Math.max(0, Number(args && args[1] != null ? args[1] : 0) | 0);
+          if (n <= 0) return '';
+          return s.substr(Math.max(0, s.length - n), n);
+        }
+        case 'UCASE$':
+        case 'UCASE': return String(args && args[0] != null ? args[0] : '').toUpperCase();
+        case 'LCASE$':
+        case 'LCASE': return String(args && args[0] != null ? args[0] : '').toLowerCase();
+        case 'INSTR': {
+          // INSTR(haystack, needle) -> 1-based position or 0 if not found
+          const hay = String(args && args[0] != null ? args[0] : '');
+          const nee = String(args && args[1] != null ? args[1] : '');
+          const pos = hay.indexOf(nee);
+          return pos >= 0 ? (pos + 1) : 0;
+        }
+        // --- Math functions ---
+        case 'ABS': return Math.abs(Number(args && args[0] != null ? args[0] : 0));
+        case 'ATN':
+        case 'ATAN': return Math.atan(Number(args && args[0] != null ? args[0] : 0));
+        case 'COS': return Math.cos(Number(args && args[0] != null ? args[0] : 0));
+        case 'EXP': return Math.exp(Number(args && args[0] != null ? args[0] : 0));
+        case 'LOG': return Math.log(Number(args && args[0] != null ? args[0] : 0));
+        case 'RND': {
+          // RND(): 0..1; RND(n): integer 1..n if n>0, 0 if n==0, -1..-n if n<0 (classic variants)
+          if (!args || args.length === 0) return Math.random();
+          const n = Number(args[0])|0;
+          if (n === 0) return 0;
+          if (n > 0) return (Math.floor(Math.random() * n) + 1) | 0;
+          const m = Math.abs(n);
+          return -((Math.floor(Math.random() * m) + 1) | 0);
+        }
+        case 'SIN': return Math.sin(Number(args && args[0] != null ? args[0] : 0));
+        case 'SQR': return Math.sqrt(Number(args && args[0] != null ? args[0] : 0));
+        case 'TAN': return Math.tan(Number(args && args[0] != null ? args[0] : 0));
+        // --- PRINT helpers: TAB/AT/SPC return control tokens consumed by _formatPrint ---
+        case 'TAB':
+        case 'AT': {
+          const n = Number(args && args[0] != null ? args[0] : 0) | 0;
+          return { __yobasicPrintCtrl: 'TAB', n };
+        }
+        case 'SPC': {
+          const n = Number(args && args[0] != null ? args[0] : 0) | 0;
+          return { __yobasicPrintCtrl: 'SPC', n };
+        }
+        // --- USING$ formatting ---
+        case 'USING$':
+        case 'USING': {
+          const fmt = String(args && args[0] != null ? args[0] : '');
+          const rest = (args || []).slice(1);
+          return this._usingFormat(fmt, rest);
+        }
         default:
           return undefined; // not a built-in
       }
+    }
+
+    _formatPrint(values, defaultSep){
+      // Build a string with awareness of TAB/AT/SPC control tokens produced by built-ins
+      let out = '';
+      let col = 0;
+      const isCtrl = v => v && typeof v === 'object' && v.__yobasicPrintCtrl;
+      for (let idx = 0; idx < values.length; idx++){
+        let v = values[idx];
+        if (idx > 0) {
+          // Add default separator between arguments, unless next token is absolute AT/TAB to control position
+          // We still add separator to keep compatibility with prior behavior
+          out += defaultSep;
+          col += defaultSep.length;
+        }
+        if (isCtrl(v)){
+          const mode = v.__yobasicPrintCtrl;
+          const n = (v.n|0);
+          if (mode === 'SPC'){
+            const spaces = Math.max(0, n);
+            out += ' '.repeat(spaces);
+            col += spaces;
+          } else if (mode === 'TAB' || mode === 'AT'){
+            const target = Math.max(0, n);
+            const spaces = Math.max(0, target - col);
+            out += ' '.repeat(spaces);
+            col += spaces;
+          }
+          continue;
+        }
+        const s = this._toString(v);
+        out += s;
+        col += s.length;
+      }
+      return out;
+    }
+
+    _usingFormat(fmt, values){
+      // Minimal printf-like formatter: supports %s, %d, %f with optional width and precision, and %%
+      const s = String(fmt);
+      let out = '';
+      let i = 0;
+      let argIdx = 0;
+      while (i < s.length){
+        const ch = s[i];
+        if (ch !== '%'){ out += ch; i++; continue; }
+        // '%%' -> '%'
+        if (s[i+1] === '%'){ out += '%'; i += 2; continue; }
+        i++;
+        // flags
+        let left = false; let zero = false;
+        if (s[i] === '-' ){ left = true; i++; }
+        if (s[i] === '0' ){ zero = true; i++; }
+        // width
+        let widthStr = '';
+        while (i < s.length && /[0-9]/.test(s[i])){ widthStr += s[i++]; }
+        const width = widthStr ? parseInt(widthStr, 10) : null;
+        // precision
+        let precision = null;
+        if (s[i] === '.'){
+          i++;
+          let precStr = '';
+          while (i < s.length && /[0-9]/.test(s[i])){ precStr += s[i++]; }
+          precision = precStr ? parseInt(precStr, 10) : 0;
+        }
+        const type = s[i++] || 's';
+        let val = (argIdx < values.length) ? values[argIdx++] : (type === 's' ? '' : 0);
+        let txt = '';
+        if (type === 's' || type === 'S'){
+          txt = String(val);
+          if (precision != null) txt = txt.slice(0, precision);
+        } else if (type === 'd' || type === 'i' || type === 'D' || type === 'I'){
+          const n = Number(val) | 0;
+          txt = String(n);
+          if (precision != null) txt = (Math.sign(n) < 0 ? '-' : '') + Math.abs(n).toString().padStart(precision, '0');
+        } else if (type === 'f' || type === 'F'){
+          const n = Number(val);
+          const prec = (precision != null) ? precision : 6;
+          txt = Number.isFinite(n) ? n.toFixed(prec) : 'NaN';
+        } else {
+          // unknown specifier: treat literally
+          txt = '%' + (left?'-':'') + (zero?'0':'') + (widthStr||'') + (precision!=null?('.'+precision):'') + type;
+        }
+        // padding
+        if (width != null && width > txt.length){
+          const padChar = (zero && !left && (type !== 's' && type !== 'S')) ? '0' : ' ';
+          const pad = padChar.repeat(width - txt.length);
+          txt = left ? (txt + pad) : (pad + txt);
+        }
+        out += txt;
+      }
+      return out;
     }
 
     _status(){
@@ -1543,13 +1710,17 @@
 
     // --- Phase 3 helpers ---
     _findEndFuncOrSub(lines, startIdx){
-      // startIdx points to a FUNC or SUB line
-      const opener = this._lineTrim(lines, startIdx).toUpperCase().startsWith('FUNC') ? 'FUNC' : 'SUB';
+      // startIdx points to a FUNC/FUNCTION or SUB line
+      const openerLine = this._lineTrim(lines, startIdx).toUpperCase();
+      const opener = openerLine.startsWith('SUB') ? 'SUB' : 'FUNC';
       let depth = 1;
       for (let i = startIdx + 1; i < lines.length; i++){
         const t = this._lineTrim(lines, i).toUpperCase();
-        if (t.startsWith('FUNC ') || t === 'FUNC' || t.startsWith('SUB ') || t === 'SUB') depth++;
-        else if (t === 'END ' + opener || t === 'END  ' + opener || t.startsWith('END ' + opener)){
+        if (t.startsWith('FUNC ') || t === 'FUNC' || t.startsWith('FUNCTION ') || t === 'FUNCTION' || t.startsWith('SUB ') || t === 'SUB') depth++;
+        else if (/^END\s+(FUNC|FUNCTION)\b/.test(t) && opener === 'FUNC'){
+          depth--;
+          if (depth === 0) return i;
+        } else if ((t === 'END SUB' || t.startsWith('END SUB')) && opener === 'SUB'){
           depth--;
           if (depth === 0) return i;
         }
@@ -1572,6 +1743,8 @@
         const t = this._lineTrim(lines, i);
         if (!t){ i++; continue; }
         const u = t.toUpperCase();
+        // Ignore DECLARE lines (forward declarations)
+        if (/^DECLARE\b/i.test(u)) { i++; continue; }
         // Top-level labels
         const mLab = t.match(/^LABEL\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i);
         if (mLab){
@@ -1582,11 +1755,11 @@
           this.labels[name] = i;
           i++; continue;
         }
-        // FUNC/SUB declarations
-        if (/^FUNC\b/i.test(u) || /^SUB\b/i.test(u)){
-          const m = t.match(/^(FUNC|SUB)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*$/i);
+        // FUNC/FUNCTION/SUB declarations
+        if (/^(FUNC|FUNCTION)\b/i.test(u) || /^SUB\b/i.test(u)){
+          const m = t.match(/^(FUNC|FUNCTION|SUB)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*$/i);
           if (!m) throw new Error(`Invalid ${t.split(/\s+/)[0]} declaration at line ${i+1}`);
-          const kind = m[1].toUpperCase();
+          const kind = m[1].toUpperCase().replace('FUNCTION','FUNC');
           const name = m[2].toUpperCase();
           const params = m[3].trim() ? m[3].split(',').map(s=>s.trim()) : [];
           if (Object.prototype.hasOwnProperty.call(this.funcs, name)){
