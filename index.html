@@ -646,15 +646,21 @@
             const absPrefixes = ['projects/','shared/','examples/','data/','/'];
             let full = p;
             if (!absPrefixes.some(pre=>p.toLowerCase().startsWith(pre))){
-                // No project context yet; return empty per addendum option
-                return '';
+                // Resolve relative to current project if available
+                const proj = (window.ProjectManager && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) || null;
+                if (proj){
+                    full = `projects/${proj}/${p}`;
+                } else {
+                    // No project context yet; return empty per addendum option
+                    return '';
+                }
             }
             // Use synchronous VFS getFile when possible
             const f = vfs && vfs.getFile ? vfs.getFile(full) : null;
             if (f && typeof f.content === 'string') return f.content;
             // Fallback to data read for data/
-            if (vfs && p.toLowerCase().startsWith('data/')){
-                const d = vfs.readData(p);
+            if (vfs && full.toLowerCase().startsWith('data/')){
+                const d = vfs.readData(full);
                 return d != null ? String(d) : '';
             }
             return '';
@@ -671,7 +677,12 @@
             }catch(e){ console.warn('[YoBASIC] hostExtern error', e); return ''; }
         }
         function hostCallModule(moduleName, memberName, args){
-            // No project manager yet; throw a clear error for dotted calls
+            // Delegate dotted calls to the current project's modules when available
+            try{
+                if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()){
+                    return ProjectManager.callModule(moduleName, memberName, args || []);
+                }
+            }catch(e){ throw e; }
             throw new Error('Unknown module: ' + moduleName);
         }
 
