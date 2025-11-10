@@ -35,7 +35,12 @@
         /* layout */
         #work-area { height: calc(100vh - var(--nav-height)); margin-top: var(--nav-height); }
         #editor-pane { background: #031634; }
-        #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; }
+        .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; }
+        .editor-view { display: none; height: 100%; }
+        .editor-view.active { display: block; }
+        #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; }
+        #editor-tabs .tab-close { font-weight: bold; opacity: .7; cursor: pointer; }
+        #editor-tabs .tab-close:hover { opacity: 1; }
         #terminal-pane, #terminal { height: 100%; }
         /* jQuery Terminal theme tweaks */
         #terminal .terminal { --size: 1rem; }
@@ -102,8 +107,13 @@
 </nav>
 
 <div id="work-area" class="container-fluid p-0">
-    <div id="editor-pane" class="d-none p-2 border-bottom" style="height: 60%;">
-        <textarea id="editor" spellcheck="false"></textarea>
+    <div id="editor-pane" class="d-none p-2 border-bottom" style="height: 60%; display: flex; flex-direction: column;">
+        <ul id="editor-tabs" class="nav nav-tabs small mb-2"></ul>
+        <div id="editor-views" class="flex-grow-1">
+            <div class="editor-view active" data-tab-id="0" style="height: 100%;">
+                <textarea id="editor" class="editor-textarea" spellcheck="false"></textarea>
+            </div>
+        </div>
     </div>
     <div id="terminal-pane" class="p-0" style="height: calc(100vh - var(--nav-height));">
         <div id="terminal" class="h-100"></div>
@@ -362,6 +372,123 @@
     let term, basic;
     let debugOn = true;
     let currentMenu = null; // bootstrap.Dropdown instance
+
+    // --- Tabbed editor state ---
+    const MAX_TABS = 10; // change to adjust tab limit
+    let tabs = [];
+    let activeTabId = 0;
+    let nextTabId = 1; // 0 is the fixed first tab
+    
+    function getActiveTab(){ return tabs.find(t => t.id === activeTabId); }
+    function getTabById(id){ return tabs.find(t => t.id === id); }
+    function getActiveEditor(){ const t = getActiveTab(); return t ? t.textarea : document.getElementById('editor'); }
+    function setTabTitle(tabId, displayName, fullName){
+        const tab = getTabById(tabId); if (!tab) return;
+        tab.displayName = displayName || 'Untitled';
+        tab.fullName = fullName || null;
+        const btn = document.querySelector(`#editor-tabs [data-tab-id="${tabId}"]`);
+        if (btn){ btn.querySelector('.tab-title').textContent = tab.displayName; btn.title = tab.fullName || tab.displayName; }
+    }
+    function activateTab(tabId){
+        const tab = getTabById(tabId); if (!tab) return;
+        // toggle tab buttons
+        document.querySelectorAll('#editor-tabs .nav-link').forEach(el=>el.classList.remove('active'));
+        const btn = document.querySelector(`#editor-tabs [data-tab-id="${tabId}"]`);
+        if (btn) btn.classList.add('active');
+        // toggle views
+        document.querySelectorAll('#editor-views .editor-view').forEach(v=>v.classList.remove('active'));
+        const view = document.querySelector(`#editor-views .editor-view[data-tab-id="${tabId}"]`);
+        if (view) view.classList.add('active');
+        activeTabId = tabId;
+        // sync globals used by existing dialogs
+        currentFileName = tab.fullName || null;
+        currentFileReadOnly = !!tab.readOnly;
+        // focus editor
+        setTimeout(()=>{ try{ tab.textarea.focus(); }catch(e){} }, 0);
+    }
+    function buildInitialTabUi(){
+        // Create first tab button if not present
+        const list = document.getElementById('editor-tabs');
+        if (!list) return;
+        if (list.children.length === 0){
+            const li = document.createElement('li'); li.className = 'nav-item';
+            const btn = document.createElement('button'); btn.className = 'nav-link active'; btn.type='button'; btn.setAttribute('data-tab-id','0'); btn.title='Untitled';
+            btn.innerHTML = '<span class="tab-title">Untitled</span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
+            li.appendChild(btn); list.appendChild(li);
+            btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(0); });
+            btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); onFileCloseTab(); });
+        }
+        // Register first tab object using existing #editor
+        if (!tabs.find(t=>t.id===0)){
+            const textarea = document.getElementById('editor');
+            const view = document.querySelector('#editor-views .editor-view[data-tab-id="0"]');
+            tabs.push({ id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled' });
+            // bind input autosave on first tab too
+            textarea.addEventListener('input', function(){ saveCode(); });
+        }
+    }
+    function createNewTab(initial){
+        if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return null; }
+        const id = nextTabId++;
+        // view
+        const view = document.createElement('div'); view.className='editor-view'; view.style.height='100%'; view.setAttribute('data-tab-id', String(id));
+        const ta = document.createElement('textarea'); ta.className='editor-textarea'; ta.spellcheck=false; view.appendChild(ta);
+        document.getElementById('editor-views').appendChild(view);
+        // button
+        const li = document.createElement('li'); li.className = 'nav-item';
+        const btn = document.createElement('button'); btn.className='nav-link'; btn.type='button'; btn.setAttribute('data-tab-id', String(id));
+        btn.innerHTML = '<span class="tab-title">Untitled</span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
+        li.appendChild(btn); document.getElementById('editor-tabs').appendChild(li);
+        btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(id); });
+        btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); closeTab(id); });
+        // settings apply to new textarea
+        const s = loadSettings();
+        if (s && s.editor){
+            if (s.editor.fontFamily) ta.style.fontFamily = s.editor.fontFamily + ', monospace';
+            if (s.editor.fontSize) ta.style.fontSize = s.editor.fontSize + 'px';
+            if (s.editor.color) ta.style.color = s.editor.color;
+            if (s.editor.bg) ta.style.backgroundColor = s.editor.bg;
+        }
+        ta.addEventListener('input', function(){ saveCode(); });
+        const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled' };
+        tabs.push(tab);
+        // initial content/meta
+        if (initial){
+            if (typeof initial.content === 'string'){ ta.value = initial.content; }
+            if (initial.fullName){ tab.fullName = initial.fullName; }
+            if (initial.readOnly){ tab.readOnly = !!initial.readOnly; }
+            const title = initial.displayName || (initial.fullName ? (initial.fullName.includes('/')? initial.fullName.split('/').pop() : initial.fullName) : 'Untitled');
+            setTabTitle(id, title, initial.fullName || title);
+        } else {
+            setTabTitle(id, 'Untitled', 'Untitled');
+        }
+        // show editor and activate
+        openEditor(true);
+        activateTab(id);
+        return tab;
+    }
+    function closeTab(id){
+        const idx = tabs.findIndex(t=>t.id===id);
+        if (idx < 0) return;
+        if (id === 0 || tabs.length === 1){
+            // clear first/only tab per spec
+            const t0 = getTabById(id);
+            if (t0){ t0.textarea.value = ''; t0.fullName = null; t0.readOnly = false; setTabTitle(id, 'Untitled', 'Untitled'); saveCode(''); }
+            activateTab(id);
+            return;
+        }
+        // compute previous tab id (immediate prior visually is previous in array if exists, else previous sibling in DOM)
+        const prev = tabs[idx-1] || tabs[0];
+        // remove DOM
+        const btn = document.querySelector(`#editor-tabs [data-tab-id="${id}"]`);
+        if (btn){ const li = btn.parentElement; li && li.remove(); }
+        const view = document.querySelector(`#editor-views .editor-view[data-tab-id="${id}"]`);
+        if (view){ view.remove(); }
+        // remove from state
+        tabs.splice(idx,1);
+        // activate previous
+        activateTab(prev.id);
+    }
     
     async function tryLoadSharedProjectFromUrl(){
         const params = new URLSearchParams(location.search);
@@ -416,7 +543,10 @@
     }
 
     function saveCode(value) {
-        try { localStorage.setItem('basic_editor_code', value ?? document.getElementById('editor').value); } catch(e) {}
+        try {
+            const ed = getActiveEditor();
+            localStorage.setItem('basic_editor_code', value ?? (ed ? ed.value : ''));
+        } catch(e) {}
     }
     function loadCode() {
         try { return localStorage.getItem('basic_editor_code'); } catch(e) { return null; }
@@ -430,12 +560,13 @@
     }
 
     function applySettings(s) {
-        const editor = document.getElementById('editor');
         if (s.editor) {
-            if (s.editor.fontFamily) editor.style.fontFamily = s.editor.fontFamily + ", monospace";
-            if (s.editor.fontSize) editor.style.fontSize = s.editor.fontSize + 'px';
-            if (s.editor.color) editor.style.color = s.editor.color;
-            if (s.editor.bg) editor.style.backgroundColor = s.editor.bg;
+            document.querySelectorAll('.editor-textarea, #editor').forEach(editor=>{
+                if (s.editor.fontFamily) editor.style.fontFamily = s.editor.fontFamily + ", monospace";
+                if (s.editor.fontSize) editor.style.fontSize = s.editor.fontSize + 'px';
+                if (s.editor.color) editor.style.color = s.editor.color;
+                if (s.editor.bg) editor.style.backgroundColor = s.editor.bg;
+            });
         }
         if (s.terminal) {
             const fam = s.terminal.fontFamily ? (s.terminal.fontFamily + ", monospace") : null;
@@ -466,7 +597,8 @@
                 onFileNew();
                 break;
             case 'file-open':
-                showOpenDialog();
+                if (tabs.length >= MAX_TABS) { alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); }
+                else { showOpenDialog(); }
                 break;
             case 'file-save':
                 onFileSave();
@@ -475,7 +607,7 @@
                 showSaveAsDialog();
                 break;
             case 'file-close':
-                closeEditor(true);
+                onFileCloseTab();
                 break;
             case 'proj-new':
                 ProjectManager && ProjectManager.init && ProjectManager.init(vfs);
@@ -513,24 +645,32 @@
         }
     }
 
-    function openEditor() {
+    function openEditor(suppressAutoload) {
         const pane = document.getElementById('editor-pane');
         const wasHidden = pane.classList.contains('d-none');
         pane.classList.remove('d-none');
         setNavHeight();
-        const textarea = document.getElementById('editor');
-        if (wasHidden && textarea.value.trim() === ''){
-            let code = loadCode();
-            if (!code || code.trim().length === 0) {
-                code = 'PRINTLN "Hello World"\n';
+        // Optionally preload Hello World only on first reveal and only for first tab when empty
+        if (!suppressAutoload && wasHidden){
+            const first = getTabById(0);
+            if (first && (first.textarea.value || '').trim() === ''){
+                let code = loadCode();
+                if (!code || code.trim().length === 0) {
+                    code = 'PRINTLN "Hello World"\n';
+                }
+                first.textarea.value = code; // only overwrite the first time we open in this session
+                setTabTitle(0, 'Untitled', 'Untitled');
             }
-            textarea.value = code; // only overwrite the first time we open in this session
         }
-        setTimeout(() => textarea.focus(), 0);
+        const ed = getActiveEditor();
+        if (ed) setTimeout(() => ed.focus(), 0);
     }
 
     function closeEditor(clear) {
-        if (clear) { document.getElementById('editor').value = ''; saveCode(''); }
+        if (clear) {
+            const ed = getActiveEditor();
+            if (ed) { ed.value = ''; saveCode(''); }
+        }
         document.getElementById('editor-pane').classList.add('d-none');
         setNavHeight();
         // reset current file state when closing
@@ -542,7 +682,8 @@
     function runProgram() {
         // Pass VFS to interpreter before running
         if (basic) basic.vfs = vfs;
-        const code = document.getElementById('editor').value || '';
+        const ed = getActiveEditor();
+        const code = ed ? (ed.value || '') : '';
         if (!term) return;
         if (code.trim().length === 0) return;
         // Execute whole program using interpreter's runProgram to support control blocks
@@ -725,6 +866,7 @@
         applySettings(settings);
 
         // Autosave editor content
+        buildInitialTabUi();
         $('#editor').on('input', function(){ saveCode(this.value); });
 
         // Menu item clicks
@@ -745,21 +887,18 @@
         $('#btn-open-ok').on('click', async function(){
             const $sel = $('#open-files .list-group-item.active');
             if ($sel.length === 0) return;
+            if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return; }
             const fullName = $sel.data('fullname');
             const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
             const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
             if (!file) return;
-            if (file.kind !== 'program'){
-                // Open data files as plain text (documented in code comment)
-                openEditor();
-                $('#editor').val(file.content);
-                currentFileName = file.name; currentFileReadOnly = !!file.readOnly;
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen')).hide();
-                return;
-            }
-            openEditor();
-            $('#editor').val(file.content);
-            currentFileName = file.name; currentFileReadOnly = !!file.readOnly;
+            const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
+            createNewTab({
+                content: file.content || '',
+                fullName: file.name,
+                readOnly: !!file.readOnly,
+                displayName
+            });
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen')).hide();
         });
 
@@ -1092,22 +1231,34 @@
         if (!/\.bas$/i.test(n)) n += '.BAS';
         return n;
     }
+    function onFileCloseTab(){
+        closeTab(activeTabId);
+    }
     function onFileNew(){
-        openEditor();
-        document.getElementById('editor').value = '';
+        if (tabs.length >= MAX_TABS){
+            alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to add another.`);
+            return;
+        }
+        createNewTab({ content: '', displayName: 'Untitled' });
+        const tab = getActiveTab();
+        if (tab){ tab.fullName = null; tab.readOnly = false; }
         saveCode('');
-        currentFileName = null; currentFileReadOnly = false;
     }
     async function onFileSave(){
         // Direct save if current file exists and is writable
         if (currentFileName && !currentFileReadOnly){
-            const content = document.getElementById('editor').value || '';
+            const ed = getActiveEditor();
+            const content = ed ? (ed.value || '') : '';
             if (/^shared\//i.test(currentFileName)){
                 await vfs.writeProgramAsync(currentFileName, content);
             } else {
                 vfs.writeProgram(currentFileName, content);
                 vfs.saveToLocalStorage();
             }
+            // keep tab title consistent
+            const base = currentFileName.includes('/') ? currentFileName.split('/').pop() : currentFileName;
+            setTabTitle(activeTabId, base, currentFileName);
+            const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; }
             term && term.echo && term.echo('[Saved] ' + currentFileName);
             return;
         }
@@ -1147,7 +1298,8 @@
             if (existing.readOnly){ alert('This file is read-only. Use a different name.'); return; }
             if (!confirm('File already exists. Overwrite?')) return;
         }
-        const content = document.getElementById('editor').value || '';
+        const ed = getActiveEditor();
+        const content = ed ? (ed.value || '') : '';
         const isBas = /\.bas$/i.test(targetName);
         if (/^shared\//i.test(targetName)){
             if (isBas){
@@ -1162,6 +1314,10 @@
             vfs.saveToLocalStorage();
             currentFileName = targetName; currentFileReadOnly = false;
         }
+        // Update tab metadata and title/tooltip
+        const base = targetName.includes('/') ? targetName.split('/').pop() : targetName;
+        setTabTitle(activeTabId, base, targetName);
+        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
         term && term.echo && term.echo('[Saved] ' + targetName);
     }
