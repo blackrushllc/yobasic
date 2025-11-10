@@ -135,7 +135,7 @@
       const files = this.vfs.listFiles().filter(f=>f.name.toLowerCase().startsWith(prefix.toLowerCase()) && f.name.toLowerCase().endsWith('.bas'));
       for (const f of files){
         const src = f.content || '';
-        const bi = new global.BasicInterpreter({ debug: false, autoEcho: false, vfs: this.vfs,
+        const bi = new global.BasicInterpreter({ debug: false, autoEcho: true, vfs: this.vfs,
           hostReadFile: (p)=>PM._hostReadFileRelative(p),
           hostExtern: (name, args)=>PM._hostExtern(name, args),
           hostCallModule: (m, mem, args)=>PM.callModule(m, mem, args)
@@ -257,7 +257,7 @@
         const code = file.content || '';
         // Reuse the main interpreter for simplicity
         const term = global.term || null;
-        const bi = new global.BasicInterpreter({ term, autoEcho: false, debug: false, vfs: this.vfs,
+        const bi = new global.BasicInterpreter({ term, autoEcho: true, debug: false, vfs: this.vfs,
           hostReadFile: (p)=>PM._hostReadFileRelative(p),
           hostExtern: (name, args)=>PM._hostExtern(name, args),
           hostCallModule: (m, mem, args)=>PM.callModule(m, mem, args)
@@ -315,9 +315,9 @@
           this.vfs.writeFile(`projects/${this.currentProjectName}/project.json`, JSON.stringify(j, null, 2), 'data');
         }
       }catch(_){ }
-      // Show share URL
+      // Show share URL (use prompt for easy copy)
       const url = `${location.origin}${location.pathname}?sharedProject=${encodeURIComponent(me.username)}/${encodeURIComponent(this.currentProjectName)}`;
-      alert('Build complete!\nShare this URL to open the project:\n' + url);
+      global.prompt('Build complete! Copy this URL to share your project:', url);
     }
   };
 

@@ -295,9 +295,11 @@
           <div class="col-4 border-end">
             <div class="list-group" id="open-folders">
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark active" data-folder="Root">Root</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="projects">projects</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="examples">examples</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="data">data</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="shared">shared</button>
+              <div id="open-projects" class="mt-2"></div>
               <div id="open-shared-owners" class="mt-2"></div>
             </div>
           </div>
@@ -328,6 +330,7 @@
           <div class="col-4 border-end">
             <div class="list-group" id="save-folders">
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark active" data-folder="Root">Root</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="projects">projects</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="examples" disabled>examples</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="data" disabled>data</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="shared">shared</button>
@@ -359,6 +362,36 @@
     let term, basic;
     let debugOn = true;
     let currentMenu = null; // bootstrap.Dropdown instance
+    
+    async function tryLoadSharedProjectFromUrl(){
+        const params = new URLSearchParams(location.search);
+        const sp = params.get('sharedProject');
+        if (!sp) return;
+        const m = String(sp).match(/^([^\/]+)\/(.+)$/);
+        if (!m) return;
+        const owner = decodeURIComponent(m[1]);
+        const proj = decodeURIComponent(m[2]);
+        // Fetch file list for owner and hydrate only this project's files
+        const prov = vfs && vfs.providers && vfs.providers.shared;
+        if (!prov || !prov.listFilesForOwner || !prov.getFile) return;
+        const files = await prov.listFilesForOwner(owner);
+        const prefix = `shared/${owner}/projects/${proj}/`.toLowerCase();
+        const matches = files.filter(f=>String(f.name).toLowerCase().startsWith(prefix));
+        if (!matches.length){ console.warn('No shared files for project', proj); return; }
+        for (const f of matches){
+            // Fetch full content
+            const full = await prov.getFile(f.name);
+            if (!full) continue;
+            // Compute local path under projects/<proj>/...
+            const rest = full.name.slice(prefix.length);
+            const localPath = `projects/${proj}/${rest}`;
+            // Write to local VFS preserving kind
+            vfs.writeFile(localPath, full.content || '', full.kind || 'program');
+        }
+        // Open project after hydration
+        if (window.ProjectManager && ProjectManager.init){ ProjectManager.init(vfs); }
+        if (window.ProjectManager && ProjectManager.openProject){ await ProjectManager.openProject(proj); }
+    }
 
     // VFS and editor current file state
     let vfs = null;
@@ -551,6 +584,8 @@
                 vfs.setProviders({ examples: examplesProvider, shared: sharedProvider });
                 await Identity.initializeFromSession();
                 updateIdentityUi();
+                // After providers are ready, try loading sharedProject from URL
+                try{ await tryLoadSharedProjectFromUrl(); }catch(err){ console.warn('sharedProject load failed', err); }
             }catch(e){ console.warn('[YoBASIC] Supabase init failed', e); }
         })();
 
@@ -659,6 +694,7 @@
             name: 'js_demo',
             prompt: "\nOK\n\n"
         });
+        window.term = term;
 
         // Height + focus
         setNavHeight();
@@ -727,6 +763,16 @@
             $('#save-files .list-group-item').removeClass('active');
             $(this).addClass('active');
             const name = $(this).data('fullname');
+            const folderBtn = document.querySelector('#save-folders .list-group-item.active');
+            const folder = folderBtn ? folderBtn.getAttribute('data-folder') : 'Root';
+            if (folder === 'projects'){
+                const proj = (window.ProjectManager && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) || null;
+                const prefix = proj ? (`projects/${proj}/`) : null;
+                if (proj && String(name).toLowerCase().startsWith(prefix.toLowerCase())){
+                    $('#saveas-name').val(name.slice(prefix.length));
+                    return;
+                }
+            }
             $('#saveas-name').val(name);
         });
         $('#btn-saveas-ok').on('click', function(){ doSaveAs(); });
@@ -858,14 +904,40 @@
     }
 
     // --- Dialog helpers and file operations ---
-    function labelForFile(f){
-        const isExample = String(f.name).toLowerCase().startsWith('examples/');
-        const isData = String(f.name).toLowerCase().startsWith('data/');
-        const isShared = String(f.name).toLowerCase().startsWith('shared/');
-        const base = f.name.includes('/') ? f.name.split('/').pop() : f.name;
+    function labelForFile(f, opts){
+        const name = String(f.name);
+        const lower = name.toLowerCase();
+        const ctx = opts || {};
         const ro = f.readOnly ? ' [RO]' : '';
-        const tag = isExample ? ' [EXAMPLE]' : (isData ? ' [DATA]' : (isShared ? ' [SHARED]' : ''));
-        return base + tag + ro;
+        // Prefer showing a relative path within the selected namespace
+        if (ctx.folder === 'projects'){
+            // Show path after projects/<ProjectName>/
+            const idx = lower.indexOf('projects/');
+            if (idx === 0){
+                const rest = name.slice(('projects/').length);
+                const slash = rest.indexOf('/');
+                if (slash >= 0){ return rest.slice(slash+1) + ro; }
+                return rest + ro;
+            }
+        }
+        if (ctx.folder === 'shared' && ctx.owner){
+            const prefix = `shared/${ctx.owner}/`;
+            if (lower.startsWith(prefix.toLowerCase())){
+                return name.slice(prefix.length) + ro;
+            }
+        }
+        if (lower.startsWith('shared/')){
+            // default for shared without owner context: show owner/path
+            return name.slice('shared/'.length) + ro;
+        }
+        if (lower.startsWith('examples/')){
+            return name.slice('examples/'.length) + ro;
+        }
+        if (lower.startsWith('data/')){
+            return name.slice('data/'.length) + ro;
+        }
+        // Root fallback: show base name
+        return (name.includes('/') ? name.split('/').pop() : name) + ro;
     }
     async function renderOpenFiles(folder){
         const list = $('#open-files').empty();
@@ -877,17 +949,59 @@
             $('#btn-open-ok').prop('disabled', true);
             return;
         }
-        // clear shared owners panel when not browsing shared
+        if (folder === 'projects'){
+            await renderProjectsPanel();
+            list.append('<div class="list-group-item list-group-item-dark disabled">Select a project to view files.</div>');
+            $('#btn-open-ok').prop('disabled', true);
+            return;
+        }
+        // clear side panels when not browsing shared/projects
         if (folder !== 'shared'){ $('#open-shared-owners').empty(); }
+        if (folder !== 'projects'){ $('#open-projects').empty(); }
         const isRemote = (folder === 'examples');
         const files = isRemote ? (await vfs.listByFolderAsync(folder)) : vfs.listByFolder(folder);
         list.empty();
         files.forEach(f => {
             const disabled = (folder === 'data' && f.kind !== 'data') ? ' disabled' : '';
-            const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark${disabled}" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+            const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark${disabled}" data-fullname="${f.name}">${labelForFile(f, { folder })}</button>`);
             list.append($item);
         });
         $('#btn-open-ok').prop('disabled', true);
+    }
+    async function renderProjectsPanel(){
+        const c = $('#open-projects').empty();
+        const names = getLocalProjectNames();
+        if (!names.length){ c.append('<div class="text-secondary small">No local projects.</div>'); return; }
+        c.append('<div class="small text-secondary">Projects</div>');
+        names.forEach(name=>{
+            const btn = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-project="${name}">projects/${name}</button>`);
+            btn.on('click', function(){
+                $('#open-projects .list-group-item').removeClass('active');
+                $(this).addClass('active');
+                const prefix = `projects/${name}/`;
+                const files = vfs.listFiles().filter(f=>f.name.toLowerCase().startsWith(prefix.toLowerCase()));
+                const list = $('#open-files').empty();
+                files.forEach(f=>{
+                    const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f, { folder: 'projects' })}</button>`);
+                    list.append($item);
+                });
+                $('#btn-open-ok').prop('disabled', true);
+            });
+            c.append(btn);
+        });
+    }
+    function getLocalProjectNames(){
+        const files = vfs.listFiles();
+        const set = new Set();
+        files.forEach(f=>{
+            const n = f.name;
+            if (n.toLowerCase().startsWith('projects/')){
+                const rest = n.slice(9);
+                const idx = rest.indexOf('/');
+                if (idx > 0) set.add(rest.slice(0, idx));
+            }
+        });
+        return Array.from(set.values()).sort();
     }
     async function renderSharedOwners(){
         const c = $('#open-shared-owners').empty();
@@ -904,7 +1018,7 @@
                 const files = await prov.listFilesForOwner(owner);
                 const list = $('#open-files').empty();
                 files.forEach(f=>{
-                    const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+                    const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f, { folder: 'shared', owner: owner })}</button>`);
                     list.append($item);
                 });
                 $('#btn-open-ok').prop('disabled', true);
@@ -914,7 +1028,9 @@
     }
     async function renderSaveFiles(folder){
         const list = $('#save-files').empty();
+        const help = $('#modalSaveAs .form-text');
         if (folder === 'shared'){
+            help.text('Save into your shared folder as <name>.BAS');
             const me = Identity.getCurrentUser && Identity.getCurrentUser();
             if (!me){ list.append('<div class="list-group-item list-group-item-dark disabled">Log in to save to your shared folder.</div>'); return; }
             // list my existing shared files
@@ -922,15 +1038,25 @@
             if (!prov){ list.append('<div class="list-group-item list-group-item-dark disabled">Shared is not available.</div>'); return; }
             const files = await prov.listFilesForOwner(me.username);
             files.forEach(f=>{
-                const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+                const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f, { folder: 'shared', owner: me.username })}</button>`);
                 list.append($item);
             });
             return;
         }
-        if (folder !== 'Root'){
-            list.append('<div class="list-group-item list-group-item-dark disabled">Choose Root to save program files.</div>');
+        if (folder === 'projects'){
+            const proj = (window.ProjectManager && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) || null;
+            if (!proj){ help.text('Open a project to save files into it.'); list.append('<div class="list-group-item list-group-item-dark disabled">No project open.</div>'); return; }
+            help.text(`Saving into projects/${proj}/... Enter a relative path like Modules/NEW.BAS`);
+            const prefix = `projects/${proj}/`;
+            const files = vfs.listFiles().filter(f=>f.name.toLowerCase().startsWith(prefix.toLowerCase()));
+            files.forEach(f=>{
+                const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f, { folder: 'projects' })}</button>`);
+                list.append($item);
+            });
             return;
         }
+        // Root
+        help.text('Programs are saved in Root as .BAS files.');
         const files = vfs.listByFolder('Root').filter(f=>f.kind==='program');
         files.forEach(f => {
             const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
@@ -988,11 +1114,18 @@
             const me = Identity.getCurrentUser && Identity.getCurrentUser();
             if (!me){ alert('Log in to save to Shared.'); return; }
             targetName = `shared/${me.username}/${normalizedBase}`;
+        } else if (folder === 'projects'){
+            const proj = (window.ProjectManager && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) || null;
+            if (!proj){ alert('Open a project to save into it.'); return; }
+            // Allow entering relative path like Menus/NEW.BAS, Modules/X.BAS, Views/Y.html
+            const rel = nameInput.value.trim();
+            if (!rel){ alert('Enter a relative path within the project, e.g., Modules/NEW.BAS'); return; }
+            targetName = `projects/${proj}/${rel}`;
         } else if (folder !== 'Root'){
-            alert('Choose Root or Shared to save program files.');
+            alert('Choose Root, Projects, or Shared to save program files.');
             return;
         }
-        // Check existing (local for Root, remote for Shared)
+        // Check existing (local for Root/Projects, remote for Shared)
         let existing = null;
         if (/^shared\//i.test(targetName)){
             existing = await vfs.getFileAsync(targetName);
@@ -1004,11 +1137,17 @@
             if (!confirm('File already exists. Overwrite?')) return;
         }
         const content = document.getElementById('editor').value || '';
+        const isBas = /\.bas$/i.test(targetName);
         if (/^shared\//i.test(targetName)){
-            await vfs.writeProgramAsync(targetName, content);
+            if (isBas){
+                await vfs.writeProgramAsync(targetName, content);
+            } else {
+                await vfs.writeFileAsync(targetName, content, 'data');
+            }
             currentFileName = targetName; currentFileReadOnly = false;
         } else {
-            vfs.writeProgram(targetName, content);
+            if (isBas){ vfs.writeProgram(targetName, content); }
+            else { vfs.writeFile(targetName, content, 'data'); }
             vfs.saveToLocalStorage();
             currentFileName = targetName; currentFileReadOnly = false;
         }
