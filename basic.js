@@ -44,6 +44,10 @@
       this.term = options.term || (typeof global.term !== 'undefined' ? global.term : null);
       this.autoEcho = options.autoEcho !== undefined ? !!options.autoEcho : true; // echo to sinks during execution
       this.vfs = options.vfs || (typeof global.__vfsInstance__ !== 'undefined' ? global.__vfsInstance__ : null);
+      // Host bridge callbacks (Phase 3 - optional)
+      this.hostReadFile = options.hostReadFile || null;        // (path: string) => string
+      this.hostExtern = options.hostExtern || null;            // (name: string, args: string[]) => string
+      this.hostCallModule = options.hostCallModule || null;    // (moduleName: string, memberName: string, args: any[]) => any
       this.openFiles = {}; // BASIC open file handles: { [handle:number]: {handle, filename, mode, position, bufferIn, bufferOut} }
       // REPL multiline block buffer (for WHILE/WEND, SELECT CASE, etc.)
       this._replBlock = null; // { lines: string[], stack: string[] }
@@ -977,6 +981,19 @@
           const rest = (args || []).slice(1);
           return this._usingFormat(fmt, rest);
         }
+        case 'READFILE$':
+        case 'READFILE': {
+          const path = String(args && args[0] != null ? args[0] : '');
+          if (typeof this.hostReadFile !== 'function') throw new Error('Host READFILE not available');
+          return String(this.hostReadFile(path));
+        }
+        case 'EXTERN': {
+          const name = String(args && args[0] != null ? args[0] : '');
+          const rest = (args || []).slice(1).map(a=>String(a));
+          if (typeof this.hostExtern !== 'function') throw new Error('Host EXTERN not available');
+          const res = this.hostExtern(name, rest);
+          return (typeof res === 'string') ? res : '';
+        }
         default:
           return undefined; // not a built-in
       }
@@ -1259,10 +1276,11 @@
       const jsExpr = this._rewriteToJs(interpolated);
 
       try{
-        const fn = new Function('__get', '__call', 'Math', `"use strict"; return ( ${jsExpr} );`);
+        const fn = new Function('__get', '__call', '__callDot', 'Math', `"use strict"; return ( ${jsExpr} );`);
         const val = fn(
           (name)=>ctx._getVar(name),
           (name, args)=>ctx._callFunc(name, args),
+          (mod, member, a)=>ctx._callFuncDot(mod, member, a),
           Math
         );
         return val;
@@ -1394,12 +1412,12 @@
           if (upper === 'OR'){ out += '||'; i=j; continue; }
           if (upper === 'NOT'){ out += '!'; i=j; continue; }
 
-          // Function call or variable?
-          // Lookahead for optional whitespace then '('
+          // Function call or variable or dotted call?
+          // Lookahead for optional whitespace then '(' or dotted member
           let k=j; while (k<s.length && /\s/.test(s[k])) k++;
           if (s[k] === '('){
+            // Simple function call: IDENT(...)
             out += `__call("${upper}",`;
-            // We'll keep the paren and arguments as-is
             i = k+1;
             // copy args until matching ')'
             let depth=1; let argStr='';
@@ -1415,10 +1433,45 @@
               if (ch===')') { depth--; if (depth>0) argStr += ch; i++; continue; }
               argStr += ch; i++;
             }
-            // rewrite inside arguments recursively
             const rewrittenArgs = this._rewriteToJs(argStr);
             out += '[' + rewrittenArgs + '])';
             continue;
+          } else if (s[k] === '.'){
+            // Dotted module call: IDENT.MEMBER(...)
+            let k2 = k + 1;
+            while (k2<s.length && /\s/.test(s[k2])) k2++;
+            // read member identifier
+            let mStart = k2;
+            while (k2 < s.length && /[A-Za-z0-9_\$%]/.test(s[k2])) k2++;
+            const memberRaw = s.slice(mStart, k2);
+            const memberUpper = memberRaw.toUpperCase();
+            // skip whitespace before '('
+            while (k2<s.length && /\s/.test(s[k2])) k2++;
+            if (s[k2] === '('){
+              // Parse argument list for dotted call IDENT.MEMBER(...)
+              i = k2 + 1;
+              let depth=1; let argStr='';
+              while (i < s.length && depth>0){
+                const ch = s[i];
+                if (ch==='"' || ch==='\''){
+                  const {end} = this._readString(s, i);
+                  argStr += s.slice(i, end);
+                  i = end;
+                  continue;
+                }
+                if (ch==='(') { depth++; argStr += ch; i++; continue; }
+                if (ch===')') { depth--; if (depth>0) argStr += ch; i++; continue; }
+                argStr += ch; i++;
+              }
+              const rewrittenArgs = this._rewriteToJs(argStr);
+              out += `__callDot("${upper}","${memberUpper}",[${rewrittenArgs}])`;
+              continue;
+            } else {
+              // Dot without call; fall back to variable token for IDENT
+              out += `__get("${upper}")`;
+              i = j;
+              continue;
+            }
           } else {
             // Variable
             out += `__get("${upper}")`;
@@ -1492,6 +1545,14 @@
       const bi = this._callFuncBuiltIn(upper, args || []);
       if (typeof bi !== 'undefined') return bi;
       throw new Error(`Unknown function: ${name}`);
+    }
+
+    _callFuncDot(moduleName, memberName, args){
+      // Dotted call dispatch: moduleName.memberName(args)
+      if (typeof this.hostCallModule === 'function'){
+        return this.hostCallModule(String(moduleName), String(memberName), args || []);
+      }
+      throw new Error(`Unknown module: ${moduleName}`);
     }
 
     // --- Helpers for control structures ---

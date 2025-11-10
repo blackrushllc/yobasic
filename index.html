@@ -21,6 +21,7 @@
     <script src="provider-examples.js"></script>
     <script src="provider-shared.js"></script>
     <script src="basic.js"></script>
+    <script src="projectManager.js"></script>
     <style>
         :root { --nav-height: 56px; }
         html, body { height: 100%; }
@@ -63,6 +64,10 @@
                         <li><a class="dropdown-item" href="#" data-action="file-saveas" data-key="a">Save <span class="qb-underline">A</span>s</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" data-action="file-close" data-key="c"><span class="qb-underline">C</span>lose</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" data-action="proj-new" data-key="p">New <span class="qb-underline">P</span>roject</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="proj-open" data-key="j">Open Pro<span class="qb-underline">j</span>ect</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="proj-close" data-key="l">C<span class="qb-underline">l</span>ose Project</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -439,6 +444,17 @@
             case 'file-close':
                 closeEditor(true);
                 break;
+            case 'proj-new':
+                ProjectManager && ProjectManager.init && ProjectManager.init(vfs);
+                ProjectManager.newProjectPrompt();
+                break;
+            case 'proj-open':
+                ProjectManager && ProjectManager.init && ProjectManager.init(vfs);
+                ProjectManager.openProjectPrompt();
+                break;
+            case 'proj-close':
+                ProjectManager && ProjectManager.closeProject && ProjectManager.closeProject();
+                break;
             case 'tool-1':
                 alert('Menu item Tool 1 goes here');
                 break;
@@ -538,8 +554,94 @@
             }catch(e){ console.warn('[YoBASIC] Supabase init failed', e); }
         })();
 
+        // Host bridge (Phase 3 addendum)
+        window.YoBasicHost = window.YoBasicHost || {
+            showModal: function(html){
+                // Create/reuse a bootstrap modal container
+                let host = document.getElementById('modalHost');
+                if (!host){
+                    host = document.createElement('div');
+                    host.id = 'modalHost';
+                    host.className = 'modal fade';
+                    host.tabIndex = -1;
+                    host.innerHTML = [
+                        '<div class="modal-dialog modal-lg modal-dialog-centered">',
+                        '  <div class="modal-content bg-dark text-light">',
+                        '    <div class="modal-header">',
+                        '      <h5 class="modal-title">View</h5>',
+                        '      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>',
+                        '    </div>',
+                        '    <div class="modal-body"><div id="modalHostBody"></div></div>',
+                        '    <div class="modal-footer">',
+                        '      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>',
+                        '    </div>',
+                        '  </div>',
+                        '</div>'
+                    ].join('');
+                    document.body.appendChild(host);
+                }
+                const body = host.querySelector('#modalHostBody');
+                if (body){ body.innerHTML = String(html || ''); }
+                // Bind click handlers: id -> id_click
+                try{
+                    const container = body || host;
+                    const clickable = container.querySelectorAll('[id]');
+                    clickable.forEach(el=>{
+                        const id = el.id;
+                        if (!id) return;
+                        const handlerName = (id + '_click').toLowerCase();
+                        el.addEventListener('click', function(){
+                            try{
+                                if (window.ProjectManager && typeof ProjectManager.callAny === 'function'){
+                                    ProjectManager.callAny(handlerName, []);
+                                } else {
+                                    console.warn('[YoBASIC] ProjectManager not ready for handler', handlerName);
+                                }
+                            }catch(e){ console.warn('[YoBASIC] handler error', handlerName, e); }
+                        });
+                    });
+                }catch(e){ console.warn('Bind handlers failed', e); }
+                const modal = bootstrap.Modal.getOrCreateInstance(host);
+                modal.show();
+                return '';
+            }
+        };
+        function hostReadFile(path){
+            const p = String(path||'');
+            const absPrefixes = ['projects/','shared/','examples/','data/','/'];
+            let full = p;
+            if (!absPrefixes.some(pre=>p.toLowerCase().startsWith(pre))){
+                // No project context yet; return empty per addendum option
+                return '';
+            }
+            // Use synchronous VFS getFile when possible
+            const f = vfs && vfs.getFile ? vfs.getFile(full) : null;
+            if (f && typeof f.content === 'string') return f.content;
+            // Fallback to data read for data/
+            if (vfs && p.toLowerCase().startsWith('data/')){
+                const d = vfs.readData(p);
+                return d != null ? String(d) : '';
+            }
+            return '';
+        }
+        function hostExtern(name, args){
+            try{
+                const fn = window.YoBasicHost && window.YoBasicHost[name];
+                if (typeof fn === 'function'){
+                    const res = fn.apply(window.YoBasicHost, args || []);
+                    return (typeof res === 'string') ? res : '';
+                }
+                console.warn('[YoBASIC] Unknown host method', name);
+                return '';
+            }catch(e){ console.warn('[YoBASIC] hostExtern error', e); return ''; }
+        }
+        function hostCallModule(moduleName, memberName, args){
+            // No project manager yet; throw a clear error for dotted calls
+            throw new Error('Unknown module: ' + moduleName);
+        }
+
         // Initialize terminal in dedicated div
-        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: true, vfs });
+        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: true, vfs, hostReadFile, hostExtern, hostCallModule });
         term = $('#terminal').terminal(function(command) {
             if (command !== '') {
                 try {
@@ -633,7 +735,12 @@
         $('#btn-run').on('click', function(){ runProgram(); });
         $('#btn-bug').on('click', function(){ toggleDebug(); });
         $('#btn-clear').on('click', function(){ toggleClear(); });
-        $('#btn-build').on('click', function(){ alert('Build Goes Here'); });
+        $('#btn-build').on('click', async function(){
+            try{
+                ProjectManager && ProjectManager.init && ProjectManager.init(vfs);
+                await ProjectManager.buildCurrent();
+            }catch(e){ alert(String(e && e.message ? e.message : e)); }
+        });
         $('#btn-settings').on('click', function(){ new bootstrap.Modal(document.getElementById('modalSettings')).show(); });
 
         // Save settings
