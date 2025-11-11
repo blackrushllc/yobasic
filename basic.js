@@ -100,12 +100,12 @@
       const closerType = (ln)=>{
         if (/^WEND\b/i.test(ln)) return 'WHILE';
         if (/^LOOP\b/i.test(ln)) return 'DO';
-        if (/^NEXT\b/i.test(ln)) return 'FOR';
+        if (/^NEXT\b/i.test(ln)) return '__NEXT__';
         if (/^END\s+SELECT\b/i.test(ln)) return 'SELECT';
         if (/^END\s+(FUNC|FUNCTION)\b/i.test(ln)) return 'FUNC';
         if (/^END\s+SUB\b/i.test(ln)) return 'SUB';
         if (/^END\s+TRY\b/i.test(ln)) return 'TRY';
-        if (/^NEXT\b/i.test(ln)) return 'FOREACH';
+        if (/^END\b\s*$/i.test(ln)) return '__END__';
         return null;
       };
 
@@ -117,12 +117,24 @@
         const closeT = closerType(text);
         if (openT) this._replBlock.stack.push(openT);
         if (closeT){
-          // pop the most recent matching opener
-          const idx = this._replBlock.stack.lastIndexOf(closeT);
-          if (idx >= 0) this._replBlock.stack.splice(idx, 1);
-          else {
-            // unmatched closer: let runProgram handle later; still reduce by popping last
-            this._replBlock.stack.pop();
+          if (closeT === '__END__'){
+            if (this._replBlock.stack.length) this._replBlock.stack.pop();
+          } else if (closeT === '__NEXT__'){
+            // NEXT can close either FOR or FOREACH; remove the nearest such opener
+            let idx = -1;
+            for (let k = this._replBlock.stack.length - 1; k >= 0; k--){
+              const t = this._replBlock.stack[k];
+              if (t === 'FOR' || t === 'FOREACH'){ idx = k; break; }
+            }
+            if (idx >= 0) this._replBlock.stack.splice(idx, 1);
+          } else {
+            // pop the most recent matching opener
+            const idx = this._replBlock.stack.lastIndexOf(closeT);
+            if (idx >= 0) this._replBlock.stack.splice(idx, 1);
+            else if (this._replBlock.stack.length) {
+              // unmatched closer: let runProgram handle later; still reduce by popping last
+              this._replBlock.stack.pop();
+            }
           }
         }
         this._replBlock.lines.push(textRaw);
@@ -196,8 +208,71 @@
           // LABEL declaration (no-op at runtime)
           if (/^LABEL\s+/i.test(stmtLine)) { i++; continue; }
 
-          // END statement (terminate program/unit)
-          if (/^END\b\s*$/i.test(stmtLine)) { break; }
+          // Explicit END FUNC|FUNCTION|SUB: end current function/sub or program
+          if (/^END\s+(FUNC|FUNCTION|SUB)\b/i.test(stmtLine)){
+            if (this.callStack && this.callStack.length){
+              const ex = new Error('RETURN'); ex.__ctrl='FUNC_RETURN'; ex.__ret=undefined; throw ex;
+            }
+            break; // at top-level, END FUNCTION/SUB ends the program
+          }
+
+          // Generic END handler: closes the current open block or ends function/program
+          if (/^END\b/i.test(stmtLine)){
+            const top = stack[stack.length - 1];
+            if (!top){
+              // No active block: if inside a function/sub, treat as function return; else end program
+              if (this.callStack && this.callStack.length){
+                const ex = new Error('RETURN'); ex.__ctrl='FUNC_RETURN'; ex.__ret=undefined; throw ex;
+              }
+              break; // terminate program
+            }
+            switch (top.type){
+              case 'WHILE': {
+                const whileLine = this._stripComments(lines[top.start]).trim();
+                const condExpr = whileLine.replace(/^WHILE\b/i, '').replace(/\s+BEGIN\s*$/i, '').trim();
+                const cond = this._truthy(this._evalExpression(condExpr));
+                if (cond){ i = top.start + 1; }
+                else { stack.pop(); i++; }
+                continue;
+              }
+              case 'DO': {
+                if (top.mode === 'PRE'){
+                  // Re-evaluate stored pre-test condition
+                  const cond = this._truthy(this._evalExpression(top.expr));
+                  const keep = (top.test === 'WHILE') ? cond : !cond;
+                  if (keep){ i = top.start + 1; } else { stack.pop(); i++; }
+                } else {
+                  // POST mode: treat as unconditional LOOP
+                  i = top.start + 1;
+                }
+                continue;
+              }
+              case 'FOR': {
+                const cur = Number(this._getVar(top.varKey));
+                const nextVal = cur + top.step;
+                this._assignVariable(top.varKey, nextVal);
+                const keep = top.step > 0 ? (nextVal <= top.endVal) : (nextVal >= top.endVal);
+                if (keep){ i = top.start + 1; } else { stack.pop(); i++; }
+                continue;
+              }
+              case 'FOREACH': {
+                top.idx++;
+                if (top.idx >= top.iter.length){ stack.pop(); i++; }
+                else { this._foreachAssign(top); i = top.start + 1; }
+                continue;
+              }
+              case 'SELECT': {
+                stack.pop(); i++; continue;
+              }
+              case 'TRY': {
+                const pend = top.pendingError; stack.pop(); i++; if (pend) throw pend; continue;
+              }
+              default: {
+                // Unknown frame type: pop and continue
+                stack.pop(); i++; continue;
+              }
+            }
+          }
 
           // DECLARE SUB/FUNCTION/FUNC ... (forward declarations) -> no-op at runtime
           if (/^DECLARE\b\s+(SUB|FUNC|FUNCTION)\b/i.test(stmtLine)) { i++; continue; }
@@ -285,7 +360,7 @@
 
           // WHILE ... WEND
           if (/^WHILE\b/i.test(stmtLine)){
-            const condExpr = stmtLine.replace(/^WHILE\b/i, '').trim();
+            const condExpr = stmtLine.replace(/^WHILE\b/i, '').replace(/\s+BEGIN\s*$/i, '').trim();
             const endIdx = this._findMatchingWend(lines, i);
             const cond = this._truthy(this._evalExpression(condExpr));
             if (cond){
@@ -304,7 +379,7 @@
             if (!top || top.type !== 'WHILE') throw new Error(`WEND without matching WHILE at line ${lineNo}`);
             // Re-evaluate condition at WHILE
             const whileLine = this._stripComments(lines[top.start]).trim();
-            const condExpr = whileLine.replace(/^WHILE\b/i, '').trim();
+            const condExpr = whileLine.replace(/^WHILE\b/i, '').replace(/\s+BEGIN\s*$/i, '').trim();
             const cond = this._truthy(this._evalExpression(condExpr));
             if (cond){
               i = top.start + 1; // loop again
@@ -317,7 +392,7 @@
 
           // SELECT CASE ... END SELECT (extended patterns)
           if (/^SELECT\s+CASE\b/i.test(stmtLine)){
-            const expr = stmtLine.replace(/^SELECT\s+CASE\b/i, '').trim();
+            const expr = stmtLine.replace(/^SELECT\s+CASE\b/i, '').replace(/\s+BEGIN\s*$/i, '').trim();
             const endIdx = this._findEndSelect(lines, i);
             const selector = this._evalExpression(expr);
             // Collect top-level CASE clauses
@@ -363,13 +438,14 @@
 
           // DO/LOOP family
           if (/^DO\b/i.test(stmtLine)){
-            // Parse forms: DO, DO WHILE expr, DO UNTIL expr
-            const rest = stmtLine.replace(/^DO\b/i, '').trim();
+            // Parse forms: DO, DO WHILE expr, DO UNTIL expr, optional trailing BEGIN
+            let rest = stmtLine.replace(/^DO\b/i, '').trim();
+            rest = rest.replace(/\s+BEGIN\s*$/i, '');
             const endIdx = this._findMatchingLoop(lines, i);
             if (/^(WHILE|UNTIL)\b/i.test(rest)){
               const m = rest.match(/^(WHILE|UNTIL)\b\s*(.*)$/i);
               const testType = m[1].toUpperCase();
-              const exprText = m[2].trim();
+              const exprText = m[2].replace(/\s+BEGIN\s*$/i, '').trim();
               const cond = this._truthy(this._evalExpression(exprText));
               if ((testType === 'WHILE' && cond) || (testType === 'UNTIL' && !cond)){
                 stack.push({ type: 'DO', start: i, end: endIdx, mode: 'PRE', test: testType, expr: exprText });
@@ -414,7 +490,7 @@
           if (/^FOREACH\b/i.test(stmtLine)){
             // FOREACH item IN expr  |  FOREACH key, value IN expr
             const endIdx = this._findMatchingNext(lines, i);
-            const m = stmtLine.match(/^FOREACH\s+([A-Za-z_][A-Za-z0-9_\$%]*)(?:\s*,\s*([A-Za-z_][A-Za-z0-9_\$%]*))?\s+IN\s+(.+)$/i);
+            const m = stmtLine.match(/^FOREACH\s+([A-Za-z_][A-Za-z0-9_\$%]*)(?:\s*,\s*([A-Za-z_][A-Za-z0-9_\$%]*))?\s+IN\s+(.+?)(?:\s+BEGIN\s*)?$/i);
             if (!m) throw new Error(`Invalid FOREACH syntax at line ${lineNo}`);
             const var1 = m[1];
             const var2 = m[2] || null;
@@ -445,7 +521,7 @@
           if (/^FOR\b/i.test(stmtLine)){
             // FOR var = start TO end [STEP step]
             const endIdx = this._findMatchingNext(lines, i);
-            const m = stmtLine.match(/^FOR\s+([A-Za-z_][A-Za-z0-9_\$%]*)\s*=\s*(.+?)\s+TO\s+(.+?)(?:\s+STEP\s+(.+))?$/i);
+            const m = stmtLine.match(/^FOR\s+([A-Za-z_][A-Za-z0-9_\$%]*)\s*=\s*(.+?)\s+TO\s+(.+?)(?:\s+STEP\s+(.+?))?\s*(?:BEGIN\s*)?$/i);
             if (!m) throw new Error(`Invalid FOR syntax at line ${lineNo}`);
             const varName = m[1];
             const startExpr = m[2];
@@ -1563,43 +1639,100 @@
 
     _findMatchingWend(lines, startIdx){
       // startIdx points to a WHILE line
-      let depth = 1;
+      const stack = ['WHILE'];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const t = this._lineTrim(lines, i).toUpperCase();
-        if (t.startsWith('WHILE ')) depth++;
-        else if (t === 'WHILE') depth++; // degenerate
-        else if (t.startsWith('WEND')){
-          depth--;
-          if (depth === 0) return i;
+        const u = this._lineTrim(lines, i).toUpperCase();
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) {
+          for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'WHILE'){ stack.splice(k,1); break; } }
+          if (stack.length === 0) return i;
+          continue;
+        }
+        if (/^LOOP\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'FOR' || stack[k] === 'FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\b/.test(u)) {
+          const popped = stack.pop();
+          if (stack.length === 0 && popped === 'WHILE') return i;
+          continue;
         }
       }
-      throw new Error(`Unterminated WHILE (no matching WEND) starting at line ${startIdx+1}`);
+      throw new Error(`Unterminated WHILE (no matching END/WEND) starting at line ${startIdx+1}`);
     }
 
     _findEndSelect(lines, startIdx){
       // startIdx points to SELECT CASE
-      let depth = 1;
+      const stack = ['SELECT'];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const t = this._lineTrim(lines, i).toUpperCase();
-        if (/^SELECT\s+CASE\b/.test(t)) depth++;
-        else if (/^END\s+SELECT\b/.test(t)){
-          depth--;
-          if (depth === 0) return i;
+        const u = this._lineTrim(lines, i).toUpperCase();
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) {
+          for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } }
+          if (stack.length === 0) return i;
+          continue;
         }
+        if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped==='SELECT') return i; continue; }
       }
-      throw new Error(`Unterminated SELECT CASE (no matching END SELECT) starting at line ${startIdx+1}`);
+      throw new Error(`Unterminated SELECT CASE (no matching END/END SELECT) starting at line ${startIdx+1}`);
     }
 
     _findTopLevelCases(lines, fromIdx, endIdx){
       // Scan [fromIdx, endIdx) for CASE lines at top-level of this SELECT
       const cases = [];
-      let depth = 0; // nested SELECT depth inside this SELECT
+      const stack = []; // track nested blocks to ignore CASE inside nested SELECTs
       for (let i = fromIdx; i < endIdx; i++){
         const t = this._lineTrim(lines, i);
         const u = t.toUpperCase();
-        if (/^SELECT\s+CASE\b/.test(u)){ depth++; continue; }
-        if (/^END\s+SELECT\b/.test(u)){ depth = Math.max(0, depth - 1); continue; }
-        if (depth === 0 && /^CASE\b/i.test(t)){
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\b/.test(u)) { stack.pop(); continue; }
+        // CASE at top-level only
+        if (stack.length === 0 && /^CASE\b/i.test(t)){
           const isElse = /^CASE\s+ELSE\b/i.test(t);
           cases.push({ index: i, text: t, isElse });
         }
@@ -1743,30 +1876,67 @@
 
     _findMatchingLoop(lines, startIdx){
       // startIdx points to a DO line
-      let depth = 1;
+      const stack = ['DO'];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const t = this._lineTrim(lines, i).toUpperCase();
-        if (t === 'DO' || t.startsWith('DO ')) depth++;
-        else if (t.startsWith('LOOP')){
-          depth--;
-          if (depth === 0) return i;
+        const u = this._lineTrim(lines, i).toUpperCase();
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) {
+          for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } }
+          if (stack.length === 0) return i;
+          continue;
         }
+        if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) { stack.pop(); if (stack.length===0) return i; continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { stack.pop(); if (stack.length===0) return i; continue; }
+        if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped==='DO') return i; continue; }
       }
-      throw new Error(`Unterminated DO (no matching LOOP) starting at line ${startIdx+1}`);
+      throw new Error(`Unterminated DO (no matching END/LOOP) starting at line ${startIdx+1}`);
     }
 
     _findMatchingNext(lines, startIdx){
       // startIdx points to a FOR or FOREACH line
-      let depth = 1;
+      const first = this._lineTrim(lines, startIdx).toUpperCase().startsWith('FOREACH') ? 'FOREACH' : 'FOR';
+      const stack = [first];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const t = this._lineTrim(lines, i).toUpperCase();
-        if (t === 'FOR' || t.startsWith('FOR ') || t === 'FOREACH' || t.startsWith('FOREACH ')) depth++;
-        else if (t === 'NEXT' || t.startsWith('NEXT ')){
-          depth--;
-          if (depth === 0) return i;
+        const u = this._lineTrim(lines, i).toUpperCase();
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) {
+          // closes FOR or FOREACH
+          for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ const popped=stack.splice(k,1)[0]; if (stack.length===0 && popped===first) return i; break; } }
+          continue;
         }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped===first) return i; continue; }
       }
-      throw new Error(`Unterminated loop (no matching NEXT) starting at line ${startIdx+1}`);
+      throw new Error(`Unterminated loop (no matching END/NEXT) starting at line ${startIdx+1}`);
     }
 
     // --- Phase 3 helpers ---
@@ -1774,19 +1944,42 @@
       // startIdx points to a FUNC/FUNCTION or SUB line
       const openerLine = this._lineTrim(lines, startIdx).toUpperCase();
       const opener = openerLine.startsWith('SUB') ? 'SUB' : 'FUNC';
-      let depth = 1;
+      const stack = [opener];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const t = this._lineTrim(lines, i).toUpperCase();
-        if (t.startsWith('FUNC ') || t === 'FUNC' || t.startsWith('FUNCTION ') || t === 'FUNCTION' || t.startsWith('SUB ') || t === 'SUB') depth++;
-        else if (/^END\s+(FUNC|FUNCTION)\b/.test(t) && opener === 'FUNC'){
-          depth--;
-          if (depth === 0) return i;
-        } else if ((t === 'END SUB' || t.startsWith('END SUB')) && opener === 'SUB'){
-          depth--;
-          if (depth === 0) return i;
+        const u = this._lineTrim(lines, i).toUpperCase();
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) {
+          for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } }
+          if (stack.length === 0 && opener === 'SUB') return i;
+          continue;
+        }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) {
+          for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } }
+          if (stack.length === 0 && opener === 'FUNC') return i;
+          continue;
+        }
+        if (/^END\b/.test(u)) {
+          const popped = stack.pop();
+          if (stack.length === 0 && popped === opener) return i;
+          continue;
         }
       }
-      throw new Error(`Unterminated ${opener} (no matching END ${opener}) starting at line ${startIdx+1}`);
+      throw new Error(`Unterminated ${opener} (no matching END) starting at line ${startIdx+1}`);
     }
 
     _prepass(lines){
@@ -1818,7 +2011,7 @@
         }
         // FUNC/FUNCTION/SUB declarations
         if (/^(FUNC|FUNCTION)\b/i.test(u) || /^SUB\b/i.test(u)){
-          const m = t.match(/^(FUNC|FUNCTION|SUB)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*$/i);
+          const m = t.match(/^(FUNC|FUNCTION|SUB)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*(?:BEGIN\s*)?$/i);
           if (!m) throw new Error(`Invalid ${t.split(/\s+/)[0]} declaration at line ${i+1}`);
           const kind = m[1].toUpperCase().replace('FUNCTION','FUNC');
           const name = m[2].toUpperCase();
@@ -1850,30 +2043,52 @@
     }
 
     _findTryBlock(lines, startIdx){
-      // startIdx at TRY
-      let depth = 1;
+      // startIdx at TRY (optionally 'TRY BEGIN')
+      const stack = ['TRY'];
       let catchIdx = null, finallyIdx = null, endIdx = null, catchVar = null;
       for (let i = startIdx + 1; i < lines.length; i++){
         const t = this._lineTrim(lines, i);
         const u = t.toUpperCase();
-        if (u.startsWith('TRY')) depth++;
-        else if (u.startsWith('END TRY')){
-          depth--;
-          if (depth === 0){ endIdx = i; break; }
-        } else if (depth === 1){
-          if (u.startsWith('CATCH')){
-            // Only first CATCH handled in Phase 3
+        if (!u) continue;
+        // Openers
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) {
+          for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } }
+          if (stack.length === 0) { endIdx = i; break; }
+          continue;
+        }
+        if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped==='TRY'){ endIdx = i; break; } continue; }
+        // Depth-1 markers
+        if (stack.length === 1 && stack[0] === 'TRY'){
+          if (/^CATCH\b/.test(u)){
             if (catchIdx == null){
               catchIdx = i;
               const m = t.match(/^CATCH\s+([A-Za-z_][A-Za-z0-9_\$%]*)\s*$/i);
               if (m) catchVar = m[1].toUpperCase();
             }
-          } else if (u.startsWith('FINALLY')){
+            continue;
+          }
+          if (/^FINALLY\b/.test(u)){
             if (finallyIdx == null) finallyIdx = i;
+            continue;
           }
         }
       }
-      if (endIdx == null) throw new Error(`Unterminated TRY (no matching END TRY) starting at line ${startIdx+1}`);
+      if (endIdx == null) throw new Error(`Unterminated TRY (no matching END/END TRY) starting at line ${startIdx+1}`);
       return { catchIdx, catchVar, finallyIdx, endIdx };
     }
 
