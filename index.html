@@ -60,7 +60,7 @@
             z-index: 9999; /* above navbar */
         }
         #splash-overlay img {
-            max-width: 600px;
+            max-width: 800px;
             width: 90%;
             height: auto;
             image-rendering: pixelated; /* 90s vibe crispness on some browsers */
@@ -112,7 +112,7 @@
                 </li>
             </ul>
             <div class="toolbar d-flex ms-auto">
-                <button id="btn-run" class="btn btn-outline-light btn-sm" title="Run (execute program)"><i class="bi bi-play-fill me-1"></i>Run</button>
+                <button id="btn-run" class="btn btn-outline-light btn-sm" title="Run (execute program)"><i class="bi bi-play-fill me-1"></i>Run(f9)</button>
                 <button id="btn-clear" class="btn btn-outline-success btn-sm" title="Clear Output"><i class="bi bi-ban-fill me-1"></i>Clear</button>
                 <button id="btn-bug" class="btn btn-outline-warning btn-sm" title="Toggle Tron/Troff (Debug Mode)"><i class="bi bi-bug-fill me-1"></i>Tron/Troff</button>
                 <button id="btn-build" class="btn btn-outline-info btn-sm" title="Build"><i class="bi bi-hammer me-1"></i>Build</button>
@@ -878,7 +878,7 @@
                 }
             }
         }, {
-            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1981-2025\nTRACE is ON (TRON).',
+            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nTRACE is ON (TRON).',
             name: 'js_demo',
             prompt: "\nOK\n\n"
         });
@@ -1599,22 +1599,25 @@
         rootChildren.appendChild(shLi);
 
         rootLi.appendChild(rootChildren); rootUl.appendChild(rootLi); c.appendChild(rootUl);
-        // Click to open files
-        c.addEventListener('click', async function(ev){
-            const target = ev.target;
-            const li = target && (target.closest('li.vfs-node.file'));
-            if (!li) return;
-            const fullName = li.dataset.fullname;
-            if (!fullName) return;
-            // Reuse open logic from Open dialog
-            if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return; }
-            const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
-            const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
-            if (!file) return;
-            const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
-            createNewTab({ content: file.content || '', fullName: file.name, readOnly: !!file.readOnly, displayName });
-            openEditor(true);
-        });
+        // Click to open files (bind once)
+        if (!c.dataset.boundClick){
+            c.addEventListener('click', async function(ev){
+                const target = ev.target;
+                const li = target && (target.closest('li.vfs-node.file'));
+                if (!li) return;
+                const fullName = li.dataset.fullname;
+                if (!fullName) return;
+                // Reuse open logic from Open dialog
+                if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return; }
+                const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
+                const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
+                if (!file) return;
+                const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
+                createNewTab({ content: file.content || '', fullName: file.name, readOnly: !!file.readOnly, displayName });
+                openEditor(true);
+            });
+            c.dataset.boundClick = '1';
+        }
     }
 
     // Wire drawers after DOM ready (append listener at end of existing ready callback)
@@ -1624,6 +1627,7 @@
         document.getElementById('toggle-right-drawer')?.addEventListener('click', function(){ toggleRightDrawer(); });
         document.getElementById('left-drawer-close')?.addEventListener('click', function(){ toggleLeftDrawer(false); });
         document.getElementById('right-drawer-close')?.addEventListener('click', function(){ toggleRightDrawer(false); });
+        document.getElementById('left-drawer-refresh')?.addEventListener('click', function(){ try{ buildVfsTree(); }catch(_){ console.warn('Refresh failed'); } });
         // Initialize displacement offsets based on current open state
         try{ updateDrawerOffsets(); }catch(_){ }
         // Open both drawers by default unless a sharedProject is specified in URL
@@ -1641,7 +1645,7 @@
         }catch(_){}
         // Build initial tree
         try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
-        // Extra global keyboard: F1 toggles right; F5 runs if editor focused; ESC closes drawers unless modal open
+        // Extra global keyboard: F1 toggles right; F9 runs if editor focused; ESC closes drawers unless modal open
         document.addEventListener('keydown', function(e){
             const k = e.key;
             if (k === 'F1'){
@@ -1649,7 +1653,7 @@
                 toggleRightDrawer();
                 return;
             }
-            if (k === 'F5'){
+            if (k === 'F9'){
                 const ae = document.activeElement;
                 if (ae && (ae.classList && ae.classList.contains('editor-textarea'))){
                     e.preventDefault();
@@ -1679,7 +1683,8 @@
 }
 .drawer{ position: fixed; top: var(--nav-height); bottom: 0; background: #0f1f46; color: #e6f0ff; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 1040; transition: transform .2s ease-in-out; display: flex; flex-direction: column; }
 .drawer .drawer-header{ display:flex; align-items:center; justify-content: space-between; padding: .5rem .75rem; background: #0a1633; border-bottom: 1px solid #1e2a55; }
-.drawer .drawer-body{ overflow: auto; padding: .5rem .5rem; }
+.drawer .drawer-body{ overflow: auto; padding: .5rem .5rem; flex: 1 1 auto; }
+#right-drawer .drawer-header{ padding-right: 48px; }
 .drawer-left{ left: 0; width: var(--left-drawer-width); transform: translateX(calc(-1 * var(--left-drawer-width))); border-right: 1px solid #1e2a55; }
 .drawer-left.open{ transform: translateX(0); }
 .drawer-right{ right: 0; width: var(--right-drawer-width); transform: translateX(var(--right-drawer-width)); border-left: 1px solid #1e2a55; }
@@ -1701,8 +1706,12 @@
 #right-iframe{ width: 100%; height: 100%; border: 0; background: #fff; color: #000; }
 /* Offset the editor tabs so the left hamburger never covers the first tab (adjustable) */
 #editor-tabs{ padding-left: 48px; /* adjust spacing to match hamburger size */ }
-/* Ensure dropdown menus appear above slide-out drawers */
+/* Keep navbar above drawers but below modal backdrop */
+.navbar{ z-index: 1045; }
+/* Ensure dropdown menus appear above slide-out drawers (stays within navbar stacking context) */
 .navbar .dropdown-menu{ z-index: 1052; }
+/* Shift Explorer title right so hamburger toggle never overlaps */
+#left-drawer .drawer-header .fw-bold{ margin-left: 48px; }
 </style>
 
 <button id="toggle-left-drawer" class="drawer-toggle left" type="button" aria-expanded="false" title="Toggle Files">☰</button>
@@ -1711,7 +1720,10 @@
 <div id="left-drawer" class="drawer drawer-left" aria-label="Explorer">
   <div class="drawer-header">
     <div class="fw-bold">Explorer</div>
-    <button id="left-drawer-close" class="btn btn-sm btn-outline-light">Close</button>
+    <div class="d-flex gap-2">
+      <button id="left-drawer-refresh" class="btn btn-sm btn-outline-light">Refresh</button>
+      <button id="left-drawer-close" class="btn btn-sm btn-outline-light">Close</button>
+    </div>
   </div>
   <div class="drawer-body">
     <div class="accordion" id="leftAccordion">
