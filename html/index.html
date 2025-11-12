@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YoBASIC Home</title>
+  <style>
+    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:0; padding:0; line-height:1.5; color:#222; }
+    header{ background:#0a1633; color:#e6f0ff; padding:16px 20px; position:sticky; top:0; z-index:1; }
+    header h1{ margin:0; font-size:20px; }
+    nav{ display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; }
+    nav a{ color:#9ad1ff; text-decoration:none; font-weight:600; }
+    nav a:hover{ text-decoration:underline; }
+    main{ padding:16px 20px 40px; }
+    section{ margin:24px 0; max-width: 920px; }
+    section h2{ border-bottom:1px solid #ddd; padding-bottom:6px; }
+    .muted{ color:#666; }
+    footer{ border-top:1px solid #eee; padding:16px 20px; color:#555; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>YoBASIC Home</h1>
+    <nav>
+      <a href="#docs">Documentation</a>
+      <a href="#help">Help</a>
+      <a href="#tutorials">Tutorials</a>
+    </nav>
+  </header>
+  <main>
+    <section id="docs">
+      <h2>Documentation</h2>
+      <p class="muted">Anchor: #docs</p>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed posuere, magna ut varius commodo, erat metus dictum lectus, vitae consequat leo lacus vel lacus. Integer sit amet est eu dolor mollis ultricies. Curabitur eu maximus risus. Sed eleifend convallis libero a egestas. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aenean id porttitor mi. Aenean ac justo a erat vestibulum egestas sit amet in massa.</p>
+      <ul>
+        <li><a href="#docs-getting-started">Getting Started</a></li>
+        <li><a href="#docs-language">Language Reference</a></li>
+        <li><a href="#docs-vfs">Virtual File System</a></li>
+      </ul>
+      <h3 id="docs-getting-started">Getting Started</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer gravida placerat ante, non sagittis lorem iaculis ac. Integer sed commodo tortor. Suspendisse potenti. Pellentesque luctus lorem id massa auctor, quis vehicula augue iaculis.</p>
+      <h3 id="docs-language">Language Reference</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis imperdiet, augue id dignissim egestas, lacus turpis accumsan ex, id vehicula elit sapien eu lorem. Fusce eget justo felis. Sed finibus tellus eget risus pulvinar, vitae hendrerit nisl blandit.</p>
+      <h3 id="docs-vfs">Virtual File System</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum faucibus tincidunt pharetra. Sed hendrerit, odio et pharetra luctus, ipsum quam tincidunt mauris, et semper nunc augue tempor mi.</p>
+    </section>
+
+    <section id="help">
+      <h2>Help</h2>
+      <p class="muted">Anchor: #help</p>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec posuere accumsan ligula nec facilisis. Cras luctus, nunc vitae ornare ullamcorper, arcu augue iaculis libero, nec pharetra nunc tortor sit amet nibh. Integer nec fermentum nunc, id euismod sapien. Mauris sagittis eleifend purus, id venenatis arcu aliquet sit amet. Suspendisse potenti.</p>
+      <ul>
+        <li><a href="#help-faq">FAQ</a></li>
+        <li><a href="#help-troubleshooting">Troubleshooting</a></li>
+        <li><a href="#help-keyboard">Keyboard Shortcuts</a></li>
+      </ul>
+      <h3 id="help-faq">FAQ</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed at nibh vel mi mattis vehicula. Nullam cursus dolor eget velit vehicula, a dictum dui pulvinar.</p>
+      <h3 id="help-troubleshooting">Troubleshooting</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum nec libero metus. Vivamus luctus ipsum lacus, nec dictum eros hendrerit et. Phasellus et commodo eros.</p>
+      <h3 id="help-keyboard">Keyboard Shortcuts</h3>
+      <p>Press F1 to toggle this right-side Home panel. Press F5 to run your program when the editor has focus. Press ESC to close panels.</p>
+    </section>
+
+    <section id="tutorials">
+      <h2>Tutorials</h2>
+      <p class="muted">Anchor: #tutorials</p>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer imperdiet pulvinar erat ac condimentum. Mauris vitae nibh vel nisl viverra faucibus eget non lacus. Aliquam mollis arcu vitae hendrerit efficitur. Nulla facilisi.</p>
+      <ol>
+        <li><a href="#tutorial-1">Tutorial 1: Hello World</a></li>
+        <li><a href="#tutorial-2">Tutorial 2: Loops and Conditions</a></li>
+        <li><a href="#tutorial-3">Tutorial 3: Working with Files</a></li>
+      </ol>
+      <h3 id="tutorial-1">Tutorial 1: Hello World</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur tristique quam id pellentesque vehicula. In hac habitasse platea dictumst.</p>
+      <h3 id="tutorial-2">Tutorial 2: Loops and Conditions</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed varius, neque eget congue lacinia, enim nibh dapibus libero, ac sollicitudin dolor nunc ut urna.</p>
+      <h3 id="tutorial-3">Tutorial 3: Working with Files</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pellentesque mi sed imperdiet porta. Integer faucibus gravida rutrum.</p>
+    </section>
+  </main>
+  <footer>
+    <small>© <span id="year"></span> YoBASIC — Mock Home Page. Replace this content with real docs/help/tutorials files.</small>
+  </footer>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

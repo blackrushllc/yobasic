@@ -1321,7 +1321,373 @@
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
         term && term.echo && term.echo('[Saved] ' + targetName);
     }
+    // --- Slide-out Drawers (Left: Files/Watch/Message, Right: Home docs) ---
+    // Adjustable widths: tweak the CSS variables below or in the added <style> tag.
+    const DRAWERS = {
+        leftOpen: false,
+        rightOpen: false
+    };
+    function isAnyModalOpen(){ return !!document.querySelector('.modal.show'); }
+    function toggleLeftDrawer(force){
+        const el = document.getElementById('left-drawer');
+        if (!el) return;
+        const open = (typeof force === 'boolean') ? force : !DRAWERS.leftOpen;
+        DRAWERS.leftOpen = open;
+        el.classList.toggle('open', open);
+        document.getElementById('toggle-left-drawer')?.setAttribute('aria-expanded', String(open));
+    }
+    function toggleRightDrawer(force){
+        const el = document.getElementById('right-drawer');
+        if (!el) return;
+        const open = (typeof force === 'boolean') ? force : !DRAWERS.rightOpen;
+        DRAWERS.rightOpen = open;
+        el.classList.toggle('open', open);
+        document.getElementById('toggle-right-drawer')?.setAttribute('aria-expanded', String(open));
+    }
+    function closeDrawers(){ toggleLeftDrawer(false); toggleRightDrawer(false); }
+
+    // --- VFS Tree (Files) ---
+    function listLocalProjectNames(){
+        const files = vfs.listFiles();
+        const set = new Set();
+        files.forEach(f=>{
+            const n = f.name;
+            if (n.toLowerCase().startsWith('projects/')){
+                const rest = n.slice(9);
+                const idx = rest.indexOf('/');
+                if (idx > 0) set.add(rest.slice(0, idx));
+            }
+        });
+        return Array.from(set.values()).sort();
+    }
+    function nestFiles(files, stripPrefix){
+        const root = { dirs: {}, files: [] };
+        files.forEach(f=>{
+            let rest = f.name;
+            if (stripPrefix && rest.toLowerCase().startsWith(stripPrefix.toLowerCase())){
+                rest = rest.slice(stripPrefix.length);
+            }
+            const parts = rest.split('/');
+            if (parts.length === 1){
+                root.files.push({ file: f, label: parts[0] });
+            } else {
+                let cur = root;
+                for (let i=0;i<parts.length-1;i++){
+                    const seg = parts[i];
+                    if (!cur.dirs[seg]) cur.dirs[seg] = { dirs:{}, files:[] };
+                    cur = cur.dirs[seg];
+                }
+                cur.files.push({ file: f, label: parts[parts.length-1] });
+            }
+        });
+        return root;
+    }
+    function renderTreeNode(name, data, basePath){
+        const li = document.createElement('li'); li.className = 'vfs-node folder';
+        const head = document.createElement('div'); head.className = 'vfs-row';
+        const caret = document.createElement('i'); caret.className = 'bi bi-chevron-right vfs-caret';
+        const label = document.createElement('span'); label.className = 'vfs-label'; label.textContent = name;
+        head.appendChild(caret); head.appendChild(label);
+        li.appendChild(head);
+        const ul = document.createElement('ul'); ul.className = 'vfs-children'; ul.style.display = 'none';
+        // subdirs
+        Object.keys(data.dirs).sort().forEach(dn=>{
+            const child = renderTreeNode(dn, data.dirs[dn], basePath ? (basePath + dn + '/') : (dn + '/'));
+            ul.appendChild(child);
+        });
+        // files
+        data.files.sort((a,b)=>a.label.localeCompare(b.label)).forEach(it=>{
+            const fli = document.createElement('li'); fli.className='vfs-node file';
+            const row = document.createElement('div'); row.className='vfs-row';
+            const icon = document.createElement('i'); icon.className='bi bi-file-earmark-text';
+            const lab = document.createElement('span'); lab.className='vfs-label'; lab.textContent = it.label;
+            row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
+            fli.dataset.fullname = it.file.name;
+            ul.appendChild(fli);
+        });
+        li.appendChild(ul);
+        head.addEventListener('click', function(){
+            const open = ul.style.display !== 'none';
+            ul.style.display = open ? 'none' : '';
+            caret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
+        });
+        return li;
+    }
+    async function buildVfsTree(){
+        const c = document.getElementById('vfs-tree'); if (!c) return;
+        c.innerHTML = '';
+        const rootUl = document.createElement('ul'); rootUl.className='vfs-root';
+        // Root node (expanded by default)
+        const rootLi = document.createElement('li'); rootLi.className='vfs-node folder expanded';
+        const head = document.createElement('div'); head.className='vfs-row';
+        const caret = document.createElement('i'); caret.className='bi bi-chevron-down vfs-caret';
+        const label = document.createElement('span'); label.className='vfs-label'; label.textContent='Root';
+        head.appendChild(caret); head.appendChild(label); rootLi.appendChild(head);
+        const rootChildren = document.createElement('ul'); rootChildren.className='vfs-children';
+        // Root files at top level
+        const rootFilesNest = nestFiles(vfs.listByFolder('Root'), '');
+        rootFilesNest.files.forEach(it=>{
+            const fli = document.createElement('li'); fli.className='vfs-node file';
+            const row = document.createElement('div'); row.className='vfs-row';
+            const icon = document.createElement('i'); icon.className='bi bi-file-earmark-text';
+            const lab = document.createElement('span'); lab.className='vfs-label'; lab.textContent = it.label;
+            row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
+            fli.dataset.fullname = it.file.name;
+            rootChildren.appendChild(fli);
+        });
+        // Projects folder
+        const projContainer = document.createElement('li'); projContainer.className='vfs-node folder';
+        const projHead = document.createElement('div'); projHead.className='vfs-row';
+        const projCaret = document.createElement('i'); projCaret.className='bi bi-chevron-right vfs-caret';
+        const projLabel = document.createElement('span'); projLabel.className='vfs-label'; projLabel.textContent='projects';
+        projHead.appendChild(projCaret); projHead.appendChild(projLabel); projContainer.appendChild(projHead);
+        const projChildren = document.createElement('ul'); projChildren.className='vfs-children'; projChildren.style.display='none';
+        const projectNames = listLocalProjectNames();
+        if (projectNames.length === 0){
+            const placeholder = document.createElement('li'); placeholder.className='vfs-placeholder';
+            placeholder.title = 'Create a new Project from the File Menu';
+            placeholder.textContent = 'Create a new Project from the File Menu';
+            projChildren.appendChild(placeholder);
+        } else {
+            // Build nested tree of all project files after 'projects/'
+            const allProjFiles = vfs.listFiles().filter(f=>f.name.toLowerCase().startsWith('projects/'));
+            const projNest = nestFiles(allProjFiles, 'projects/');
+            Object.keys(projNest.dirs).sort().forEach(pn=>{
+                const li = renderTreeNode(pn, projNest.dirs[pn], 'projects/' + pn + '/');
+                projChildren.appendChild(li);
+            });
+        }
+        projContainer.appendChild(projChildren);
+        projHead.addEventListener('click', function(){
+            const open = projChildren.style.display !== 'none';
+            projChildren.style.display = open ? 'none' : '';
+            projCaret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
+        });
+        rootChildren.appendChild(projContainer);
+        // Examples folder
+        const exLi = document.createElement('li'); exLi.className='vfs-node folder';
+        const exHead = document.createElement('div'); exHead.className='vfs-row';
+        const exCaret = document.createElement('i'); exCaret.className='bi bi-chevron-right vfs-caret';
+        const exLabel = document.createElement('span'); exLabel.className='vfs-label'; exLabel.textContent='examples';
+        exHead.appendChild(exCaret); exHead.appendChild(exLabel); exLi.appendChild(exHead);
+        const exChildren = document.createElement('ul'); exChildren.className='vfs-children'; exChildren.style.display='none';
+        try{
+            const exFiles = await vfs.listByFolderAsync('examples');
+            const exNest = nestFiles(exFiles, 'examples/');
+            Object.keys(exNest.dirs).sort().forEach(dn=>{
+                const li = renderTreeNode(dn, exNest.dirs[dn], 'examples/' + dn + '/');
+                exChildren.appendChild(li);
+            });
+            exNest.files.forEach(it=>{
+                const fli = document.createElement('li'); fli.className='vfs-node file';
+                const row = document.createElement('div'); row.className='vfs-row';
+                const icon = document.createElement('i'); icon.className='bi bi-file-earmark-text';
+                const lab = document.createElement('span'); lab.className='vfs-label'; lab.textContent = it.label;
+                row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
+                fli.dataset.fullname = it.file.name;
+                exChildren.appendChild(fli);
+            });
+        }catch(_){ /* ignore */ }
+        exLi.appendChild(exChildren);
+        exHead.addEventListener('click', function(){
+            const open = exChildren.style.display !== 'none';
+            exChildren.style.display = open ? 'none' : '';
+            exCaret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
+        });
+        rootChildren.appendChild(exLi);
+        // Data folder
+        const dataLi = document.createElement('li'); dataLi.className='vfs-node folder';
+        const dataHead = document.createElement('div'); dataHead.className='vfs-row';
+        const dataCaret = document.createElement('i'); dataCaret.className='bi bi-chevron-right vfs-caret';
+        const dataLabel = document.createElement('span'); dataLabel.className='vfs-label'; dataLabel.textContent='data';
+        dataHead.appendChild(dataCaret); dataHead.appendChild(dataLabel); dataLi.appendChild(dataHead);
+        const dataChildren = document.createElement('ul'); dataChildren.className='vfs-children'; dataChildren.style.display='none';
+        const dataNest = nestFiles(vfs.listByFolder('data'), 'data/');
+        Object.keys(dataNest.dirs).sort().forEach(dn=>{
+            const li = renderTreeNode(dn, dataNest.dirs[dn], 'data/' + dn + '/');
+            dataChildren.appendChild(li);
+        });
+        dataNest.files.forEach(it=>{
+            const fli = document.createElement('li'); fli.className='vfs-node file';
+            const row = document.createElement('div'); row.className='vfs-row';
+            const icon = document.createElement('i'); icon.className='bi bi-file-earmark-text';
+            const lab = document.createElement('span'); lab.className='vfs-label'; lab.textContent = it.label;
+            row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
+            fli.dataset.fullname = it.file.name;
+            dataChildren.appendChild(fli);
+        });
+        dataLi.appendChild(dataChildren);
+        dataHead.addEventListener('click', function(){
+            const open = dataChildren.style.display !== 'none';
+            dataChildren.style.display = open ? 'none' : '';
+            dataCaret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
+        });
+        rootChildren.appendChild(dataLi);
+        // Shared folder
+        const shLi = document.createElement('li'); shLi.className='vfs-node folder';
+        const shHead = document.createElement('div'); shHead.className='vfs-row';
+        const shCaret = document.createElement('i'); shCaret.className='bi bi-chevron-right vfs-caret';
+        const shLabel = document.createElement('span'); shLabel.className='vfs-label'; shLabel.textContent='shared';
+        shHead.appendChild(shCaret); shHead.appendChild(shLabel); shLi.appendChild(shHead);
+        const shChildren = document.createElement('ul'); shChildren.className='vfs-children'; shChildren.style.display='none';
+        try{
+            const shFiles = await vfs.listByFolderAsync('shared');
+            const shNest = nestFiles(shFiles, 'shared/');
+            Object.keys(shNest.dirs).sort().forEach(dn=>{
+                const li = renderTreeNode(dn, shNest.dirs[dn], 'shared/' + dn + '/');
+                shChildren.appendChild(li);
+            });
+            shNest.files.forEach(it=>{
+                const fli = document.createElement('li'); fli.className='vfs-node file';
+                const row = document.createElement('div'); row.className='vfs-row';
+                const icon = document.createElement('i'); icon.className='bi bi-file-earmark-text';
+                const lab = document.createElement('span'); lab.className='vfs-label'; lab.textContent = it.label;
+                row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
+                fli.dataset.fullname = it.file.name;
+                shChildren.appendChild(fli);
+            });
+        }catch(_){ /* ignore */ }
+        shLi.appendChild(shChildren);
+        shHead.addEventListener('click', function(){
+            const open = shChildren.style.display !== 'none';
+            shChildren.style.display = open ? 'none' : '';
+            shCaret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
+        });
+        rootChildren.appendChild(shLi);
+
+        rootLi.appendChild(rootChildren); rootUl.appendChild(rootLi); c.appendChild(rootUl);
+        // Click to open files
+        c.addEventListener('click', async function(ev){
+            const target = ev.target;
+            const li = target && (target.closest('li.vfs-node.file'));
+            if (!li) return;
+            const fullName = li.dataset.fullname;
+            if (!fullName) return;
+            // Reuse open logic from Open dialog
+            if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return; }
+            const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
+            const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
+            if (!file) return;
+            const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
+            createNewTab({ content: file.content || '', fullName: file.name, readOnly: !!file.readOnly, displayName });
+            openEditor(true);
+        });
+    }
+
+    // Wire drawers after DOM ready (append listener at end of existing ready callback)
+    $(function(){
+        // Toggle buttons
+        document.getElementById('toggle-left-drawer')?.addEventListener('click', function(){ toggleLeftDrawer(); });
+        document.getElementById('toggle-right-drawer')?.addEventListener('click', function(){ toggleRightDrawer(); });
+        document.getElementById('left-drawer-close')?.addEventListener('click', function(){ toggleLeftDrawer(false); });
+        document.getElementById('right-drawer-close')?.addEventListener('click', function(){ toggleRightDrawer(false); });
+        // Build initial tree
+        try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
+        // Extra global keyboard: F1 toggles right; F5 runs if editor focused; ESC closes drawers unless modal open
+        document.addEventListener('keydown', function(e){
+            const k = e.key;
+            if (k === 'F1'){
+                e.preventDefault(); // Always prevent default help
+                toggleRightDrawer();
+                return;
+            }
+            if (k === 'F5'){
+                const ae = document.activeElement;
+                if (ae && (ae.classList && ae.classList.contains('editor-textarea'))){
+                    e.preventDefault();
+                    runProgram();
+                }
+                return; // let browser handle otherwise
+            }
+            if (k === 'Escape'){
+                if (!isAnyModalOpen()){
+                    closeDrawers();
+                }
+            }
+        }, true);
+    });
+
 })();
 </script>
+
+<!-- Slide-out Drawers Markup and Styles -->
+<style id="drawers-style">
+:root{ --left-drawer-width: 400px; /* adjust left drawer width here */ --right-drawer-width: 500px; /* adjust right drawer width here */ }
+.drawer{ position: fixed; top: var(--nav-height); bottom: 0; background: #0f1f46; color: #e6f0ff; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 1040; transition: transform .2s ease-in-out; display: flex; flex-direction: column; }
+.drawer .drawer-header{ display:flex; align-items:center; justify-content: space-between; padding: .5rem .75rem; background: #0a1633; border-bottom: 1px solid #1e2a55; }
+.drawer .drawer-body{ overflow: auto; padding: .5rem .5rem; }
+.drawer-left{ left: 0; width: var(--left-drawer-width); transform: translateX(calc(-1 * var(--left-drawer-width))); border-right: 1px solid #1e2a55; }
+.drawer-left.open{ transform: translateX(0); }
+.drawer-right{ right: 0; width: var(--right-drawer-width); transform: translateX(var(--right-drawer-width)); border-left: 1px solid #1e2a55; }
+.drawer-right.open{ transform: translateX(0); }
+.drawer-toggle{ position: fixed; top: calc(var(--nav-height) + 8px); padding: .25rem .5rem; z-index: 1041; border: 1px solid #1e2a55; background:#0a1633; color:#e6f0ff; border-radius: .25rem; }
+.drawer-toggle.left{ left: 8px; }
+.drawer-toggle.right{ right: 8px; }
+/* VFS Tree styles */
+.vfs-root, .vfs-children{ list-style: none; margin: 0; padding-left: .5rem; }
+.vfs-node .vfs-row{ display:flex; align-items:center; gap:.35rem; padding:.1rem .25rem; user-select:none; cursor: default; }
+.vfs-node.folder .vfs-row{ cursor: pointer; }
+.vfs-node.file .vfs-row{ cursor: pointer; }
+.vfs-node.file .vfs-row:hover{ background: rgba(255,255,255,0.08); }
+.vfs-caret{ width: 1rem; text-align: center; }
+.vfs-placeholder{ color: #9aa9c7; font-style: italic; padding: .1rem .25rem; }
+/* Right drawer iframe */
+#right-iframe{ width: 100%; height: 100%; border: 0; background: #fff; color: #000; }
+</style>
+
+<button id="toggle-left-drawer" class="drawer-toggle left" type="button" aria-expanded="false" title="Toggle Files">☰</button>
+<button id="toggle-right-drawer" class="drawer-toggle right" type="button" aria-expanded="false" title="Toggle Home (F1)">⌘</button>
+
+<div id="left-drawer" class="drawer drawer-left" aria-label="Explorer">
+  <div class="drawer-header">
+    <div class="fw-bold">Explorer</div>
+    <button id="left-drawer-close" class="btn btn-sm btn-outline-light">Close</button>
+  </div>
+  <div class="drawer-body">
+    <div class="accordion" id="leftAccordion">
+      <div class="accordion-item bg-transparent text-light border-secondary">
+        <h2 class="accordion-header" id="acc-files-h">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#acc-files" aria-expanded="true" aria-controls="acc-files">Files</button>
+        </h2>
+        <div id="acc-files" class="accordion-collapse collapse show" aria-labelledby="acc-files-h" data-bs-parent="#leftAccordion">
+          <div class="accordion-body p-2">
+            <div id="vfs-tree"></div>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item bg-transparent text-light border-secondary">
+        <h2 class="accordion-header" id="acc-watch-h">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-watch" aria-expanded="false" aria-controls="acc-watch">Watch</button>
+        </h2>
+        <div id="acc-watch" class="accordion-collapse collapse" aria-labelledby="acc-watch-h" data-bs-parent="#leftAccordion">
+          <div class="accordion-body p-2">
+            <div class="text-secondary">Todo: variable watch and stack info will appear here.</div>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item bg-transparent text-light border-secondary">
+        <h2 class="accordion-header" id="acc-msg-h">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-msg" aria-expanded="false" aria-controls="acc-msg">Message</button>
+        </h2>
+        <div id="acc-msg" class="accordion-collapse collapse" aria-labelledby="acc-msg-h" data-bs-parent="#leftAccordion">
+          <div class="accordion-body p-2">
+            <div class="text-secondary">Todo: console/debug messages will appear here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="right-drawer" class="drawer drawer-right" aria-label="Home">
+  <div class="drawer-header">
+    <div class="fw-bold">Home</div>
+    <button id="right-drawer-close" class="btn btn-sm btn-outline-light">Close</button>
+  </div>
+  <div class="drawer-body p-0">
+    <iframe id="right-iframe" src="html/index.html" title="Home"></iframe>
+  </div>
+</div>
+
 </body>
 </html>
