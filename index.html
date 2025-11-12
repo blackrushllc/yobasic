@@ -49,9 +49,26 @@
         .terminal .cursor { background: #9ad1ff; }
         /* Buttons */
         .toolbar .btn { margin-left: .25rem; }
+        /* Splash overlay */
+        #splash-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0b1b3b; /* match page bg */
+            z-index: 9999; /* above navbar */
+        }
+        #splash-overlay img {
+            max-width: 600px;
+            width: 90%;
+            height: auto;
+            image-rendering: pixelated; /* 90s vibe crispness on some browsers */
+        }
     </style>
 </head>
 <body>
+<div id="splash-overlay"><img src="spash.png" alt="YoBASIC Splash" onerror="this.onerror=null; this.src='splash.png';"></div>
 <nav id="topnav" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
     <div class="container-fluid">
         <a class="navbar-brand" href="#">🌱YoBASIC</a>
@@ -711,6 +728,21 @@
 
     // Wire DOM
     $(function(){
+        // Splash screen control: min 3s, max 10s, hide when Supabase init/files loaded
+        (function(){
+            const overlay = document.getElementById('splash-overlay');
+            if (!overlay) return; // nothing to do
+            let hidden = false;
+            function hideSplash(){
+                if (hidden) return; hidden = true;
+                overlay.style.display = 'none';
+            }
+            const start = Date.now();
+            let minElapsed = false;
+            setTimeout(function(){ minElapsed = true; if (window.__supabaseInitDone__) hideSplash(); }, 3000);
+            setTimeout(function(){ hideSplash(); }, 10000);
+            window.__splashReady__ = function(){ window.__supabaseInitDone__ = true; if (minElapsed) hideSplash(); };
+        })();
         // Instantiate VFS and expose globally
         vfs = new VirtualFileSystem({ localStorageKey: 'yobasic.vfs' });
         vfs.loadFromLocalStorage();
@@ -723,11 +755,15 @@
                 const examplesProvider = new SupabaseExamplesProvider();
                 const sharedProvider = new SupabaseSharedProvider(Identity);
                 vfs.setProviders({ examples: examplesProvider, shared: sharedProvider });
+                // Kick off initial loads so UI has data-ready signal
+                try { await examplesProvider.listFiles(); } catch(e) { /* ignore */ }
+                try { await sharedProvider.listOwners(); } catch(e) { /* ignore */ }
                 await Identity.initializeFromSession();
                 updateIdentityUi();
                 // After providers are ready, try loading sharedProject from URL
                 try{ await tryLoadSharedProjectFromUrl(); }catch(err){ console.warn('sharedProject load failed', err); }
             }catch(e){ console.warn('[YoBASIC] Supabase init failed', e); }
+            finally{ try{ window.__splashReady__ && window.__splashReady__(); }catch(_){} }
         })();
 
         // Host bridge (Phase 3 addendum)
@@ -1328,6 +1364,11 @@
         rightOpen: false
     };
     function isAnyModalOpen(){ return !!document.querySelector('.modal.show'); }
+    function updateDrawerOffsets(){
+        const root = document.documentElement;
+        root.style.setProperty('--left-offset', DRAWERS.leftOpen ? 'var(--left-drawer-width)' : '0px');
+        root.style.setProperty('--right-offset', DRAWERS.rightOpen ? 'var(--right-drawer-width)' : '0px');
+    }
     function toggleLeftDrawer(force){
         const el = document.getElementById('left-drawer');
         if (!el) return;
@@ -1335,6 +1376,7 @@
         DRAWERS.leftOpen = open;
         el.classList.toggle('open', open);
         document.getElementById('toggle-left-drawer')?.setAttribute('aria-expanded', String(open));
+        updateDrawerOffsets();
     }
     function toggleRightDrawer(force){
         const el = document.getElementById('right-drawer');
@@ -1343,6 +1385,7 @@
         DRAWERS.rightOpen = open;
         el.classList.toggle('open', open);
         document.getElementById('toggle-right-drawer')?.setAttribute('aria-expanded', String(open));
+        updateDrawerOffsets();
     }
     function closeDrawers(){ toggleLeftDrawer(false); toggleRightDrawer(false); }
 
@@ -1581,6 +1624,21 @@
         document.getElementById('toggle-right-drawer')?.addEventListener('click', function(){ toggleRightDrawer(); });
         document.getElementById('left-drawer-close')?.addEventListener('click', function(){ toggleLeftDrawer(false); });
         document.getElementById('right-drawer-close')?.addEventListener('click', function(){ toggleRightDrawer(false); });
+        // Initialize displacement offsets based on current open state
+        try{ updateDrawerOffsets(); }catch(_){ }
+        // Open both drawers by default unless a sharedProject is specified in URL
+        try{
+            const params = new URLSearchParams(location.search);
+            const hasSharedProject = !!params.get('sharedProject');
+            if (!hasSharedProject){
+                toggleLeftDrawer(true);
+                toggleRightDrawer(true);
+            } else {
+                // ensure both closed if param present
+                toggleLeftDrawer(false);
+                toggleRightDrawer(false);
+            }
+        }catch(_){}
         // Build initial tree
         try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
         // Extra global keyboard: F1 toggles right; F5 runs if editor focused; ESC closes drawers unless modal open
@@ -1612,7 +1670,13 @@
 
 <!-- Slide-out Drawers Markup and Styles -->
 <style id="drawers-style">
-:root{ --left-drawer-width: 400px; /* adjust left drawer width here */ --right-drawer-width: 500px; /* adjust right drawer width here */ }
+:root{
+  --left-drawer-width: 400px; /* adjust left drawer width here */
+  --right-drawer-width: 500px; /* adjust right drawer width here */
+  /* Offsets applied to content area to displace (not occlude) when drawers are open */
+  --left-offset: 0px;
+  --right-offset: 0px;
+}
 .drawer{ position: fixed; top: var(--nav-height); bottom: 0; background: #0f1f46; color: #e6f0ff; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 1040; transition: transform .2s ease-in-out; display: flex; flex-direction: column; }
 .drawer .drawer-header{ display:flex; align-items:center; justify-content: space-between; padding: .5rem .75rem; background: #0a1633; border-bottom: 1px solid #1e2a55; }
 .drawer .drawer-body{ overflow: auto; padding: .5rem .5rem; }
@@ -1623,6 +1687,8 @@
 .drawer-toggle{ position: fixed; top: calc(var(--nav-height) + 8px); padding: .25rem .5rem; z-index: 1041; border: 1px solid #1e2a55; background:#0a1633; color:#e6f0ff; border-radius: .25rem; }
 .drawer-toggle.left{ left: 8px; }
 .drawer-toggle.right{ right: 8px; }
+/* Displace center content instead of overlaying it */
+#work-area{ margin-left: var(--left-offset); margin-right: var(--right-offset); transition: margin .2s ease-in-out; }
 /* VFS Tree styles */
 .vfs-root, .vfs-children{ list-style: none; margin: 0; padding-left: .5rem; }
 .vfs-node .vfs-row{ display:flex; align-items:center; gap:.35rem; padding:.1rem .25rem; user-select:none; cursor: default; }
@@ -1633,6 +1699,10 @@
 .vfs-placeholder{ color: #9aa9c7; font-style: italic; padding: .1rem .25rem; }
 /* Right drawer iframe */
 #right-iframe{ width: 100%; height: 100%; border: 0; background: #fff; color: #000; }
+/* Offset the editor tabs so the left hamburger never covers the first tab (adjustable) */
+#editor-tabs{ padding-left: 48px; /* adjust spacing to match hamburger size */ }
+/* Ensure dropdown menus appear above slide-out drawers */
+.navbar .dropdown-menu{ z-index: 1052; }
 </style>
 
 <button id="toggle-left-drawer" class="drawer-toggle left" type="button" aria-expanded="false" title="Toggle Files">☰</button>
