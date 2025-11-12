@@ -15,7 +15,8 @@
    - PRINTLN expr[, expr, ...]
    - LET name = expr
    - name = expr         (extension for convenience)
-   - IF expr THEN <single-statement> [ELSE <single-statement>]  // single-line form only
+   - IF expr THEN <single-statement> [ELSE <single-statement>]  // single-line form
+   - IF expr [THEN] [BEGIN] ... [ELSEIF expr [THEN] [BEGIN] ...] [ELSE [BEGIN] ...] END | END IF | ENDIF  // multi-line block
    - INPUT ["Prompt:",] name
    - DEBUGON | DEBUGOFF | STATUS
    - Comments: REM ...  or  ' ...  or // ... (until end of line)
@@ -95,6 +96,12 @@
         if (/^SUB\b/i.test(ln)) return 'SUB';
         if (/^TRY\b/i.test(ln)) return 'TRY';
         if (/^FOREACH\b/i.test(ln)) return 'FOREACH';
+        if (/^IF\b/i.test(ln)) {
+          // Treat as block opener only when not a single-line IF ... THEN <stmt>
+          // Exclude the special header "THEN BEGIN" which indicates a block, not a single-line statement
+          if (/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b)\S+/i.test(ln)) return null;
+          return 'IF';
+        }
         return null;
       };
       const closerType = (ln)=>{
@@ -105,6 +112,8 @@
         if (/^END\s+(FUNC|FUNCTION)\b/i.test(ln)) return 'FUNC';
         if (/^END\s+SUB\b/i.test(ln)) return 'SUB';
         if (/^END\s+TRY\b/i.test(ln)) return 'TRY';
+        if (/^END\s*IF\b/i.test(ln)) return 'IF';
+        if (/^ENDIF\b/i.test(ln)) return 'IF';
         if (/^END\b\s*$/i.test(ln)) return '__END__';
         return null;
       };
@@ -217,7 +226,8 @@
           }
 
           // Generic END handler: closes the current open block or ends function/program
-          if (/^END\b/i.test(stmtLine)){
+          // Only match a bare END on the line; structured forms like END IF, END SELECT, etc. are handled elsewhere
+          if (/^END\b\s*$/i.test(stmtLine)){
             const top = stack[stack.length - 1];
             if (!top){
               // No active block: if inside a function/sub, treat as function return; else end program
@@ -262,6 +272,10 @@
                 continue;
               }
               case 'SELECT': {
+                stack.pop(); i++; continue;
+              }
+              case 'IF': {
+                // END closes IF block
                 stack.pop(); i++; continue;
               }
               case 'TRY': {
@@ -358,6 +372,28 @@
             continue;
           }
 
+          // IF ... [THEN] [BEGIN] multi-line block with ELSEIF/ELSE, closed by END/END IF/ENDIF
+          if (/^IF\b/i.test(stmtLine)){
+            // Exclude single-line IF ... THEN <stmt>
+            if (/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(stmtLine)){
+              // fall through to statement exec which handles single-line IF
+            } else {
+              const endInfo = this._findEndIfAndClauses(lines, i);
+              // Evaluate IF and ELSEIF conditions to choose a clause
+              const chosen = this._chooseIfClause(lines, i, endInfo);
+              if (!chosen){
+                // No clause chosen; skip entire IF block
+                i = endInfo.end + 1;
+                continue;
+              }
+              // Push IF frame so that END/ENDIF/END IF will close it, and we can also skip remaining clauses if we hit them
+              stack.push({ type: 'IF', start: i, end: endInfo.end, after: chosen.after });
+              // Jump to first line after chosen header
+              i = chosen.start + 1;
+              continue;
+            }
+          }
+
           // WHILE ... WEND
           if (/^WHILE\b/i.test(stmtLine)){
             const condExpr = stmtLine.replace(/^WHILE\b/i, '').replace(/\s+BEGIN\s*$/i, '').trim();
@@ -425,6 +461,12 @@
             stack.pop();
             i++; continue;
           }
+          // END IF / ENDIF
+          if (/^END\s*IF\b/i.test(stmtLine) || /^ENDIF\b/i.test(stmtLine)){
+            const top = stack[stack.length - 1];
+            if (!top || top.type !== 'IF') throw new Error(`END IF without matching IF at line ${lineNo}`);
+            stack.pop(); i++; continue;
+          }
           if (/^CASE\b/i.test(stmtLine)){
             // If we're inside a SELECT block and hit another CASE, end the SELECT block and skip to after END SELECT
             const top = stack[stack.length - 1];
@@ -434,6 +476,16 @@
               continue;
             }
             // Otherwise treat as normal statement (will likely error)
+          }
+
+          // If we are inside an IF frame and reached the end of the chosen body, skip to after the IF block
+          {
+            const top = stack[stack.length - 1];
+            if (top && top.type === 'IF' && i === top.after){
+              stack.pop();
+              i = top.end + 1;
+              continue;
+            }
           }
 
           // DO/LOOP family
@@ -1761,6 +1813,107 @@
       }
       if (cur.trim()!=='') parts.push(cur.trim());
       return parts;
+    }
+
+    // IF helpers
+    _parseIfCondFromHeader(header){
+      // header is like: IF expr [THEN] [BEGIN]
+      let s = String(header).trim();
+      s = s.replace(/^IF\b/i, '').trim();
+      // Remove optional THEN at end or before BEGIN
+      s = s.replace(/\bTHEN\b/i, (m)=>m); // keep then token to strip later precisely
+      // Remove trailing BEGIN and/or THEN tokens at end of header
+      s = s.replace(/\s+BEGIN\s*$/i, '').replace(/\s+THEN\s*$/i, '').trim();
+      // Also handle IF expr THEN BEGIN or IF expr BEGIN THEN (rare): remove any trailing THEN or BEGIN tokens
+      s = s.replace(/\s+(BEGIN|THEN)\s*$/i, '').trim();
+      return s;
+    }
+
+    _findEndIfAndClauses(lines, startIdx){
+      // Returns { end, clauses: [{type:'IF'|'ELSEIF'|'ELSE', start, after}] }
+      // where start is the header line index of the clause, and after is the index of the line where that clause body ends (just before next clause or end)
+      const clauses = [];
+      const stack = ['IF'];
+      let end = -1;
+      // Track the most recent clause header to set its 'after' when next clause or end is found
+      let lastClause = { type: 'IF', start: startIdx, after: null };
+      clauses.push(lastClause);
+      for (let i = startIdx + 1; i < lines.length; i++){
+        const t = this._lineTrim(lines, i);
+        const u = t.toUpperCase();
+        if (!u) continue;
+        // Openers (for nesting)
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
+        if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
+        if (/^DO\b/.test(u)) { stack.push('DO'); continue; }
+        if (/^FOR\b/.test(u)) { stack.push('FOR'); continue; }
+        if (/^FOREACH\b/.test(u)) { stack.push('FOREACH'); continue; }
+        if (/^SELECT\s+CASE\b/.test(u)) { stack.push('SELECT'); continue; }
+        if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
+        if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
+        if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        // Closers
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) {
+          // Close one IF
+          for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } }
+          if (stack.length === 0){ end = i; lastClause.after = i; break; }
+          continue;
+        }
+        if (/^END\b/.test(u)){
+          const popped = stack.pop();
+          if (stack.length === 0 && popped === 'IF'){ end = i; lastClause.after = i; break; }
+          continue;
+        }
+        if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
+        if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
+        if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        // Top-level clauses inside current IF
+        if (stack.length === 1 && stack[0] === 'IF'){
+          if (/^ELSEIF\b/i.test(t)){
+            lastClause.after = i; // clause body ends before this ELSEIF
+            lastClause = { type: 'ELSEIF', start: i, after: null };
+            clauses.push(lastClause);
+            continue;
+          }
+          if (/^ELSE\b/i.test(t)){
+            lastClause.after = i;
+            lastClause = { type: 'ELSE', start: i, after: null };
+            clauses.push(lastClause);
+            continue;
+          }
+        }
+      }
+      if (end < 0) throw new Error(`Unterminated IF (no matching END/END IF/ENDIF) starting at line ${startIdx+1}`);
+      return { end, clauses };
+    }
+
+    _chooseIfClause(lines, startIdx, endInfo){
+      // Evaluate IF/ELSEIF conditions; return chosen clause with its body end boundary (after)
+      const clauses = endInfo.clauses;
+      for (const c of clauses){
+        if (c.type === 'ELSE') {
+          // Else wins only if no previous matched
+          // If ELSE, execute unconditionally
+          return { type: 'ELSE', start: c.start, after: (c.after != null ? c.after : endInfo.end) };
+        }
+        // Parse condition from header line
+        let header = this._lineTrim(lines, c.start);
+        if (/^IF\b/i.test(header) || /^ELSEIF\b/i.test(header)){
+          // Remove keyword
+          header = header.replace(/^ELSEIF\b/i, 'IF');
+          const exprText = this._parseIfCondFromHeader(header);
+          const cond = this._truthy(this._evalExpression(exprText));
+          if (cond){
+            return { type: c.type, start: c.start, after: c.after ?? endInfo.end };
+          }
+        }
+      }
+      // No match, no ELSE
+      return null;
     }
 
     _parseCasePatterns(text){

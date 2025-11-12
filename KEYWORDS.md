@@ -12,6 +12,8 @@ BREAK
 CONTINUE
 IF
 THEN
+BEGIN
+ELSEIF
 ELSE
 RAISE
 DIM
@@ -38,6 +40,8 @@ SELECT CASE
 END SELECT
 CASE
 CASE ELSE
+END IF
+ENDIF
 ```
 
 ## File I/O modifiers and related tokens
