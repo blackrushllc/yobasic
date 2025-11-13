@@ -1,36 +1,5 @@
 /*
  YoBASIC 1.0 - Blackrush LLC - https://www.yobasic.com/basic
- - Single-file, no dependencies. Designed to work with or without jQuery Terminal UI.
- - Output goes to console.log and, if a global `term` object with echo() exists, also to term.echo().
- - Input reads from browser keyboard via window.prompt().
- - Debug mode is ON by default. Meta commands: DEBUGON, DEBUGOFF, STATUS.
- - Public API:
-    const basic = new BasicInterpreter(options?)
-    basic.lineExecute(line: string): string | null   // executes a single line; returns any output text produced by that line (joined by \n)
-    basic.runProgram(program: string | string[]): string[] // executes a multiline program; returns array of output lines
-    basic.reset() // clears variables and state
-
- Supported statements (case-insensitive):
-   - PRINT expr[, expr, ...]
-   - PRINTLN expr[, expr, ...]
-   - LET name = expr
-   - name = expr         (extension for convenience)
-   - IF expr THEN <single-statement> [ELSE <single-statement>]  // single-line form
-   - IF expr [THEN] [BEGIN] ... [ELSEIF expr [THEN] [BEGIN] ...] [ELSE [BEGIN] ...] END | END IF | ENDIF  // multi-line block
-   - INPUT ["Prompt:",] name
-   - DEBUGON | DEBUGOFF | STATUS
-   - Comments: REM ...  or  ' ...  or // ... (until end of line)
- Statement separators: newline, ;, :  (inside strings ignored)
-
- Expressions:
-   - Numbers, strings (single or double quotes). Double-quoted strings support interpolation: "Hello #{name}!".
-   - Booleans: TRUE, FALSE; NULL
-   - Variables: case-insensitive names, optional type suffix $ (string) or % (int)
-   - Operators: + - * / % **, comparisons = == != < <= > >=, logical AND OR NOT, parentheses ()
-   - Array/list literals: [1, 2, 3]   (0-based indexing via expr[idx] in expressions)
-   - Object/dict literals: {"key": 1} (index via expr["key"])  // lightweight pass-through
-
-
 */
 (function(global){
   'use strict';
