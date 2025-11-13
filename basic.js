@@ -1,5 +1,5 @@
 /*
- BasicInterpreter - A minimal BASIC (Basil v0 core subset) interpreter for the browser
+ YoBASIC 1.0 - Blackrush LLC - https://www.yobasic.com/basic
  - Single-file, no dependencies. Designed to work with or without jQuery Terminal UI.
  - Output goes to console.log and, if a global `term` object with echo() exists, also to term.echo().
  - Input reads from browser keyboard via window.prompt().
@@ -30,7 +30,7 @@
    - Array/list literals: [1, 2, 3]   (0-based indexing via expr[idx] in expressions)
    - Object/dict literals: {"key": 1} (index via expr["key"])  // lightweight pass-through
 
- This is an educational interpreter; it is not a full Basil implementation. It aims to be practically useful and easy to extend.
+
 */
 (function(global){
   'use strict';
@@ -1109,11 +1109,6 @@
           const rest = (args || []).slice(1);
           return this._usingFormat(fmt, rest);
         }
-        case 'RENDER$':
-        case 'RENDER': {
-          const tpl = String(args && args[0] != null ? args[0] : '');
-          return this._renderTemplate(tpl);
-        }
         case 'READFILE$':
         case 'READFILE': {
           const path = String(args && args[0] != null ? args[0] : '');
@@ -1220,64 +1215,6 @@
           txt = left ? (txt + pad) : (pad + txt);
         }
         out += txt;
-      }
-      return out;
-    }
-
-    _renderTemplate(tpl){
-      // Replace {{ expr }} segments by evaluating expr in BASIC context
-      const s = String(tpl);
-      let out = '';
-      let i = 0;
-      while (i < s.length){
-        const j = s.indexOf('{{', i);
-        if (j < 0){ out += s.slice(i); break; }
-        // append text before tag
-        out += s.slice(i, j);
-        let k = j + 2; // position after '{{'
-        // skip leading whitespace inside tag
-        while (k < s.length && /\s/.test(s[k])) k++;
-        let inS = false, inD = false;
-        let dPar = 0, dBrk = 0, dBr = 0;
-        const exprStart = k;
-        let found = false;
-        while (k < s.length){
-          const c = s[k];
-          if (c === '"' && !inS){ inD = !inD; k++; continue; }
-          if (c === '\'' && !inD){ inS = !inS; k++; continue; }
-          if ((inD || inS) && c === '\\'){ k += 2; continue; }
-          if (inD || inS){ k++; continue; }
-          // track bracket depth (so stray '}}' inside nested object/arrays don't terminate)
-          if (c === '('){ dPar++; k++; continue; }
-          if (c === ')'){ dPar = Math.max(0, dPar - 1); k++; continue; }
-          if (c === '['){ dBrk++; k++; continue; }
-          if (c === ']'){ dBrk = Math.max(0, dBrk - 1); k++; continue; }
-          if (c === '{'){ dBr++; k++; continue; }
-          if (c === '}'){
-            // potential terminator only if next is '}' and not inside any depth
-            if (s[k+1] === '}' && dPar === 0 && dBrk === 0 && dBr === 0){
-              const raw = s.slice(exprStart, k).trim();
-              k += 2; // skip '}}'
-              // evaluate and append
-              const val = raw ? this._evalExpression(raw) : '';
-              out += this._toString(val);
-              found = true;
-              break;
-            }
-            // otherwise just reduce internal brace depth and continue
-            dBr = Math.max(0, dBr - 1);
-            k++;
-            continue;
-          }
-          k++;
-        }
-        if (!found){
-          // No closing '}}' found; treat the rest as literal
-          out += s.slice(j);
-          break;
-        }
-        // continue after the processed tag
-        i = k;
       }
       return out;
     }
