@@ -442,6 +442,8 @@
             tabs.push({ id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled' });
             // bind input autosave on first tab too
             textarea.addEventListener('input', function(){ saveCode(); });
+            // attach Tab key handling
+            try{ attachEditorKeyHandlers(textarea); }catch(_){ }
         }
     }
     function createNewTab(initial){
@@ -467,6 +469,7 @@
             if (s.editor.bg) ta.style.backgroundColor = s.editor.bg;
         }
         ta.addEventListener('input', function(){ saveCode(); });
+        try{ attachEditorKeyHandlers(ta); }catch(_){ }
         const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled' };
         tabs.push(tab);
         // initial content/meta
@@ -592,6 +595,76 @@
             if (size) { $('#terminal, #terminal .terminal').css('font-size', size); }
             if (term) term.resize();
         }
+    }
+
+    // Attach editor key handlers (Tab to indent/unindent instead of losing focus)
+    function attachEditorKeyHandlers(textarea){
+        if (!textarea || textarea.__tabHandled) return;
+        textarea.addEventListener('keydown', function(e){
+            if (e.key !== 'Tab') return;
+            // Only handle Tab inside editor textareas
+            e.preventDefault();
+            const ta = e.target;
+            const start = ta.selectionStart ?? 0;
+            const end = ta.selectionEnd ?? 0;
+            const val = ta.value || '';
+            const scrollTop = ta.scrollTop;
+            const scrollLeft = ta.scrollLeft;
+            const tab = '\t';
+
+            // Identify line range covering the selection
+            const lineStart = val.lastIndexOf('\n', Math.max(0, start - 1)) + 1; // 0 if none found
+            const lineEndIdx = val.indexOf('\n', end);
+            const blockEnd = (lineEndIdx === -1 ? val.length : lineEndIdx);
+            const isMultiLine = (start !== end) && val.slice(start, end).includes('\n');
+
+            if (!e.shiftKey){
+                if (isMultiLine){
+                    // Indent each line in selection
+                    const block = val.slice(lineStart, end);
+                    const lines = block.split('\n');
+                    const indented = lines.map(l => tab + l).join('\n');
+                    const newVal = val.slice(0, lineStart) + indented + val.slice(end);
+                    const added = lines.length; // one tab per line
+                    ta.value = newVal;
+                    ta.selectionStart = start + 1; // first line gained 1
+                    ta.selectionEnd = end + added;
+                } else {
+                    // Simple caret insertion
+                    ta.value = val.slice(0, start) + tab + val.slice(end);
+                    ta.selectionStart = ta.selectionEnd = start + 1;
+                }
+            } else {
+                // Shift+Tab: unindent
+                const block = val.slice(lineStart, end);
+                const lines = block.split('\n');
+                let removedFirst = 0;
+                let totalRemoved = 0;
+                const unindented = lines.map((l, idx)=>{
+                    let rem = 0;
+                    if (l.startsWith('\t')) { l = l.slice(1); rem = 1; }
+                    else if (l.startsWith('    ')) { l = l.slice(4); rem = 4; }
+                    else if (l.startsWith('  ')) { l = l.slice(2); rem = 2; }
+                    else if (l.startsWith(' ')) { l = l.slice(1); rem = 1; }
+                    if (idx === 0) removedFirst = rem;
+                    totalRemoved += rem;
+                    return l;
+                }).join('\n');
+                const newVal = val.slice(0, lineStart) + unindented + val.slice(end);
+                ta.value = newVal;
+                // Adjust selection to account for removed indentation
+                const newStart = start - removedFirst;
+                const newEnd = end - totalRemoved;
+                ta.selectionStart = Math.max(lineStart, newStart);
+                ta.selectionEnd = Math.max(ta.selectionStart, newEnd);
+            }
+
+            // Restore scroll position to avoid jump
+            ta.scrollTop = scrollTop;
+            ta.scrollLeft = scrollLeft;
+        }, true);
+        // mark to avoid double wiring
+        textarea.__tabHandled = true;
     }
 
     function openMenuById(id) {
