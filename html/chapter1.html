@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>YoBASIC Tutorial – Chapter 1: Getting Started</title>
+
+    <style>
+        /* Totally optional, just to make examples readable */
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 1rem;
+            line-height: 1.5;
+        }
+        .example {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            margin: 1.5rem 0;
+            background: #fafafa;
+        }
+        .example-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .example-header h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .example-files {
+            margin-top: 0.75rem;
+        }
+        .example-files h3 {
+            margin: 0.5rem 0 0.25rem;
+            font-size: 0.9rem;
+        }
+        pre {
+            margin: 0;
+            padding: 0.5rem;
+            overflow-x: auto;
+            background: #111;
+            color: #0f0;
+            font-family: "Fira Code", "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+        button.example-open {
+            cursor: pointer;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            border: 1px solid #888;
+            background: #eee;
+        }
+    </style>
+</head>
+<body>
+
+<article class="tutorial"
+         data-chapter="1"
+         data-slug="getting-started">
+
+    <h1>Chapter 1 – Getting Started with YoBASIC</h1>
+    <p>
+        In this chapter you’ll learn how to run your first BASIC programs
+        in the YoBASIC web IDE.
+    </p>
+
+    <!-- =========================
+         Example 1: Hello World
+         ========================= -->
+    <section class="example"
+             data-example-id="ch1-hello-world"
+             data-example-title="HELLO.BAS">
+        <div class="example-header">
+            <h2>Example 1 – Hello World</h2>
+            <button class="example-open"
+                    data-example-id="ch1-hello-world">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+
+        <p>Click the button to open this program in a new editor tab.</p>
+
+        <div class="example-files">
+            <!-- Main BASIC file -->
+            <h3>HELLO.BAS</h3>
+            <pre data-file-name="HELLO.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+PRINT "Hello from YoBASIC!"
+PRINT "This program ran from the tutorial sidebar."
+        </pre>
+        </div>
+    </section>
+
+    <!-- =======================================
+         Example 2: BASIC + HTML View mini app
+         ======================================= -->
+    <section class="example"
+             data-example-id="ch1-bmi-calculator"
+             data-example-title="BMI_CALC.BAS">
+        <div class="example-header">
+            <h2>Example 2 – Simple BMI Calculator (BASIC + HTML View)</h2>
+            <button class="example-open"
+                    data-example-id="ch1-bmi-calculator">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+
+        <p>
+            This example shows how BASIC can work with an HTML view. YoBASIC
+            will load the HTML template, and you can customize both.
+        </p>
+
+        <div class="example-files">
+            <!-- Main BASIC source -->
+            <h3>BMI_CALC.BAS</h3>
+            <pre data-file-name="BMI_CALC.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+REM Simple BMI calculator using a view file
+REM Adjust this to match however your engine loads views:
+REM e.g. VIEW$ = READFILE$("BMI_VIEW.html")
+
+INPUT "Enter your weight in kg: ", w#
+INPUT "Enter your height in meters: ", h#
+bmi# = w# / (h# * h#)
+
+PRINT "Your BMI is "; bmi#
+IF bmi# &lt; 18.5 THEN
+  PRINT "Category: Underweight"
+ELSEIF bmi# &lt; 25 THEN
+  PRINT "Category: Normal weight"
+ELSEIF bmi# &lt; 30 THEN
+  PRINT "Category: Overweight"
+ELSE
+  PRINT "Category: Obese"
+END IF
+        </pre>
+
+            <!-- HTML view file -->
+            <h3>BMI_VIEW.html</h3>
+            <pre data-file-name="BMI_VIEW.html"
+                 data-file-language="html"
+                 data-file-role="view">
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>BMI Calculator</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 1rem; }
+      label { display: block; margin-top: 0.5rem; }
+      button { margin-top: 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>BMI Calculator</h1>
+    <p>Adjust this HTML to change how the calculator looks.</p>
+    <!-- Whatever wiring your engine expects goes here -->
+  </body>
+</html>
+        </pre>
+        </div>
+    </section>
+</article>
+
+<!-- Iframe-side API: send "open example" messages to parent -->
+<script>
+    (function () {
+        // Prevent F5 inside the iframe from refreshing the whole IDE
+        document.addEventListener('keydown', function(e){
+            if (e.key === 'F5') { e.preventDefault(); }
+        }, true);
+
+        function getFilesFromExampleSection(sectionEl) {
+            const preNodes = sectionEl.querySelectorAll("pre[data-file-name]");
+            const files = [];
+            // Determine a suggested base directory based on the tutorial context
+            // e.g., article[data-chapter="1"] => "chapter1"
+            const article = sectionEl.closest('article.tutorial');
+            let baseDir = '';
+            if (article) {
+                const ch = article.getAttribute('data-chapter');
+                if (ch) {
+                    baseDir = `chapter${String(ch).trim()}`;
+                }
+            }
+            preNodes.forEach((pre) => {
+                const rawName = pre.getAttribute("data-file-name") || "Untitled";
+                const name = baseDir ? `${baseDir}/${rawName}` : rawName;
+                files.push({
+                    name,
+                    language: pre.getAttribute("data-file-language") || "basic",
+                    role: pre.getAttribute("data-file-role") || "aux",
+                    content: pre.textContent.replace(/^\n/, "") // trim leading newline
+                });
+            });
+            return files;
+        }
+
+        function handleOpenClick(event) {
+            const btn = event.currentTarget;
+            const exampleId = btn.getAttribute("data-example-id");
+            if (!exampleId) return;
+
+            const section = document.querySelector(
+                '.example[data-example-id="' + exampleId + '"]'
+            );
+            if (!section) return;
+
+            const title =
+                section.getAttribute("data-example-title") || "Untitled Example";
+            const files = getFilesFromExampleSection(section);
+
+            const message = {
+                type: "YoBasicOpenExample",
+                exampleId: exampleId,
+                title: title,
+                files: files
+            };
+
+            // Send to parent IDE. You can restrict origin if you like.
+            window.parent.postMessage(message, "*");
+        }
+
+        function initExampleButtons() {
+            const buttons = document.querySelectorAll("button.example-open");
+            buttons.forEach((btn) => {
+                btn.addEventListener("click", handleOpenClick);
+            });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initExampleButtons);
+        } else {
+            initExampleButtons();
+        }
+    })();
+</script>
+</body>
+</html>

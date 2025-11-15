@@ -270,7 +270,20 @@
       const all = this.listFiles();
       const out = [];
       if (!folder || folder === 'Root'){
-        for (const f of all){ if (!f.name.includes('/')) out.push(f); }
+        // Root contains any files that are not in reserved namespaces
+        // (projects/, examples/, shared/, data/). These may include
+        // nested paths like "chapter1/hello.bas".
+        for (const f of all){
+          const n = String(f.name).toLowerCase();
+          if (
+            !n.startsWith('projects/') &&
+            !n.startsWith('examples/') &&
+            !n.startsWith('shared/') &&
+            !n.startsWith('data/')
+          ){
+            out.push(f);
+          }
+        }
         return out;
       }
       const prefix = folder.toLowerCase() + '/';

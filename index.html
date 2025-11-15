@@ -123,6 +123,9 @@
     </div>
 </nav>
 
+<!-- Hidden initial program seed that populates the very first editor on first load -->
+<div id="initial-editor-seed" style="display:none">PRINT "Hello World"</div>
+
 <div id="work-area" class="container-fluid p-0">
     <div id="editor-pane" class="d-none p-2 border-bottom" style="height: 60%; display: flex; flex-direction: column;">
         <ul id="editor-tabs" class="nav nav-tabs small mb-2"></ul>
@@ -367,7 +370,7 @@
             <div class="mb-2">
               <label class="form-label">File name</label>
               <input id="saveas-name" type="text" class="form-control form-control-sm" placeholder="MYPROGRAM.BAS" />
-              <div class="form-text text-secondary">Programs are saved in Root as .BAS files.</div>
+              <div class="form-text text-secondary">Programs are saved in Root as .BAS files. You can also use subfolders like chapter1/HELLO.BAS</div>
             </div>
             <div id="save-files" class="list-group" style="max-height: 50vh; overflow:auto"></div>
           </div>
@@ -487,6 +490,17 @@
         activateTab(id);
         return tab;
     }
+    // Expose a minimal bridge for external (iframe) integrations
+    try{
+        window.__YoBasicBridge__ = window.__YoBasicBridge__ || {
+            openTab: function(initial){
+                const t = createNewTab(initial || {});
+                return t ? t.id : null;
+            },
+            activateTab: function(id){ activateTab(id); },
+            openEditor: function(suppressAutoload){ openEditor(!!suppressAutoload); }
+        };
+    }catch(_){ /* ignore */ }
     function closeTab(id){
         const idx = tabs.findIndex(t=>t.id===id);
         if (idx < 0) return;
@@ -741,15 +755,29 @@
         pane.classList.remove('d-none');
         setNavHeight();
         // Optionally preload Hello World only on first reveal and only for first tab when empty
-        if (!suppressAutoload && wasHidden){
+        if (wasHidden){
             const first = getTabById(0);
-            if (first && (first.textarea.value || '').trim() === ''){
+            if (!suppressAutoload && first && (first.textarea.value || '').trim() === ''){
                 let code = loadCode();
                 if (!code || code.trim().length === 0) {
-                    code = 'PRINTLN "Hello World"\n';
+                    const seedEl = document.getElementById('initial-editor-seed');
+                    const seed = seedEl ? String(seedEl.textContent || '').trim() : '';
+                    code = seed && seed.length ? seed : 'PRINT "Hello World"';
                 }
                 first.textarea.value = code; // only overwrite the first time we open in this session
                 setTabTitle(0, 'Untitled', 'Untitled');
+            }
+            // Place caret on a new line at the end of the initial code for the first editor
+            if (first && first.textarea){
+                // Ensure trailing newline so caret lands on a blank new line
+                if (!/\n$/.test(first.textarea.value)){
+                    first.textarea.value += "\n";
+                }
+                const len = first.textarea.value.length;
+                try{
+                    first.textarea.selectionStart = len;
+                    first.textarea.selectionEnd = len;
+                }catch(_){ /* ignore */ }
             }
         }
         const ed = getActiveEditor();
@@ -951,7 +979,7 @@
                 }
             }
         }, {
-            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nTRACE is ON (TRON).',
+            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is ON (TRON).',
             name: 'js_demo',
             prompt: "\nOK\n\n"
         });
@@ -960,8 +988,7 @@
         // Height + focus
         setNavHeight();
         window.addEventListener('resize', setNavHeight);
-        // Default: focus terminal
-        term.focus(true);
+        // Do not focus terminal by default; the editor will grab initial focus
 
         // Restore settings
         const settings = loadSettings();
@@ -976,6 +1003,8 @@
 
         // Autosave editor content
         buildInitialTabUi();
+        // Show editor and focus first tab on initial load
+        try { openEditor(false); activateTab(0); } catch(_){}
         $('#editor').on('input', function(){ saveCode(this.value); });
 
         // Menu item clicks
@@ -1114,6 +1143,8 @@
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e){
+            // Intercept F5 to prevent accidental page refresh
+            if (e.key === 'F5') { e.preventDefault(); return; }
             // Open menus with Alt+F/T/H
             if (e.altKey && !e.ctrlKey && !e.metaKey) {
                 const k = e.key.toLowerCase();
@@ -1195,7 +1226,11 @@
         if (lower.startsWith('data/')){
             return name.slice('data/'.length) + ro;
         }
-        // Root fallback: show base name
+        // Root fallback: show full relative path for Root so nested paths are visible
+        if (ctx.folder === 'Root'){
+            return name + ro;
+        }
+        // default: base name
         return (name.includes('/') ? name.split('/').pop() : name) + ro;
     }
     async function renderOpenFiles(folder){
@@ -1315,10 +1350,10 @@
             return;
         }
         // Root
-        help.text('Programs are saved in Root as .BAS files.');
+        help.text('Programs are saved in Root as .BAS files. You can also use subfolders like chapter1/HELLO.BAS');
         const files = vfs.listByFolder('Root').filter(f=>f.kind==='program');
         files.forEach(f => {
-            const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f)}</button>`);
+            const $item = $(`<button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-fullname="${f.name}">${labelForFile(f, { folder: 'Root' })}</button>`);
             list.append($item);
         });
     }
@@ -1328,7 +1363,9 @@
         m.show();
     }
     function showSaveAsDialog(){
-        $('#saveas-name').val(currentFileName && !currentFileReadOnly ? (currentFileName.includes('/')? currentFileName.split('/').pop() : currentFileName) : '');
+        // Prefill with full suggested path (e.g., "
+        // /HELLO.BAS") when saving to Root
+        $('#saveas-name').val(currentFileName && !currentFileReadOnly ? currentFileName : '');
         renderSaveFiles('Root');
         const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs'));
         m.show();
@@ -1368,6 +1405,7 @@
             const base = currentFileName.includes('/') ? currentFileName.split('/').pop() : currentFileName;
             setTabTitle(activeTabId, base, currentFileName);
             const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; }
+            try{ await buildVfsTree(); }catch(_){ }
             term && term.echo && term.echo('[Saved] ' + currentFileName);
             return;
         }
@@ -1427,6 +1465,7 @@
         const base = targetName.includes('/') ? targetName.split('/').pop() : targetName;
         setTabTitle(activeTabId, base, targetName);
         const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; }
+        try{ await buildVfsTree(); }catch(_){ }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
         term && term.echo && term.echo('[Saved] ' + targetName);
     }
@@ -1540,8 +1579,9 @@
         const label = document.createElement('span'); label.className='vfs-label'; label.textContent='Root';
         head.appendChild(caret); head.appendChild(label); rootLi.appendChild(head);
         const rootChildren = document.createElement('ul'); rootChildren.className='vfs-children';
-        // Root files at top level
+        // Root files and nested directories at top level (excluding projects/examples/shared/data)
         const rootFilesNest = nestFiles(vfs.listByFolder('Root'), '');
+        // files directly under Root (no slash in name)
         rootFilesNest.files.forEach(it=>{
             const fli = document.createElement('li'); fli.className='vfs-node file';
             const row = document.createElement('div'); row.className='vfs-row';
@@ -1550,6 +1590,11 @@
             row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
             fli.dataset.fullname = it.file.name;
             rootChildren.appendChild(fli);
+        });
+        // top-level nested folders under Root
+        Object.keys(rootFilesNest.dirs).sort().forEach(dn=>{
+            const li = renderTreeNode(dn, rootFilesNest.dirs[dn], dn + '/');
+            rootChildren.appendChild(li);
         });
         // Projects folder
         const projContainer = document.createElement('li'); projContainer.className='vfs-node folder';
@@ -1720,11 +1765,22 @@
         try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
         // Extra global keyboard: F1 toggles right; F9 runs if editor focused; ESC closes drawers unless modal open
         document.addEventListener('keydown', function(e){
+            // Intercept F5 to prevent accidental page refresh
+            if (e.key === 'F5') { e.preventDefault(); return; }
             const k = e.key;
             if (k === 'F1'){
                 e.preventDefault(); // Always prevent default help
                 toggleRightDrawer();
                 return;
+            }
+            if (k === 'F6'){
+                // Toggle focus between editor and terminal when one of them is focused
+                const ae = document.activeElement;
+                const inEditor = ae && ae.classList && ae.classList.contains('editor-textarea');
+                const termHost = document.getElementById('terminal');
+                const inTerminal = termHost ? termHost.contains(ae) : false;
+                if (inEditor){ e.preventDefault(); if (term && term.focus) term.focus(true); return; }
+                if (inTerminal){ e.preventDefault(); const ed = getActiveEditor(); if (ed) ed.focus(); return; }
             }
             if (k === 'F9'){
                 const ae = document.activeElement;
@@ -1836,13 +1892,71 @@
 
 <div id="right-drawer" class="drawer drawer-right" aria-label="Home">
   <div class="drawer-header">
-    <div class="fw-bold">Home</div>
-    <button id="right-drawer-close" class="btn btn-sm btn-outline-light">Close</button>
+<!--      <div class="fw-bold">Home</div>-->
+
+      <a href="html/index.html" target="right-iframe" class="btn btn-sm btn-outline-light">Home</a>
+      <button id="right-drawer-close" class="btn btn-sm btn-outline-light">Close</button>
   </div>
   <div class="drawer-body p-0">
-    <iframe id="right-iframe" src="html/index.html" title="Home"></iframe>
+    <iframe id="right-iframe" name="right-iframe" src="html/index.html" title="Tutorial"></iframe>
   </div>
 </div>
+<script>
+    // Junie, look at this:
+    const YoBasicIDE = window.YoBasicIDE || {};
+
+    // Example helper: open example files as tabs in your editor (real wiring)
+    YoBasicIDE.openExample = function (payload) {
+        try{
+            const bridge = window.__YoBasicBridge__;
+            if (!bridge || typeof bridge.openTab !== 'function'){
+                console.warn('YoBasic bridge not available');
+                return;
+            }
+            // Decide main file
+            const files = Array.isArray(payload.files) ? payload.files : [];
+            if (!files.length) return;
+            const main = files.find(f=>String(f.role||'').toLowerCase()==='main') || files[0];
+            // Open aux files first
+            files.forEach(f=>{
+                if (f === main) return;
+                bridge.openTab({
+                    content: f.content || '',
+                    fullName: f.name || null,
+                    readOnly: false,
+                    displayName: (f.name && f.name.includes('/') ? f.name.split('/').pop() : (f.name || 'Untitled'))
+                });
+            });
+            // Open main last to focus
+            const mainTabId = bridge.openTab({
+                content: main.content || '',
+                fullName: main.name || null,
+                readOnly: false,
+                displayName: (main.name && main.name.includes('/') ? main.name.split('/').pop() : (main.name || 'Untitled'))
+            });
+            if (mainTabId != null && typeof bridge.activateTab === 'function'){
+                bridge.activateTab(mainTabId);
+            }
+            // Ensure editor is visible
+            if (typeof bridge.openEditor === 'function') bridge.openEditor(true);
+        }catch(e){ console.warn('openExample failed', e); }
+    };
+
+    // Listen for messages from the iframe
+    window.addEventListener("message", function (event) {
+        // SECURITY: Ideally, restrict to same-origin:
+        if (event.origin !== window.location.origin) {
+            return;
+        }
+
+        const data = event.data;
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "YoBasicOpenExample") {
+            YoBasicIDE.openExample(data);
+        }
+    });
+</script>
 
 </body>
 </html>
