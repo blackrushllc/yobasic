@@ -35,14 +35,25 @@
             margin: 0.5rem 0 0.25rem;
             font-size: 0.9rem;
         }
-        pre {
+        /* Code block styling for both <pre> and <textarea> containers */
+        pre,
+        textarea[data-file-name] {
+            display: block;
             margin: 0;
             padding: 0.5rem;
-            overflow-x: auto;
+            width: 100%;
+            overflow: auto;
             background: #111;
             color: #0f0;
             font-family: "Fira Code", "Courier New", monospace;
             font-size: 0.9rem;
+            border: none;
+            border-radius: 2px;
+            box-sizing: border-box;
+        }
+        textarea[data-file-name] {
+            resize: vertical; /* allow vertical resize if needed */
+            outline: none;
         }
         button.example-open {
             cursor: pointer;
@@ -122,16 +133,16 @@ REM Simple BMI calculator using a view file
 REM Adjust this to match however your engine loads views:
 REM e.g. VIEW$ = READFILE$("BMI_VIEW.html")
 
-INPUT "Enter your weight in kg: ", w#
-INPUT "Enter your height in meters: ", h#
-bmi# = w# / (h# * h#)
+INPUT "Enter your weight in kg: ", w
+INPUT "Enter your height in meters: ", h
+bmi = w / (h * h)
 
-PRINT "Your BMI is "; bmi#
-IF bmi# &lt; 18.5 THEN
+PRINT "Your BMI is ", bmi
+IF bmi < 18.5 THEN
   PRINT "Category: Underweight"
-ELSEIF bmi# &lt; 25 THEN
+ELSEIF bmi < 25 THEN
   PRINT "Category: Normal weight"
-ELSEIF bmi# &lt; 30 THEN
+ELSEIF bmi < 30 THEN
   PRINT "Category: Overweight"
 ELSE
   PRINT "Category: Obese"
@@ -140,9 +151,13 @@ END IF
 
             <!-- HTML view file -->
             <h3>BMI_VIEW.html</h3>
-            <pre data-file-name="BMI_VIEW.html"
-                 data-file-language="html"
-                 data-file-role="view">
+            <!-- Use <textarea> so HTML shows as literal text and can be copied intact -->
+            <textarea data-file-name="BMI_VIEW.html"
+                      data-file-language="html"
+                      data-file-role="view"
+                      readonly
+                      wrap="off"
+                      rows="16">
 <!doctype html>
 <html>
   <head>
@@ -160,7 +175,7 @@ END IF
     <!-- Whatever wiring your engine expects goes here -->
   </body>
 </html>
-        </pre>
+            </textarea>
         </div>
     </section>
 </article>
@@ -174,7 +189,8 @@ END IF
         }, true);
 
         function getFilesFromExampleSection(sectionEl) {
-            const preNodes = sectionEl.querySelectorAll("pre[data-file-name]");
+            // Support multiple container types: <textarea>, <pre>, or any element with data-file-name
+            const nodes = sectionEl.querySelectorAll('[data-file-name]');
             const files = [];
             // Determine a suggested base directory based on the tutorial context
             // e.g., article[data-chapter="1"] => "chapter1"
@@ -186,14 +202,19 @@ END IF
                     baseDir = `chapter${String(ch).trim()}`;
                 }
             }
-            preNodes.forEach((pre) => {
-                const rawName = pre.getAttribute("data-file-name") || "Untitled";
+            nodes.forEach((el) => {
+                const rawName = el.getAttribute('data-file-name') || 'Untitled';
                 const name = baseDir ? `${baseDir}/${rawName}` : rawName;
+                const tag = el.tagName.toLowerCase();
+                // Prefer .value for <textarea> to get literal text, fallback to textContent
+                let content = (tag === 'textarea') ? el.value : el.textContent;
+                if (typeof content !== 'string') content = '';
+                content = content.replace(/^\n/, ''); // trim single leading newline
                 files.push({
                     name,
-                    language: pre.getAttribute("data-file-language") || "basic",
-                    role: pre.getAttribute("data-file-role") || "aux",
-                    content: pre.textContent.replace(/^\n/, "") // trim leading newline
+                    language: el.getAttribute('data-file-language') || 'basic',
+                    role: el.getAttribute('data-file-role') || 'aux',
+                    content
                 });
             });
             return files;
