@@ -140,3 +140,8 @@ Contributing
 License
 -------
 See LICENSE for details.
+
+This is a BASIC interpeter and simple IDE.  The BASIC interpreter is in basic.js and the IDE is index.html.
+
+This project is a BASIC interpreter with a simple code editor and file management which uses local storage and a simple SupaBase database to store shared programs and projects.  You built this and it's very nice!
+Feel free to use and modify it as you see fit.

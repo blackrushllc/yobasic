@@ -112,6 +112,7 @@
                 </li>
             </ul>
             <div class="toolbar d-flex ms-auto">
+                <button id="btn-exec" class="btn btn-outline-light btn-sm d-none" title="Execute selection"><i class="bi bi-lightning-charge-fill me-1"></i>Exec(f8)</button>
                 <button id="btn-run" class="btn btn-outline-light btn-sm" title="Run (execute program)"><i class="bi bi-play-fill me-1"></i>Run(f9)</button>
                 <button id="btn-clear" class="btn btn-outline-success btn-sm" title="Clear Output"><i class="bi bi-ban-fill me-1"></i>Clear</button>
                 <button id="btn-bug" class="btn btn-outline-warning btn-sm" title="Toggle Tron/Troff (Debug Mode)"><i class="bi bi-bug-fill me-1"></i>Tron/Troff</button>
@@ -424,7 +425,7 @@
         currentFileName = tab.fullName || null;
         currentFileReadOnly = !!tab.readOnly;
         // focus editor
-        setTimeout(()=>{ try{ tab.textarea.focus(); }catch(e){} }, 0);
+        setTimeout(()=>{ try{ tab.textarea.focus(); }catch(e){}; try{ updateExecButtonVisibility(); }catch(_){ } }, 0);
     }
     function buildInitialTabUi(){
         // Create first tab button if not present
@@ -447,6 +448,7 @@
             textarea.addEventListener('input', function(){ saveCode(); });
             // attach Tab key handling
             try{ attachEditorKeyHandlers(textarea); }catch(_){ }
+            try{ attachEditorSelectionHandlers(textarea); }catch(_){ }
         }
     }
     function createNewTab(initial){
@@ -473,6 +475,7 @@
         }
         ta.addEventListener('input', function(){ saveCode(); });
         try{ attachEditorKeyHandlers(ta); }catch(_){ }
+        try{ attachEditorSelectionHandlers(ta); }catch(_){ }
         const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled' };
         tabs.push(tab);
         // initial content/meta
@@ -681,6 +684,36 @@
         textarea.__tabHandled = true;
     }
 
+    // Selection-aware Exec (F8) support
+    function getEditorSelectionText(ed){
+        if (!ed) return '';
+        try{
+            const start = ed.selectionStart ?? 0;
+            const end = ed.selectionEnd ?? 0;
+            if (start === end) return '';
+            return (ed.value || '').substring(Math.min(start,end), Math.max(start,end));
+        }catch(_){ return ''; }
+    }
+    function isEditorFocused(ed){
+        return !!(ed && ed.classList && ed.classList.contains('editor-textarea') && document.activeElement === ed);
+    }
+    function updateExecButtonVisibility(){
+        const btn = document.getElementById('btn-exec');
+        if (!btn) return;
+        const ed = getActiveEditor();
+        // Keep button visible as long as there is a non-empty selection in the active editor,
+        // even if the editor temporarily loses focus (e.g., when clicking the toolbar button).
+        const hasSel = !!(ed && getEditorSelectionText(ed).trim().length > 0);
+        btn.classList.toggle('d-none', !hasSel);
+    }
+    function attachEditorSelectionHandlers(textarea){
+        if (!textarea || textarea.__execSelHandled) return;
+        ['select','keyup','mouseup','input','focus','blur'].forEach(ev=>{
+            textarea.addEventListener(ev, updateExecButtonVisibility, true);
+        });
+        textarea.__execSelHandled = true;
+    }
+
     function openMenuById(id) {
         const trigger = document.getElementById(id);
         if (!trigger) return;
@@ -781,7 +814,7 @@
             }
         }
         const ed = getActiveEditor();
-        if (ed) setTimeout(() => ed.focus(), 0);
+        if (ed) setTimeout(() => { try{ ed.focus(); }catch(_){ } try{ attachEditorSelectionHandlers(ed); }catch(_){ } try{ updateExecButtonVisibility(); }catch(_){ } }, 0);
     }
 
     function closeEditor(clear) {
@@ -795,6 +828,7 @@
         currentFileName = null; currentFileReadOnly = false;
         // return focus to terminal
         if (term) setTimeout(() => term.focus(true), 0);
+        try{ document.getElementById('btn-exec')?.classList.add('d-none'); }catch(_){ }
     }
 
     function runProgram() {
@@ -812,6 +846,24 @@
                 outLines.forEach(l => { if (l && l.length) term.echo(l); });
             }
         } catch(e) {
+            term.error(String(e && e.message ? e.message : e));
+        }
+        term.focus(true);
+    }
+
+    function execSelection(){
+        // Execute only the selected portion of the code in the active editor
+        if (!term || !basic) return;
+        const ed = getActiveEditor();
+        const sel = getEditorSelectionText(ed);
+        if (!sel || sel.trim().length === 0) { updateExecButtonVisibility(); return; }
+        // Provide VFS and terminal
+        basic.vfs = vfs;
+        basic.setTerm(term);
+        try{
+            const outLines = basic.runProgram(sel);
+            if (outLines && outLines.length){ outLines.forEach(l=>{ if (l && l.length) term.echo(l); }); }
+        }catch(e){
             term.error(String(e && e.message ? e.message : e));
         }
         term.focus(true);
@@ -1067,6 +1119,7 @@
 
         // Toolbar buttons
         $('#btn-run').on('click', function(){ runProgram(); });
+        $('#btn-exec').on('click', function(){ execSelection(); });
         $('#btn-bug').on('click', function(){ toggleDebug(); });
         $('#btn-clear').on('click', function(){ toggleClear(); });
         $('#btn-build').on('click', async function(){
@@ -1763,7 +1816,7 @@
         }catch(_){}
         // Build initial tree
         try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
-        // Extra global keyboard: F1 toggles right; F9 runs if editor focused; ESC closes drawers unless modal open
+        // Extra global keyboard: F1 toggles right; F8 executes selection (if any) when editor focused; F9 runs whole program when editor focused; ESC closes drawers unless modal open
         document.addEventListener('keydown', function(e){
             // Intercept F5 to prevent accidental page refresh
             if (e.key === 'F5') { e.preventDefault(); return; }
@@ -1781,6 +1834,18 @@
                 const inTerminal = termHost ? termHost.contains(ae) : false;
                 if (inEditor){ e.preventDefault(); if (term && term.focus) term.focus(true); return; }
                 if (inTerminal){ e.preventDefault(); const ed = getActiveEditor(); if (ed) ed.focus(); return; }
+            }
+            if (k === 'F8'){
+                const ed = getActiveEditor();
+                const ae = document.activeElement;
+                if (ed && (ae === ed)){
+                    const sel = getEditorSelectionText(ed);
+                    if (sel && sel.trim().length > 0){
+                        e.preventDefault();
+                        execSelection();
+                    }
+                }
+                return; // let browser handle otherwise
             }
             if (k === 'F9'){
                 const ae = document.activeElement;
