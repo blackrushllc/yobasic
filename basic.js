@@ -2371,4 +2371,132 @@
   // Expose
   global.BasicInterpreter = BasicInterpreter;
 
+  // Lightweight YoBasic tooling namespace for editor integration
+  // Provides: YoBasic.getKeywords() and YoBasic.checkSyntax(source)
+  try{
+    const YoBasic = global.YoBasic || (global.YoBasic = {});
+
+    // Centralized keyword list. If the interpreter later exposes its own tables,
+    // this function can delegate to those. For now, keep it here and update alongside interpreter.
+    const KEYWORDS = Object.freeze({
+      statements: [
+        'PRINT','PRINTLN','INPUT','LET','IF','THEN','ELSE','ELSEIF','END','FOR','TO','STEP','NEXT',
+        'WHILE','WEND','DO','LOOP','SELECT','CASE','FUNCTION','FUNC','SUB','RETURN','DIM',
+        'OPEN','CLOSE','LINE','GOTO','GOSUB','ON','ERROR','TRY','CATCH','FINALLY','LABEL',
+        'FOREACH','ENDSELECT','ENDIF'
+      ],
+      operators: ['AND','OR','NOT','MOD'],
+      functions: [
+        'LEN','LEFT$','RIGHT$','MID$','INSTR','STR$','VAL','RND','SQR','SIN','COS','TAN','TAB','SPC'
+      ]
+    });
+
+    YoBasic.getKeywords = function getKeywords(options){
+      const opt = Object.assign({ statements:true, operators:true, functions:true }, options);
+      const buckets = [];
+      if (opt.statements) buckets.push(KEYWORDS.statements);
+      if (opt.operators)  buckets.push(KEYWORDS.operators);
+      if (opt.functions)  buckets.push(KEYWORDS.functions);
+      const flat = ([]).concat.apply([], buckets).map(s=>String(s).toUpperCase());
+      return Array.from(new Set(flat));
+    };
+
+    // Fast, non-executing syntax preview: checks for unclosed strings, paren balance,
+    // and block matching for major constructs. Returns { ok, errors: [...] } with 0-based positions.
+    YoBasic.checkSyntax = function checkSyntax(source){
+      try{
+        const src = String(source||'');
+        const lines = src.split(/\r?\n/);
+        const errors = [];
+        const stack = []; // block types
+        let paren = 0;
+
+        function push(type, lineIdx){ stack.push({ type, line: lineIdx }); }
+        function popMatch(typeList, lineIdx){
+          // remove the nearest matching opener among provided types
+          for (let k = stack.length - 1; k >= 0; k--){
+            if (typeList.includes(stack[k].type)) { stack.splice(k,1); return true; }
+          }
+          errors.push({ message: 'Unexpected block closer', line: lineIdx, column: 0 });
+          return false;
+        }
+
+        for (let i=0; i<lines.length; i++){
+          const raw = lines[i];
+          // strip REM and ' comments (but honor quotes)
+          let inStr = false; let prev = '';
+          let clean = '';
+          for (let j=0; j<raw.length; j++){
+            const ch = raw[j];
+            const two = (prev + ch).toUpperCase();
+            if (!inStr && ch === "'" ){ // single-quote comment start
+              break;
+            }
+            if (!inStr && /REM\s$/i.test(clean)){
+              // we just completed "REM "; treat the rest as comment
+              clean = clean.slice(0, clean.length - 4); // drop REM and space
+              break;
+            }
+            if (ch === '"' && prev !== '\\') inStr = !inStr;
+            clean += ch;
+            prev = ch;
+          }
+          if (inStr){
+            errors.push({ message: 'Unterminated string', line: i, column: Math.max(0, raw.length-1) });
+          }
+
+          // paren balance and block detection (ignore inside strings; already removed)
+          const line = clean.trim();
+          // quick paren scan
+          for (let j=0; j<clean.length; j++){
+            const ch = clean[j];
+            if (ch === '(') paren++;
+            else if (ch === ')') { paren--; if (paren < 0){ errors.push({ message:'Unexpected )', line:i, column:j }); paren = 0; } }
+          }
+
+          const upper = line.toUpperCase();
+          if (!upper) continue;
+          // Block openers
+          if (/^WHILE\b/.test(upper)) push('WHILE', i);
+          else if (/^DO\b/.test(upper)) push('DO', i);
+          else if (/^FOR\b/.test(upper)) push('FOR', i);
+          else if (/^FOREACH\b/.test(upper)) push('FOREACH', i);
+          else if (/^SELECT\s+CASE\b/.test(upper)) push('SELECT', i);
+          else if (/^(FUNC|FUNCTION)\b/.test(upper)) push('FUNC', i);
+          else if (/^SUB\b/.test(upper)) push('SUB', i);
+          else if (/^TRY\b/.test(upper)) push('TRY', i);
+          else if (/^IF\b/.test(upper)){
+            // single-line IF ... THEN <stmt> (not a block) when THEN followed by non-BEGIN token
+            if (!/\bTHEN\b/i.test(upper)) push('IF', i);
+            else if (/\bTHEN\b\s+(?!BEGIN\b)\S/.test(upper)) {
+              // single-line -> not a block
+            } else {
+              push('IF', i);
+            }
+          }
+
+          // Block closers
+          if (/^WEND\b/.test(upper)) popMatch(['WHILE'], i);
+          else if (/^LOOP\b/.test(upper)) popMatch(['DO'], i);
+          else if (/^NEXT\b/.test(upper)) popMatch(['FOR','FOREACH'], i);
+          else if (/^END\s+SELECT\b/.test(upper)) popMatch(['SELECT'], i);
+          else if (/^END\s+(FUNC|FUNCTION)\b/.test(upper)) popMatch(['FUNC'], i);
+          else if (/^END\s+SUB\b/.test(upper)) popMatch(['SUB'], i);
+          else if (/^END\s+TRY\b/.test(upper)) popMatch(['TRY'], i);
+          else if (/^END\s*IF\b/.test(upper) || /^ENDIF\b/.test(upper)) popMatch(['IF'], i);
+          else if (/^END\b\s*$/.test(upper)) { if (stack.length) stack.pop(); }
+        }
+
+        if (paren > 0){ errors.push({ message:'Unclosed (', line: Math.max(0, lines.length-1), column: 0 }); }
+        if (stack.length){
+          const top = stack[stack.length - 1];
+          errors.push({ message: 'Unclosed block: ' + top.type, line: top.line, column: 0 });
+        }
+        return { ok: errors.length === 0, errors };
+      }catch(e){
+        return { ok:false, errors:[{ message: e && e.message ? String(e.message) : 'Syntax check failed', line:0, column:0 }] };
+      }
+    };
+  }catch(_){ /* ignore tooling export errors */ }
+
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

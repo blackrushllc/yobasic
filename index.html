@@ -22,8 +22,20 @@
     <script src="provider-shared.js"></script>
     <script src="basic.js"></script>
     <script src="projectManager.js"></script>
+    <!-- CodeMirror 5 (free, MIT) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/simple.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <!-- HTML mode dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
     <style>
-        :root { --nav-height: 56px; }
+        :root { --nav-height: 56px; --editor-caret-color: #FFD400; /* default yellow; overridden by JS constant */ }
         html, body { height: 100%; }
         body {
             background: #0b1b3b; /* subtle QBasic navy vibe */
@@ -35,7 +47,7 @@
         /* layout */
         #work-area { height: calc(100vh - var(--nav-height)); margin-top: var(--nav-height); }
         #editor-pane { background: #031634; }
-        .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; }
+        .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; caret-color: var(--editor-caret-color); }
         .editor-view { display: none; height: 100%; }
         .editor-view.active { display: block; }
         #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; }
@@ -47,6 +59,14 @@
         .terminal, .terminal .terminal-output { background: #001a33; color: #e6f0ff; }
         .terminal .prompt { color: #9ad1ff; }
         .terminal .cursor { background: #9ad1ff; }
+        /* CodeMirror sizing and gutters */
+        .CodeMirror { height: 100%; font-family: inherit; font-size: inherit; background: transparent; color: inherit; }
+        .CodeMirror-gutters { background: #0b1b3b; border-right: 1px solid #1e2a55; }
+        .CodeMirror-linenumber { color: #7fa6d9; }
+        /* Editor caret color (CodeMirror) */
+        .CodeMirror div.CodeMirror-cursor { border-left: 2px solid var(--editor-caret-color); }
+        .cm-fat-cursor .CodeMirror-cursor { width: auto; border: 0; background: var(--editor-caret-color) !important; opacity: 0.9; }
+        .CodeMirror-overwrite .CodeMirror-cursor { border-left: 0; border-bottom: 2px solid var(--editor-caret-color); }
         /* Buttons */
         .toolbar .btn { margin-left: .25rem; }
         /* Splash overlay */
@@ -388,8 +408,11 @@
 <!-- Bootstrap Bundle (with Popper) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-(function(){
+  (function(){
     var __EVAL = (s) => eval(`void (__EVAL = ${__EVAL}); ${s}`);
+    // Editor cursor color constant — adjust this to change caret color everywhere
+    const EDITOR_CARET_COLOR = '#FFD400'; // Yellow by default
+    try { document.documentElement.style.setProperty('--editor-caret-color', EDITOR_CARET_COLOR); } catch(_) {}
     let term, basic;
     let debugOn = true;
     let currentMenu = null; // bootstrap.Dropdown instance
@@ -399,10 +422,108 @@
     let tabs = [];
     let activeTabId = 0;
     let nextTabId = 1; // 0 is the fixed first tab
+    // CodeMirror lint timing (high-water mark)
+    let __lintMaxMs = 0;
+
+    // Define BASIC mode using live keywords from interpreter
+    try{
+        var BASIC_KEYWORDS = (window.YoBasic && YoBasic.getKeywords) ? YoBasic.getKeywords() : [
+          'PRINT','INPUT','LET','IF','THEN','ELSE','END','FOR','TO','STEP','NEXT','WHILE','WEND','DO','LOOP'
+        ];
+        if (window.CodeMirror && CodeMirror.defineSimpleMode){
+            CodeMirror.defineSimpleMode('yobasic', {
+              start: [
+                { regex: /'.*$/i, token: 'comment' },
+                { regex: /\bREM\b.*$/i, token: 'comment' },
+                { regex: /"([^"\\]|\\.)*"?/, token: 'string' },
+                { regex: /\b(\d+\.\d*|\.\d+|\d+)\b/, token: 'number' },
+                { regex: new RegExp("\\b(" + BASIC_KEYWORDS.join("|") + ")\\b", "i"), token: 'keyword' },
+                { regex: /\b(AND|OR|NOT|MOD)\b/i, token: 'operator' },
+                { regex: /[+\-*/=<>()]/, token: 'operator' },
+                { regex: /[A-Z][A-Z0-9_]*\$/i, token: 'variable-2' },
+                { regex: /[A-Z][A-Z0-9_]*/i, token: 'variable' }
+              ],
+              meta: { lineComment: "'" }
+            });
+        }
+    }catch(_){ /* mode define failed */ }
+
+    function computeModeForName(name){
+        const n = String(name||'').trim();
+        // Default to BASIC highlighting when no specific file name is associated yet
+        if (n === '' || /^untitled$/i.test(n)) return 'yobasic';
+        if (/\.bas$/i.test(n)) return 'yobasic';
+        if (/\.html?$/i.test(n)) return 'htmlmixed';
+        return null; // plain text
+    }
+
+    function basicLint(text, options, cm){
+        try{
+            if (!window.YoBasic || !YoBasic.checkSyntax) return [];
+            const t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+            const res = YoBasic.checkSyntax(text);
+            const t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+            const dt = Math.round(t1 - t0);
+            if (dt > __lintMaxMs){ __lintMaxMs = dt; try{ console.warn(`Warning: Lint took ${dt}ms`); }catch(_){ } }
+            if (res.ok) return [];
+            return (res.errors||[]).map(function(e){
+                const from = CodeMirror.Pos(Math.max(0, e.line|0), Math.max(0, e.column|0));
+                const to = CodeMirror.Pos(Math.max(0, (e.endLine!=null?e.endLine:e.line)|0), Math.max(0, (e.endColumn!=null?e.endColumn:(e.column|0)+1)));
+                return { from, to, message: e.message || 'Syntax error', severity: 'error' };
+            });
+        }catch(_){ return []; }
+    }
+
+    function ensureCodeMirrorForTab(tab){
+        if (!tab || tab.cm || !window.CodeMirror) return;
+        const mode = computeModeForName(tab.fullName);
+        tab.cm = CodeMirror.fromTextArea(tab.textarea, {
+            mode: mode || null,
+            lineNumbers: true,
+            lineWrapping: true,
+            matchBrackets: true,
+            gutters: ['CodeMirror-linenumbers','CodeMirror-lint-markers']
+        });
+        // Enable lint only for BASIC files
+        if (mode === 'yobasic'){
+            tab.cm.setOption('lint', { getAnnotations: basicLint, async: false, delay: 800 });
+        } else {
+            tab.cm.setOption('lint', false);
+        }
+        // Forward changes to autosave + keep hidden textarea in sync for legacy reads
+        tab.cm.on('change', function(cm){
+            try{ tab.textarea.value = cm.getValue(); }catch(_){}
+            try{ saveCode(cm.getValue()); }catch(_){}
+            try{ updateExecButtonVisibility(); }catch(_){}
+        });
+        tab.cm.on('cursorActivity', function(){ try{ updateExecButtonVisibility(); }catch(_){} });
+        // Make old focus() calls target CodeMirror
+        try{ tab.textarea.focus = function(){ try{ tab.cm.focus(); }catch(_){ } }; }catch(_){}
+    }
+
+    function refreshAndApplyMode(tab){
+        if (!tab || !tab.cm) return;
+        const mode = computeModeForName(tab.fullName);
+        tab.cm.setOption('mode', mode || null);
+        if (mode === 'yobasic') tab.cm.setOption('lint', { getAnnotations: basicLint, async:false, delay: 800 });
+        else tab.cm.setOption('lint', false);
+        setTimeout(()=>{ try{ tab.cm.refresh(); }catch(_){} }, 0);
+    }
     
     function getActiveTab(){ return tabs.find(t => t.id === activeTabId); }
     function getTabById(id){ return tabs.find(t => t.id === id); }
     function getActiveEditor(){ const t = getActiveTab(); return t ? t.textarea : document.getElementById('editor'); }
+    function getActiveCode(){
+        const t = getActiveTab();
+        if (t && t.cm) { try{ return t.cm.getValue(); }catch(_){ } }
+        const ed = getActiveEditor(); return ed ? (ed.value || '') : '';
+    }
+    function setActiveCode(text){
+        const t = getActiveTab();
+        if (t && t.cm){ try{ t.cm.setValue(String(text||'')); }catch(_){ } }
+        const ed = getActiveEditor(); if (ed) ed.value = String(text||'');
+    }
+    function focusActiveEditor(){ const t=getActiveTab(); if (t && t.cm){ try{ t.cm.focus(); }catch(_){} return; } const ed=getActiveEditor(); if (ed) try{ ed.focus(); }catch(_){} }
     function setTabTitle(tabId, displayName, fullName){
         const tab = getTabById(tabId); if (!tab) return;
         tab.displayName = displayName || 'Untitled';
@@ -424,8 +545,10 @@
         // sync globals used by existing dialogs
         currentFileName = tab.fullName || null;
         currentFileReadOnly = !!tab.readOnly;
+        // Ensure CodeMirror and set mode
+        try{ ensureCodeMirrorForTab(tab); refreshAndApplyMode(tab); }catch(_){}
         // focus editor
-        setTimeout(()=>{ try{ tab.textarea.focus(); }catch(e){}; try{ updateExecButtonVisibility(); }catch(_){ } }, 0);
+        setTimeout(()=>{ try{ focusActiveEditor(); }catch(e){}; try{ updateExecButtonVisibility(); }catch(_){ } }, 0);
     }
     function buildInitialTabUi(){
         // Create first tab button if not present
@@ -443,12 +566,15 @@
         if (!tabs.find(t=>t.id===0)){
             const textarea = document.getElementById('editor');
             const view = document.querySelector('#editor-views .editor-view[data-tab-id="0"]');
-            tabs.push({ id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled' });
+            const firstTab = { id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled' };
+            tabs.push(firstTab);
             // bind input autosave on first tab too
             textarea.addEventListener('input', function(){ saveCode(); });
             // attach Tab key handling
             try{ attachEditorKeyHandlers(textarea); }catch(_){ }
             try{ attachEditorSelectionHandlers(textarea); }catch(_){ }
+            // Upgrade to CodeMirror
+            try{ ensureCodeMirrorForTab(firstTab); refreshAndApplyMode(firstTab); }catch(_){}
         }
     }
     function createNewTab(initial){
@@ -478,9 +604,10 @@
         try{ attachEditorSelectionHandlers(ta); }catch(_){ }
         const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled' };
         tabs.push(tab);
+        try{ ensureCodeMirrorForTab(tab); }catch(_){}
         // initial content/meta
         if (initial){
-            if (typeof initial.content === 'string'){ ta.value = initial.content; }
+            if (typeof initial.content === 'string'){ ta.value = initial.content; if (tab.cm) try{ tab.cm.setValue(initial.content); }catch(_){} }
             if (initial.fullName){ tab.fullName = initial.fullName; }
             if (initial.readOnly){ tab.readOnly = !!initial.readOnly; }
             const title = initial.displayName || (initial.fullName ? (initial.fullName.includes('/')? initial.fullName.split('/').pop() : initial.fullName) : 'Untitled');
@@ -581,8 +708,8 @@
 
     function saveCode(value) {
         try {
-            const ed = getActiveEditor();
-            localStorage.setItem('basic_editor_code', value ?? (ed ? ed.value : ''));
+            const code = (typeof value === 'string') ? value : getActiveCode();
+            localStorage.setItem('basic_editor_code', code);
         } catch(e) {}
     }
     function loadCode() {
@@ -686,6 +813,8 @@
 
     // Selection-aware Exec (F8) support
     function getEditorSelectionText(ed){
+        const t = getActiveTab();
+        if (t && t.cm){ try{ return t.cm.getSelection() || ''; }catch(_){ return ''; } }
         if (!ed) return '';
         try{
             const start = ed.selectionStart ?? 0;
@@ -695,6 +824,8 @@
         }catch(_){ return ''; }
     }
     function isEditorFocused(ed){
+        const t = getActiveTab();
+        if (t && t.cm){ try{ return t.cm.hasFocus(); }catch(_){ } }
         return !!(ed && ed.classList && ed.classList.contains('editor-textarea') && document.activeElement === ed);
     }
     function updateExecButtonVisibility(){
@@ -798,6 +929,7 @@
                     code = seed && seed.length ? seed : 'PRINT "Hello World"';
                 }
                 first.textarea.value = code; // only overwrite the first time we open in this session
+                if (first.cm) try{ first.cm.setValue(code); }catch(_){}
                 setTabTitle(0, 'Untitled', 'Untitled');
             }
             // Place caret on a new line at the end of the initial code for the first editor
@@ -805,22 +937,22 @@
                 // Ensure trailing newline so caret lands on a blank new line
                 if (!/\n$/.test(first.textarea.value)){
                     first.textarea.value += "\n";
+                    if (first.cm) try{ first.cm.setValue(first.textarea.value); }catch(_){}
                 }
                 const len = first.textarea.value.length;
                 try{
-                    first.textarea.selectionStart = len;
-                    first.textarea.selectionEnd = len;
+                    if (first.cm) first.cm.setCursor({ line: (first.cm.lineCount? first.cm.lineCount()-1 : 0), ch: 0 });
+                    else { first.textarea.selectionStart = len; first.textarea.selectionEnd = len; }
                 }catch(_){ /* ignore */ }
             }
         }
         const ed = getActiveEditor();
-        if (ed) setTimeout(() => { try{ ed.focus(); }catch(_){ } try{ attachEditorSelectionHandlers(ed); }catch(_){ } try{ updateExecButtonVisibility(); }catch(_){ } }, 0);
+        if (ed) setTimeout(() => { try{ focusActiveEditor(); }catch(_){ } try{ attachEditorSelectionHandlers(ed); }catch(_){ } try{ updateExecButtonVisibility(); }catch(_){ } }, 0);
     }
 
     function closeEditor(clear) {
         if (clear) {
-            const ed = getActiveEditor();
-            if (ed) { ed.value = ''; saveCode(''); }
+            setActiveCode(''); saveCode('');
         }
         document.getElementById('editor-pane').classList.add('d-none');
         setNavHeight();
@@ -831,11 +963,28 @@
         try{ document.getElementById('btn-exec')?.classList.add('d-none'); }catch(_){ }
     }
 
+    function preRunSyntaxCheck() {
+        try{
+            const t = getActiveTab();
+            const mode = computeModeForName(t && t.fullName);
+            if (mode !== 'yobasic') return true; // only check BASIC files
+            if (!window.YoBasic || !YoBasic.checkSyntax) return true;
+            const src = getActiveCode();
+            const res = YoBasic.checkSyntax(src);
+            if (res.ok) return true;
+            const first = (res.errors||[])[0];
+            if (t && t.cm && first){
+                try{ t.cm.focus(); t.cm.setCursor({ line: Math.max(0, first.line|0), ch: Math.max(0, first.column|0) }); }catch(_){}
+            }
+            alert('Syntax error at line ' + ((first?.line ?? 0) + 1) + ', col ' + ((first?.column ?? 0) + 1) + '\n' + (first?.message || ''));
+            return false;
+        }catch(_){ return true; }
+    }
     function runProgram() {
+        if (!preRunSyntaxCheck()) return;
         // Pass VFS to interpreter before running
         if (basic) basic.vfs = vfs;
-        const ed = getActiveEditor();
-        const code = ed ? (ed.value || '') : '';
+        const code = getActiveCode();
         if (!term) return;
         if (code.trim().length === 0) return;
         // Execute whole program using interpreter's runProgram to support control blocks
@@ -1446,8 +1595,7 @@
     async function onFileSave(){
         // Direct save if current file exists and is writable
         if (currentFileName && !currentFileReadOnly){
-            const ed = getActiveEditor();
-            const content = ed ? (ed.value || '') : '';
+            const content = getActiveCode();
             if (/^shared\//i.test(currentFileName)){
                 await vfs.writeProgramAsync(currentFileName, content);
             } else {
@@ -1458,6 +1606,7 @@
             const base = currentFileName.includes('/') ? currentFileName.split('/').pop() : currentFileName;
             setTabTitle(activeTabId, base, currentFileName);
             const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; }
+            try{ refreshAndApplyMode(getActiveTab()); }catch(_){ }
             try{ await buildVfsTree(); }catch(_){ }
             term && term.echo && term.echo('[Saved] ' + currentFileName);
             return;
@@ -1498,8 +1647,7 @@
             if (existing.readOnly){ alert('This file is read-only. Use a different name.'); return; }
             if (!confirm('File already exists. Overwrite?')) return;
         }
-        const ed = getActiveEditor();
-        const content = ed ? (ed.value || '') : '';
+        const content = getActiveCode();
         const isBas = /\.bas$/i.test(targetName);
         if (/^shared\//i.test(targetName)){
             if (isBas){
@@ -1517,7 +1665,7 @@
         // Update tab metadata and title/tooltip
         const base = targetName.includes('/') ? targetName.split('/').pop() : targetName;
         setTabTitle(activeTabId, base, targetName);
-        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; }
+        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; try{ refreshAndApplyMode(t); }catch(_){ } }
         try{ await buildVfsTree(); }catch(_){ }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
         term && term.echo && term.echo('[Saved] ' + targetName);
@@ -1829,16 +1977,19 @@
             if (k === 'F6'){
                 // Toggle focus between editor and terminal when one of them is focused
                 const ae = document.activeElement;
-                const inEditor = ae && ae.classList && ae.classList.contains('editor-textarea');
+                const t = getActiveTab();
+                const inEditor = (t && t.cm && t.cm.hasFocus && t.cm.hasFocus()) || (ae && ae.classList && ae.classList.contains('editor-textarea'));
                 const termHost = document.getElementById('terminal');
                 const inTerminal = termHost ? termHost.contains(ae) : false;
                 if (inEditor){ e.preventDefault(); if (term && term.focus) term.focus(true); return; }
-                if (inTerminal){ e.preventDefault(); const ed = getActiveEditor(); if (ed) ed.focus(); return; }
+                if (inTerminal){ e.preventDefault(); focusActiveEditor(); return; }
             }
             if (k === 'F8'){
+                const t = getActiveTab();
+                const cmHasFocus = !!(t && t.cm && t.cm.hasFocus && t.cm.hasFocus());
                 const ed = getActiveEditor();
                 const ae = document.activeElement;
-                if (ed && (ae === ed)){
+                if (cmHasFocus || (ed && (ae === ed))){
                     const sel = getEditorSelectionText(ed);
                     if (sel && sel.trim().length > 0){
                         e.preventDefault();
@@ -1848,8 +1999,10 @@
                 return; // let browser handle otherwise
             }
             if (k === 'F9'){
+                const t = getActiveTab();
+                const cmHasFocus = !!(t && t.cm && t.cm.hasFocus && t.cm.hasFocus());
                 const ae = document.activeElement;
-                if (ae && (ae.classList && ae.classList.contains('editor-textarea'))){
+                if (cmHasFocus || (ae && (ae.classList && ae.classList.contains('editor-textarea')))){
                     e.preventDefault();
                     runProgram();
                 }
