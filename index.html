@@ -54,6 +54,21 @@
         #editor-tabs .tab-close { font-weight: bold; opacity: .7; cursor: pointer; }
         #editor-tabs .tab-close:hover { opacity: 1; }
         #terminal-pane, #terminal { height: 100%; }
+        /* make terminal host a positioning context for subtle toolbar */
+        #terminal { position: relative; }
+        /* Subtle terminal toolbar */
+        #terminal-toolbar { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 2px 6px; display: flex; gap: 8px; align-items: center; z-index: 5; opacity: .75; }
+        #terminal-toolbar:hover { opacity: 1; }
+        #terminal-toolbar button { background: transparent; border: 0; color: #e6f0ff; padding: 2px 4px; line-height: 1; font-size: 14px; cursor: pointer; opacity: .9; }
+        #terminal-toolbar button:hover { opacity: 1; color: #fff; }
+        #terminal-toolbar .sep { width:1px; height:14px; background: rgba(255,255,255,0.2); }
+        /* Left-side terminal host under accordion */
+        #left-terminal-host { display: none; }
+        #terminal-side-host { width: 100%; background: #001a33; border: 1px solid #1e2a55; border-radius: 4px; overflow: hidden; }
+        /* Floating dialog for terminal */
+        #terminal-dialog { position: fixed; top: 15%; left: 15%; width: 70%; height: 60%; background: #0b1b3b; border: 1px solid #1e2a55; border-radius: 6px; box-shadow: 0 12px 28px rgba(0,0,0,.6); z-index: 20000; display: none; resize: both; overflow: hidden; }
+        #terminal-dialog .td-header { height: 30px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: move; background: rgba(0,0,0,.35); border-bottom: 1px solid rgba(255,255,255,0.12); color: #e6f0ff; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+        #terminal-dialog .td-body { position: absolute; inset: 30px 0 0 0; }
         /* jQuery Terminal theme tweaks */
         #terminal .terminal { --size: 1rem; }
         .terminal, .terminal .terminal-output { background: #001a33; color: #e6f0ff; }
@@ -157,7 +172,16 @@
         </div>
     </div>
     <div id="terminal-pane" class="p-0" style="height: calc(100vh - var(--nav-height));">
-        <div id="terminal" class="h-100"></div>
+    <div id="terminal" class="h-100">
+        <!-- subtle toolbar -->
+        <div id="terminal-toolbar" title="Terminal position">
+            <button id="tt-side" title="Side"><i class="bi bi-layout-sidebar-inset"></i></button>
+            <button id="tt-center" title="Center"><i class="bi bi-layout-split"></i></button>
+            <button id="tt-dialog" title="Dialog"><i class="bi bi-layout-text-window-reverse"></i></button>
+            <div class="sep"></div>
+            <button id="tt-pin" title="Pin toolbar"><i class="bi bi-pin-angle"></i></button>
+        </div>
+    </div>
     </div>
 </div>
 
@@ -497,6 +521,16 @@
             try{ updateExecButtonVisibility(); }catch(_){}
         });
         tab.cm.on('cursorActivity', function(){ try{ updateExecButtonVisibility(); }catch(_){} });
+        // On focus, if file has >15 lines and not in dialog mode, dock terminal to side below accordion
+        tab.cm.on('focus', function(){
+            try{
+                if (window.__terminalMode === 'dialog') return;
+                const lines = (tab.cm && tab.cm.lineCount) ? tab.cm.lineCount() : 0;
+                if (lines > 15){
+                    if (typeof window.setTerminalMode === 'function') window.setTerminalMode('side');
+                }
+            }catch(_){ }
+        });
         // Make old focus() calls target CodeMirror
         try{ tab.textarea.focus = function(){ try{ tab.cm.focus(); }catch(_){ } }; }catch(_){}
     }
@@ -692,18 +726,30 @@
     function setNavHeight() {
         const h = document.getElementById('topnav').offsetHeight || 56;
         document.body.style.setProperty('--nav-height', h + 'px');
-        // adjust terminal pane height depending on editor visibility
-        const editorVisible = !document.getElementById('editor-pane').classList.contains('d-none');
+        // adjust terminal pane height depending on editor visibility and terminal mode
+        const editorPane = document.getElementById('editor-pane');
         const tp = document.getElementById('terminal-pane');
-        if (editorVisible) {
-            // editor 60%, terminal 40% of remaining work area
-            document.getElementById('editor-pane').style.height = '60%';
+        const editorVisible = !editorPane.classList.contains('d-none');
+        const mode = window.__terminalMode || 'center';
+        if (editorVisible && mode === 'center'){
+            editorPane.style.height = '60%';
             tp.style.height = '40%';
+            tp.style.display = '';
+        } else if (editorVisible && mode === 'side'){
+            editorPane.style.height = '100%';
+            tp.style.height = '0%';
+            tp.style.display = 'none';
+        } else if (mode === 'dialog'){
+            // When dialog, keep editorPane at 100% if visible; terminal-pane hidden
+            if (editorVisible){ editorPane.style.height = '100%'; }
+            tp.style.height = '0%';
+            tp.style.display = 'none';
         } else {
-            // terminal fills the work area when editor hidden
-            tp.style.height = '100%';
+            // editor hidden → terminal fills the work area when center mode, otherwise hidden
+            if (mode === 'center'){ tp.style.height = '100%'; tp.style.display = ''; }
+            else { tp.style.height = '0%'; tp.style.display = 'none'; }
         }
-        if (term) term.resize();
+        if (window.term && term.resize) try{ term.resize(); }catch(_){ }
     }
 
     function saveCode(value) {
@@ -738,6 +784,7 @@
             if (fam) { $('#terminal, #terminal .terminal').css('font-family', fam); }
             if (size) { $('#terminal, #terminal .terminal').css('font-size', size); }
             if (term) term.resize();
+            try{ if (window.__terminalMode === 'side' && window.__adjustTerminalSideHeight) window.__adjustTerminalSideHeight(25); }catch(_){ }
         }
     }
 
@@ -1185,6 +1232,122 @@
             prompt: "\nOK\n\n"
         });
         window.term = term;
+
+        // --- Terminal Positioning State Machine ---
+        (function(){
+            const CENTER_HOST = document.getElementById('terminal');
+            const SIDE_CONTAINER = document.getElementById('left-terminal-host');
+            const SIDE_HOST = document.getElementById('terminal-side-host');
+            const DIALOG = document.getElementById('terminal-dialog');
+            const DIALOG_HOST = document.getElementById('terminal-dialog-host');
+            const toolbar = document.getElementById('terminal-toolbar');
+            const btnSide = document.getElementById('tt-side');
+            const btnCenter = document.getElementById('tt-center');
+            const btnDialog = document.getElementById('tt-dialog');
+            const btnPin = document.getElementById('tt-pin');
+
+            // Public flags
+            window.__terminalMode = window.__terminalMode || 'center';
+            window.__terminalLastDocked = window.__terminalLastDocked || 'center';
+            let dialogDragging = false; let dragDx = 0, dragDy = 0;
+
+            function moveNodeToHost(node, host){ if (!node || !host) return; host.appendChild(node); }
+            function getTermLineHeightPx(){
+                // jQuery Terminal uses CSS variable --size for font-size. Read computed line height.
+                try{
+                    const el = CENTER_HOST.querySelector('.terminal') || CENTER_HOST;
+                    const style = window.getComputedStyle(el);
+                    const lh = parseFloat(style.lineHeight);
+                    if (!isNaN(lh)) return lh;
+                }catch(_){ }
+                // Fallback approximate
+                return 18;
+            }
+            function adjustSideHeight(lines){
+                const L = Math.max(10, lines|0);
+                const h = Math.round(getTermLineHeightPx() * L + 8); // padding allowance
+                SIDE_HOST.style.height = h + 'px';
+                try{ if (term && term.resize) term.resize(); }catch(_){ }
+            }
+            window.__adjustTerminalSideHeight = adjustSideHeight;
+            function collapseLeftAccordionAll(){
+                try{
+                    const acc = document.getElementById('leftAccordion'); if (!acc) return;
+                    acc.querySelectorAll('.accordion-collapse.show').forEach(el=>{
+                        const i = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }); i.hide();
+                    });
+                }catch(_){ }
+            }
+            function openLeftDrawerIfNeeded(){ try{ if (!DRAWERS.leftOpen) toggleLeftDrawer(true); }catch(_){ } }
+            function updateToolbarVisibility(){ try{ toolbar.style.display = (window.__terminalMode === 'dialog') ? 'none' : ''; }catch(_){ }}
+
+            window.setTerminalMode = function(mode){
+                const m = String(mode||'center');
+                if (m === window.__terminalMode) return;
+                if (window.__terminalMode === 'dialog' && m !== 'dialog'){
+                    // coming from dialog → remember lastDocked already stored
+                }
+                if (m === 'dialog'){
+                    window.__terminalLastDocked = (window.__terminalMode === 'side') ? 'side' : 'center';
+                    // Move terminal into dialog host and show dialog
+                    moveNodeToHost(CENTER_HOST, DIALOG_HOST);
+                    DIALOG.style.display = 'block';
+                } else if (m === 'side'){
+                    DIALOG.style.display = 'none';
+                    SIDE_CONTAINER.style.display = '';
+                    openLeftDrawerIfNeeded();
+                    collapseLeftAccordionAll();
+                    // Remember previous mode to restore when accordion expands
+                    if (window.__terminalMode !== 'dialog') window.__terminalPrevBeforeSide = window.__terminalMode;
+                    // Ensure the DOM node we move is the outer #terminal element
+                    moveNodeToHost(CENTER_HOST, SIDE_HOST);
+                    adjustSideHeight(25);
+                } else { // center
+                    DIALOG.style.display = 'none';
+                    SIDE_CONTAINER.style.display = 'none';
+                    moveNodeToHost(CENTER_HOST, document.getElementById('terminal-pane'));
+                }
+                window.__terminalMode = m;
+                setNavHeight();
+                updateToolbarVisibility();
+            };
+
+            // Toolbar controls
+            if (btnSide) btnSide.addEventListener('click', function(){ if (window.__terminalMode !== 'dialog') setTerminalMode('side'); });
+            if (btnCenter) btnCenter.addEventListener('click', function(){ if (window.__terminalMode !== 'dialog') setTerminalMode('center'); });
+            if (btnDialog) btnDialog.addEventListener('click', function(){ setTerminalMode('dialog'); });
+            if (btnPin) btnPin.addEventListener('click', function(){ /* reserved */ });
+
+            // Double-click behaviors
+            CENTER_HOST.addEventListener('dblclick', function(){ if (window.__terminalMode !== 'dialog') setTerminalMode('dialog'); });
+            DIALOG.addEventListener('dblclick', function(){ if (window.__terminalMode === 'dialog'){ setTerminalMode(window.__terminalLastDocked || 'center'); }});
+
+            // Make dialog draggable via header
+            const header = DIALOG.querySelector('.td-header');
+            header.addEventListener('mousedown', function(e){ dialogDragging = true; const r = DIALOG.getBoundingClientRect(); dragDx = e.clientX - r.left; dragDy = e.clientY - r.top; e.preventDefault(); });
+            window.addEventListener('mousemove', function(e){ if (!dialogDragging) return; DIALOG.style.left = Math.max(0, e.clientX - dragDx) + 'px'; DIALOG.style.top = Math.max(0, e.clientY - dragDy) + 'px'; });
+            window.addEventListener('mouseup', function(){ dialogDragging = false; });
+
+            // Accordion expand → if currently side and not dialog, revert to center
+            try{
+                document.getElementById('leftAccordion').addEventListener('show.bs.collapse', function(){ if (window.__terminalMode === 'side'){ setTerminalMode(window.__terminalPrevBeforeSide || 'center'); } });
+            }catch(_){ }
+
+            // Recalculate heights when fonts change
+            window.addEventListener('resize', function(){ if (window.__terminalMode==='side') adjustSideHeight(25); });
+
+            // Observe container size changes (dialog/side) and resize terminal
+            try{
+                if (window.ResizeObserver){
+                    const ro = new ResizeObserver(function(){ try{ term && term.resize && term.resize(); }catch(_){ } });
+                    ro.observe(DIALOG);
+                    ro.observe(SIDE_HOST);
+                }
+            }catch(_){ }
+
+            // Initial
+            updateToolbarVisibility();
+        })();
 
         // Height + focus
         setNavHeight();
@@ -2105,6 +2268,19 @@
         </div>
       </div>
     </div>
+    <!-- Side terminal host (hidden until used) -->
+    <div id="left-terminal-host" class="mt-2">
+      <div class="small text-secondary mb-1">Terminal</div>
+      <div id="terminal-side-host"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating terminal dialog (always-on-top) -->
+<div id="terminal-dialog" role="dialog" aria-label="Terminal dialog">
+  <div class="td-header">Terminal — double‑click to dock</div>
+  <div class="td-body">
+    <div id="terminal-dialog-host" class="h-100 w-100"></div>
   </div>
 </div>
 
