@@ -35,7 +35,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
     <style>
-        :root { --nav-height: 56px; --editor-caret-color: #FFD400; /* default yellow; overridden by JS constant */ }
+        :root { --nav-height: 56px; --editor-caret-color: #FFD400; --tabs-pad: 40px; /* default tabs bar height reserve */ }
         html, body { height: 100%; }
         body {
             background: #0b1b3b; /* subtle QBasic navy vibe */
@@ -46,21 +46,74 @@
         .qb-underline { text-decoration: underline; }
         /* layout */
         #work-area { height: calc(100vh - var(--nav-height)); margin-top: var(--nav-height); }
-        #editor-pane { background: #031634; }
+        /* editor background base and variable (used by CodeMirror internals) */
+        #editor-pane { background: #031634; --editor-bg: #031634; }
+        /* Soften/remove bright seam under the editor caused by Bootstrap's .border-bottom on dark theme */
+        #editor-pane.border-bottom {
+            /* Bootstrap's utility uses !important, so we match it to override */
+            border-bottom: 1px solid #1e2a55 !important;
+        }
         .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; caret-color: var(--editor-caret-color); }
         .editor-view { display: none; height: 100%; }
         .editor-view.active { display: block; }
-        #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; }
+        /* Tabs bar — fix to viewport under navbar and style first tab (fixed tab) specially */
+        /* We use left/right offsets to align with slide-out drawers. */
+        #editor-tabs {
+            position: fixed;
+            top: var(--nav-height);
+            left: var(--left-offset, 0px);
+            right: var(--right-offset, 0px);
+            z-index: 1050;
+            background: #031634;
+            margin-bottom: .5rem; /* kept for visual spacing; actual space is reserved via --tabs-pad */
+        }
+        /* Reserve vertical space for the fixed tab bar inside the editor pane */
+        #editor-pane { padding-top: calc(0.5rem + var(--tabs-pad, 40px)); }
+        #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; user-select: none; }
         #editor-tabs .tab-close { font-weight: bold; opacity: .7; cursor: pointer; }
         #editor-tabs .tab-close:hover { opacity: 1; }
+        /* Special colors for the first tab (data-tab-id="0"): active orange bg + black text; inactive orange text on default bg */
+        #editor-tabs .nav-link[data-tab-id="0"].active { background: #FF6600 !important; color: #000000 !important; border-color: #FF6600 #FF6600 transparent !important; }
+        #editor-tabs .nav-link[data-tab-id="0"]:not(.active) { color: #FF6600 !important; }
+        /* “+” add-tab button */
+        #add-tab-btn { padding: .25rem .5rem; line-height: 1; }
+        #add-tab-btn .plus { font-weight: bold; font-size: 1rem; }
         #terminal-pane, #terminal { height: 100%; }
+        /* make terminal host a positioning context for subtle toolbar */
+        #terminal { position: relative; }
+        /* Subtle terminal toolbar */
+        #terminal-toolbar { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 2px 6px; display: flex; gap: 8px; align-items: center; z-index: 5; opacity: .75; }
+        #terminal-toolbar:hover { opacity: 1; }
+        #terminal-toolbar button { background: transparent; border: 0; color: #e6f0ff; padding: 2px 4px; line-height: 1; font-size: 14px; cursor: pointer; opacity: .9; }
+        #terminal-toolbar button:hover { opacity: 1; color: #fff; }
+        #terminal-toolbar .sep { width:1px; height:14px; background: rgba(255,255,255,0.2); }
+        /* Left-side terminal host under accordion */
+        #left-terminal-host { display: none; }
+        #terminal-side-host { width: 100%; background: #001a33; border: 1px solid #1e2a55; border-radius: 4px; overflow: hidden; }
+        /* Floating dialog for terminal */
+        #terminal-dialog { position: fixed; top: 15%; left: 15%; width: 70%; height: 60%; background: #0b1b3b; border: 1px solid #1e2a55; border-radius: 6px; box-shadow: 0 12px 28px rgba(0,0,0,.6); z-index: 20000; display: none; resize: both; overflow: hidden; }
+        #terminal-dialog .td-header { height: 30px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: move; background: rgba(0,0,0,.35); border-bottom: 1px solid rgba(255,255,255,0.12); color: #e6f0ff; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+        #terminal-dialog .td-body { position: absolute; inset: 30px 0 0 0; }
         /* jQuery Terminal theme tweaks */
         #terminal .terminal { --size: 1rem; }
         .terminal, .terminal .terminal-output { background: #001a33; color: #e6f0ff; }
         .terminal .prompt { color: #9ad1ff; }
         .terminal .cursor { background: #9ad1ff; }
         /* CodeMirror sizing and gutters */
-        .CodeMirror { height: 100%; font-family: inherit; font-size: inherit; background: transparent; color: inherit; }
+        .CodeMirror { height: 100%; font-family: inherit; font-size: inherit; background: var(--editor-bg, #031634); color: inherit; }
+        /* Nudge editor content down a few pixels so the first line never hugs or hides under the fixed tabs bar */
+        .CodeMirror-lines { padding-top: 32px; }
+        .CodeMirror-gutters { padding-top: 32px; }
+        /* When CodeMirror scrolls programmatically, keep a small top breathing room */
+        .CodeMirror-scroll { scroll-padding-top: 32px; }
+        /* Fallback textarea editor (before CM attaches or if disabled) */
+        .editor-textarea, #editor { padding-top: 32px; }
+        /* ensure internal scroll areas and fillers match editor background to avoid horizontal banding */
+        .CodeMirror-scroll,
+        .CodeMirror-lines,
+        .CodeMirror-sizer,
+        .CodeMirror-gutter-filler,
+        .CodeMirror-scrollbar-filler { background: var(--editor-bg, #031634) !important; }
         .CodeMirror-gutters { background: #0b1b3b; border-right: 1px solid #1e2a55; }
         .CodeMirror-linenumber { color: #7fa6d9; }
         /* Editor caret color (CodeMirror) */
@@ -157,7 +210,16 @@
         </div>
     </div>
     <div id="terminal-pane" class="p-0" style="height: calc(100vh - var(--nav-height));">
-        <div id="terminal" class="h-100"></div>
+    <div id="terminal" class="h-100">
+        <!-- subtle toolbar -->
+        <div id="terminal-toolbar" title="Terminal position">
+            <button id="tt-side" title="Side"><i class="bi bi-layout-sidebar-inset"></i></button>
+            <button id="tt-center" title="Center"><i class="bi bi-layout-split"></i></button>
+            <button id="tt-dialog" title="Dialog"><i class="bi bi-layout-text-window-reverse"></i></button>
+            <div class="sep"></div>
+            <button id="tt-pin" title="Pin toolbar"><i class="bi bi-pin-angle"></i></button>
+        </div>
+    </div>
     </div>
 </div>
 
@@ -495,8 +557,29 @@
             try{ tab.textarea.value = cm.getValue(); }catch(_){}
             try{ saveCode(cm.getValue()); }catch(_){}
             try{ updateExecButtonVisibility(); }catch(_){}
+            // Dirty tracking vs last saved content
+            try{
+                const cur = cm.getValue();
+                if (tab.__suppressNextDirty){
+                    tab.__suppressNextDirty = false;
+                    tab.savedContent = cur;
+                    setTabDirty(tab, false);
+                } else {
+                    setTabDirty(tab, cur !== (tab.savedContent ?? ''));
+                }
+            }catch(_){ }
         });
         tab.cm.on('cursorActivity', function(){ try{ updateExecButtonVisibility(); }catch(_){} });
+        // On focus, if file has >15 lines and not in dialog mode, dock terminal to side below accordion
+        tab.cm.on('focus', function(){
+            try{
+                if (window.__terminalMode === 'dialog') return;
+                const lines = (tab.cm && tab.cm.lineCount) ? tab.cm.lineCount() : 0;
+                if (lines > 15){
+                    if (typeof window.setTerminalMode === 'function') window.setTerminalMode('side');
+                }
+            }catch(_){ }
+        });
         // Make old focus() calls target CodeMirror
         try{ tab.textarea.focus = function(){ try{ tab.cm.focus(); }catch(_){ } }; }catch(_){}
     }
@@ -508,6 +591,35 @@
         if (mode === 'yobasic') tab.cm.setOption('lint', { getAnnotations: basicLint, async:false, delay: 800 });
         else tab.cm.setOption('lint', false);
         setTimeout(()=>{ try{ tab.cm.refresh(); }catch(_){} }, 0);
+    }
+    function findTabByFullName(fullName){
+        if (!fullName) return null;
+        const fn = String(fullName).toLowerCase();
+        return tabs.find(t => String(t.fullName||'').toLowerCase() === fn) || null;
+    }
+    function renderTabButtonFor(tab){
+        const btn = document.querySelector(`#editor-tabs [data-tab-id="${tab.id}"]`);
+        if (!btn) return;
+        const titleEl = btn.querySelector('.tab-title');
+        const dirtyEl = btn.querySelector('.tab-dirty');
+        if (titleEl) titleEl.textContent = tab.displayName || 'Untitled';
+        if (dirtyEl) dirtyEl.textContent = tab.dirty ? '*' : '';
+        btn.title = tab.fullName || tab.displayName || 'Untitled';
+    }
+    function setTabDirty(tab, dirty){
+        if (!tab) return;
+        tab.dirty = !!dirty;
+        renderTabButtonFor(tab);
+    }
+    function ensureAddTabButton(){
+        const list = document.getElementById('editor-tabs');
+        if (!list) return;
+        if (document.getElementById('add-tab-btn')) return;
+        const li = document.createElement('li'); li.className = 'nav-item'; li.id = 'add-tab-li';
+        const btn = document.createElement('button'); btn.className = 'nav-link'; btn.type = 'button'; btn.id = 'add-tab-btn'; btn.title = 'New File (Ctrl+N)';
+        btn.innerHTML = '<span class="plus">+</span>';
+        li.appendChild(btn); list.appendChild(li);
+        btn.addEventListener('click', function(e){ e.preventDefault(); onFileNew(); });
     }
     
     function getActiveTab(){ return tabs.find(t => t.id === activeTabId); }
@@ -528,8 +640,7 @@
         const tab = getTabById(tabId); if (!tab) return;
         tab.displayName = displayName || 'Untitled';
         tab.fullName = fullName || null;
-        const btn = document.querySelector(`#editor-tabs [data-tab-id="${tabId}"]`);
-        if (btn){ btn.querySelector('.tab-title').textContent = tab.displayName; btn.title = tab.fullName || tab.displayName; }
+        renderTabButtonFor(tab);
     }
     function activateTab(tabId){
         const tab = getTabById(tabId); if (!tab) return;
@@ -557,25 +668,31 @@
         if (list.children.length === 0){
             const li = document.createElement('li'); li.className = 'nav-item';
             const btn = document.createElement('button'); btn.className = 'nav-link active'; btn.type='button'; btn.setAttribute('data-tab-id','0'); btn.title='Untitled';
-            btn.innerHTML = '<span class="tab-title">Untitled</span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
+            btn.innerHTML = '<span class="tab-title">Untitled</span><span class="tab-dirty" aria-hidden="true"></span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
             li.appendChild(btn); list.appendChild(li);
             btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(0); });
-            btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); onFileCloseTab(); });
+            btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); closeTab(0); });
+            ensureAddTabButton();
         }
         // Register first tab object using existing #editor
         if (!tabs.find(t=>t.id===0)){
             const textarea = document.getElementById('editor');
             const view = document.querySelector('#editor-views .editor-view[data-tab-id="0"]');
-            const firstTab = { id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled' };
+            const firstTab = { id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled', savedContent: '', dirty: false };
             tabs.push(firstTab);
-            // bind input autosave on first tab too
-            textarea.addEventListener('input', function(){ saveCode(); });
+            // bind input autosave on first tab too (fallback if CM not yet attached) + dirty tracking
+            textarea.addEventListener('input', function(){
+                saveCode();
+                try{ setTabDirty(firstTab, (textarea.value||'') !== (firstTab.savedContent||'')); }catch(_){ }
+            });
             // attach Tab key handling
             try{ attachEditorKeyHandlers(textarea); }catch(_){ }
             try{ attachEditorSelectionHandlers(textarea); }catch(_){ }
             // Upgrade to CodeMirror
             try{ ensureCodeMirrorForTab(firstTab); refreshAndApplyMode(firstTab); }catch(_){}
+            renderTabButtonFor(firstTab);
         }
+        try{ updateTabsPad(); }catch(_){}
     }
     function createNewTab(initial){
         if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return null; }
@@ -587,10 +704,14 @@
         // button
         const li = document.createElement('li'); li.className = 'nav-item';
         const btn = document.createElement('button'); btn.className='nav-link'; btn.type='button'; btn.setAttribute('data-tab-id', String(id));
-        btn.innerHTML = '<span class="tab-title">Untitled</span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
-        li.appendChild(btn); document.getElementById('editor-tabs').appendChild(li);
+        btn.innerHTML = '<span class="tab-title">Untitled</span><span class="tab-dirty" aria-hidden="true"></span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
+        li.appendChild(btn);
+        const list = document.getElementById('editor-tabs');
+        const addLi = document.getElementById('add-tab-li');
+        if (addLi) list.insertBefore(li, addLi); else list.appendChild(li);
         btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(id); });
         btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); closeTab(id); });
+        try{ updateTabsPad(); }catch(_){ }
         // settings apply to new textarea
         const s = loadSettings();
         if (s && s.editor){
@@ -599,10 +720,11 @@
             if (s.editor.color) ta.style.color = s.editor.color;
             if (s.editor.bg) ta.style.backgroundColor = s.editor.bg;
         }
-        ta.addEventListener('input', function(){ saveCode(); });
         try{ attachEditorKeyHandlers(ta); }catch(_){ }
         try{ attachEditorSelectionHandlers(ta); }catch(_){ }
-        const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled' };
+        const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled', savedContent: '', dirty: false };
+        // Fallback input listener for early typing before CM attaches (rare)
+        ta.addEventListener('input', function(){ saveCode(); try{ setTabDirty(tab, (ta.value||'') !== (tab.savedContent||'')); }catch(_){ } });
         tabs.push(tab);
         try{ ensureCodeMirrorForTab(tab); }catch(_){}
         // initial content/meta
@@ -612,8 +734,13 @@
             if (initial.readOnly){ tab.readOnly = !!initial.readOnly; }
             const title = initial.displayName || (initial.fullName ? (initial.fullName.includes('/')? initial.fullName.split('/').pop() : initial.fullName) : 'Untitled');
             setTabTitle(id, title, initial.fullName || title);
+            // Treat opened files as not dirty initially
+            tab.savedContent = (typeof initial.content === 'string') ? initial.content : (tab.textarea.value || '');
+            tab.dirty = false; renderTabButtonFor(tab);
         } else {
             setTabTitle(id, 'Untitled', 'Untitled');
+            tab.savedContent = tab.textarea.value || '';
+            tab.dirty = false; renderTabButtonFor(tab);
         }
         // show editor and activate
         openEditor(true);
@@ -634,10 +761,22 @@
     function closeTab(id){
         const idx = tabs.findIndex(t=>t.id===id);
         if (idx < 0) return;
+        const t = tabs[idx];
+        // warn if unsaved changes
+        if (t && t.dirty){
+            const ok = confirm('This document has unsaved changes. Close anyway?');
+            if (!ok) return;
+        }
         if (id === 0 || tabs.length === 1){
             // clear first/only tab per spec
             const t0 = getTabById(id);
-            if (t0){ t0.textarea.value = ''; t0.fullName = null; t0.readOnly = false; setTabTitle(id, 'Untitled', 'Untitled'); saveCode(''); }
+            if (t0){
+                t0.textarea.value = '';
+                if (t0.cm) try{ t0.cm.setValue(''); }catch(_){}
+                t0.fullName = null; t0.readOnly = false; t0.savedContent = ''; setTabDirty(t0, false);
+                setTabTitle(id, 'Untitled', 'Untitled'); saveCode('');
+                refreshAndApplyMode(t0);
+            }
             activateTab(id);
             return;
         }
@@ -650,6 +789,7 @@
         if (view){ view.remove(); }
         // remove from state
         tabs.splice(idx,1);
+        try{ updateTabsPad(); }catch(_){ }
         // activate previous
         activateTab(prev.id);
     }
@@ -692,18 +832,41 @@
     function setNavHeight() {
         const h = document.getElementById('topnav').offsetHeight || 56;
         document.body.style.setProperty('--nav-height', h + 'px');
-        // adjust terminal pane height depending on editor visibility
-        const editorVisible = !document.getElementById('editor-pane').classList.contains('d-none');
+        // Ensure we reserve enough vertical space for the fixed tabs bar
+        try{ updateTabsPad(); }catch(_){ }
+        // adjust terminal pane height depending on editor visibility and terminal mode
+        const editorPane = document.getElementById('editor-pane');
         const tp = document.getElementById('terminal-pane');
-        if (editorVisible) {
-            // editor 60%, terminal 40% of remaining work area
-            document.getElementById('editor-pane').style.height = '60%';
+        const editorVisible = !editorPane.classList.contains('d-none');
+        const mode = window.__terminalMode || 'center';
+        if (editorVisible && mode === 'center'){
+            editorPane.style.height = '60%';
             tp.style.height = '40%';
+            tp.style.display = '';
+        } else if (editorVisible && mode === 'side'){
+            editorPane.style.height = '100%';
+            tp.style.height = '0%';
+            tp.style.display = 'none';
+        } else if (mode === 'dialog'){
+            // When dialog, keep editorPane at 100% if visible; terminal-pane hidden
+            if (editorVisible){ editorPane.style.height = '100%'; }
+            tp.style.height = '0%';
+            tp.style.display = 'none';
         } else {
-            // terminal fills the work area when editor hidden
-            tp.style.height = '100%';
+            // editor hidden → terminal fills the work area when center mode, otherwise hidden
+            if (mode === 'center'){ tp.style.height = '100%'; tp.style.display = ''; }
+            else { tp.style.height = '0%'; tp.style.display = 'none'; }
         }
-        if (term) term.resize();
+        if (window.term && term.resize) try{ term.resize(); }catch(_){ }
+    }
+
+    // Keep a CSS variable in sync with the actual height of the fixed tabs bar,
+    // so the editor content can be padded down appropriately.
+    function updateTabsPad(){
+        const el = document.getElementById('editor-tabs');
+        if (!el) return;
+        const h = Math.max(32, el.offsetHeight || 0);
+        document.documentElement.style.setProperty('--tabs-pad', h + 'px');
     }
 
     function saveCode(value) {
@@ -725,12 +888,25 @@
 
     function applySettings(s) {
         if (s.editor) {
+            // Apply editor typography/colors
             document.querySelectorAll('.editor-textarea, #editor').forEach(editor=>{
                 if (s.editor.fontFamily) editor.style.fontFamily = s.editor.fontFamily + ", monospace";
                 if (s.editor.fontSize) editor.style.fontSize = s.editor.fontSize + 'px';
                 if (s.editor.color) editor.style.color = s.editor.color;
                 if (s.editor.bg) editor.style.backgroundColor = s.editor.bg;
             });
+            // Ensure CodeMirror and its internals use the same background to avoid banding
+            try{
+                const pane = document.getElementById('editor-pane');
+                if (pane && s.editor.bg){
+                    pane.style.backgroundColor = s.editor.bg;
+                    pane.style.setProperty('--editor-bg', s.editor.bg);
+                }
+                // If CodeMirror instances exist, refresh to repaint with new bg
+                if (window.tabs && Array.isArray(tabs)){
+                    tabs.forEach(t=>{ try{ if (t && t.cm && t.cm.refresh) t.cm.refresh(); }catch(_){ } });
+                }
+            }catch(_){ }
         }
         if (s.terminal) {
             const fam = s.terminal.fontFamily ? (s.terminal.fontFamily + ", monospace") : null;
@@ -738,6 +914,7 @@
             if (fam) { $('#terminal, #terminal .terminal').css('font-family', fam); }
             if (size) { $('#terminal, #terminal .terminal').css('font-size', size); }
             if (term) term.resize();
+            try{ if (window.__terminalMode === 'side' && window.__adjustTerminalSideHeight) window.__adjustTerminalSideHeight(25); }catch(_){ }
         }
     }
 
@@ -931,6 +1108,9 @@
                 first.textarea.value = code; // only overwrite the first time we open in this session
                 if (first.cm) try{ first.cm.setValue(code); }catch(_){}
                 setTabTitle(0, 'Untitled', 'Untitled');
+                // Treat initial content as clean
+                first.savedContent = code;
+                setTabDirty(first, false);
             }
             // Place caret on a new line at the end of the initial code for the first editor
             if (first && first.textarea){
@@ -1186,6 +1366,126 @@
         });
         window.term = term;
 
+        // --- Terminal Positioning State Machine ---
+        (function(){
+            const CENTER_HOST = document.getElementById('terminal');
+            const SIDE_CONTAINER = document.getElementById('left-terminal-host');
+            const SIDE_HOST = document.getElementById('terminal-side-host');
+            const DIALOG = document.getElementById('terminal-dialog');
+            const DIALOG_HOST = document.getElementById('terminal-dialog-host');
+            const toolbar = document.getElementById('terminal-toolbar');
+            const btnSide = document.getElementById('tt-side');
+            const btnCenter = document.getElementById('tt-center');
+            const btnDialog = document.getElementById('tt-dialog');
+            const btnPin = document.getElementById('tt-pin');
+
+            // Public flags
+            window.__terminalMode = window.__terminalMode || 'center';
+            window.__terminalLastDocked = window.__terminalLastDocked || 'center';
+            let dialogDragging = false; let dragDx = 0, dragDy = 0;
+
+            function moveNodeToHost(node, host){ if (!node || !host) return; host.appendChild(node); }
+            function getTermLineHeightPx(){
+                // jQuery Terminal uses CSS variable --size for font-size. Read computed line height.
+                try{
+                    const el = CENTER_HOST.querySelector('.terminal') || CENTER_HOST;
+                    const style = window.getComputedStyle(el);
+                    const lh = parseFloat(style.lineHeight);
+                    if (!isNaN(lh)) return lh;
+                }catch(_){ }
+                // Fallback approximate
+                return 18;
+            }
+            function adjustSideHeight(lines){
+                const L = Math.max(10, lines|0);
+                const h = Math.round(getTermLineHeightPx() * L + 8); // padding allowance
+                SIDE_HOST.style.height = h + 'px';
+                try{ if (term && term.resize) term.resize(); }catch(_){ }
+            }
+            window.__adjustTerminalSideHeight = adjustSideHeight;
+            function collapseLeftAccordionAll(){
+                try{
+                    const acc = document.getElementById('leftAccordion'); if (!acc) return;
+                    acc.querySelectorAll('.accordion-collapse.show').forEach(el=>{
+                        const i = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }); i.hide();
+                    });
+                }catch(_){ }
+            }
+            function openLeftDrawerIfNeeded(){ try{ if (!DRAWERS.leftOpen) toggleLeftDrawer(true); }catch(_){ } }
+            function updateToolbarVisibility(){ try{ toolbar.style.display = (window.__terminalMode === 'dialog') ? 'none' : ''; }catch(_){ }}
+
+            window.setTerminalMode = function(mode){
+                const m = String(mode||'center');
+                if (m === window.__terminalMode) return;
+                if (window.__terminalMode === 'dialog' && m !== 'dialog'){
+                    // coming from dialog → remember lastDocked already stored
+                }
+                if (m === 'dialog'){
+                    window.__terminalLastDocked = (window.__terminalMode === 'side') ? 'side' : 'center';
+                    // Move terminal into dialog host and show dialog
+                    moveNodeToHost(CENTER_HOST, DIALOG_HOST);
+                    DIALOG.style.display = 'block';
+                    // Hide side container when entering dialog
+                    SIDE_CONTAINER.style.display = 'none';
+                } else if (m === 'side'){
+                    DIALOG.style.display = 'none';
+                    // Explicitly show side container (override CSS display:none)
+                    SIDE_CONTAINER.style.display = 'block';
+                    openLeftDrawerIfNeeded();
+                    collapseLeftAccordionAll();
+                    // Remember previous mode to restore when accordion expands
+                    if (window.__terminalMode !== 'dialog') window.__terminalPrevBeforeSide = window.__terminalMode;
+                    // Ensure the DOM node we move is the outer #terminal element
+                    moveNodeToHost(CENTER_HOST, SIDE_HOST);
+                    adjustSideHeight(25);
+                } else { // center
+                    DIALOG.style.display = 'none';
+                    // Hide side container when in center mode
+                    SIDE_CONTAINER.style.display = 'none';
+                    moveNodeToHost(CENTER_HOST, document.getElementById('terminal-pane'));
+                }
+                window.__terminalMode = m;
+                setNavHeight();
+                updateToolbarVisibility();
+            };
+
+            // Toolbar controls
+            if (btnSide) btnSide.addEventListener('click', function(){ if (window.__terminalMode !== 'dialog') setTerminalMode('side'); });
+            if (btnCenter) btnCenter.addEventListener('click', function(){ if (window.__terminalMode !== 'dialog') setTerminalMode('center'); });
+            if (btnDialog) btnDialog.addEventListener('click', function(){ setTerminalMode('dialog'); });
+            if (btnPin) btnPin.addEventListener('click', function(){ /* reserved */ });
+
+            // Double-click behaviors
+            CENTER_HOST.addEventListener('dblclick', function(){ if (window.__terminalMode !== 'dialog') setTerminalMode('dialog'); });
+            DIALOG.addEventListener('dblclick', function(){ if (window.__terminalMode === 'dialog'){ setTerminalMode(window.__terminalLastDocked || 'center'); }});
+
+            // Make dialog draggable via header
+            const header = DIALOG.querySelector('.td-header');
+            header.addEventListener('mousedown', function(e){ dialogDragging = true; const r = DIALOG.getBoundingClientRect(); dragDx = e.clientX - r.left; dragDy = e.clientY - r.top; e.preventDefault(); });
+            window.addEventListener('mousemove', function(e){ if (!dialogDragging) return; DIALOG.style.left = Math.max(0, e.clientX - dragDx) + 'px'; DIALOG.style.top = Math.max(0, e.clientY - dragDy) + 'px'; });
+            window.addEventListener('mouseup', function(){ dialogDragging = false; });
+
+            // Accordion expand → if currently side and not dialog, revert to center
+            try{
+                document.getElementById('leftAccordion').addEventListener('show.bs.collapse', function(){ if (window.__terminalMode === 'side'){ setTerminalMode(window.__terminalPrevBeforeSide || 'center'); } });
+            }catch(_){ }
+
+            // Recalculate heights when fonts change
+            window.addEventListener('resize', function(){ if (window.__terminalMode==='side') adjustSideHeight(25); });
+
+            // Observe container size changes (dialog/side) and resize terminal
+            try{
+                if (window.ResizeObserver){
+                    const ro = new ResizeObserver(function(){ try{ term && term.resize && term.resize(); }catch(_){ } });
+                    ro.observe(DIALOG);
+                    ro.observe(SIDE_HOST);
+                }
+            }catch(_){ }
+
+            // Initial
+            updateToolbarVisibility();
+        })();
+
         // Height + focus
         setNavHeight();
         window.addEventListener('resize', setNavHeight);
@@ -1231,6 +1531,9 @@
             const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
             const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
             if (!file) return;
+            // If already open (same full path), just activate that tab
+            const existing = findTabByFullName(file.name);
+            if (existing){ activateTab(existing.id); bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen')).hide(); return; }
             const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
             createNewTab({
                 content: file.content || '',
@@ -1605,7 +1908,7 @@
             // keep tab title consistent
             const base = currentFileName.includes('/') ? currentFileName.split('/').pop() : currentFileName;
             setTabTitle(activeTabId, base, currentFileName);
-            const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; }
+            const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; t.savedContent = content; setTabDirty(t, false); }
             try{ refreshAndApplyMode(getActiveTab()); }catch(_){ }
             try{ await buildVfsTree(); }catch(_){ }
             term && term.echo && term.echo('[Saved] ' + currentFileName);
@@ -1665,7 +1968,7 @@
         // Update tab metadata and title/tooltip
         const base = targetName.includes('/') ? targetName.split('/').pop() : targetName;
         setTabTitle(activeTabId, base, targetName);
-        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; try{ refreshAndApplyMode(t); }catch(_){ } }
+        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; t.savedContent = content; setTabDirty(t, false); try{ refreshAndApplyMode(t); }catch(_){ } }
         try{ await buildVfsTree(); }catch(_){ }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
         term && term.echo && term.echo('[Saved] ' + targetName);
@@ -1690,6 +1993,7 @@
         el.classList.toggle('open', open);
         document.getElementById('toggle-left-drawer')?.setAttribute('aria-expanded', String(open));
         updateDrawerOffsets();
+        try{ updateTabsPad(); }catch(_){ }
     }
     function toggleRightDrawer(force){
         const el = document.getElementById('right-drawer');
@@ -1699,6 +2003,7 @@
         el.classList.toggle('open', open);
         document.getElementById('toggle-right-drawer')?.setAttribute('aria-expanded', String(open));
         updateDrawerOffsets();
+        try{ updateTabsPad(); }catch(_){ }
     }
     function closeDrawers(){ toggleLeftDrawer(false); toggleRightDrawer(false); }
 
@@ -1931,6 +2236,9 @@
                 const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
                 const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
                 if (!file) return;
+                // avoid duplicate open: if already open by full path, activate
+                const existing = findTabByFullName(file.name);
+                if (existing){ activateTab(existing.id); openEditor(true); return; }
                 const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
                 createNewTab({ content: file.content || '', fullName: file.name, readOnly: !!file.readOnly, displayName });
                 openEditor(true);
@@ -1966,6 +2274,18 @@
         try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
         // Extra global keyboard: F1 toggles right; F8 executes selection (if any) when editor focused; F9 runs whole program when editor focused; ESC closes drawers unless modal open
         document.addEventListener('keydown', function(e){
+            // Ctrl/Cmd+S → Save (or Save As when untitled/read-only)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')){
+                e.preventDefault();
+                try{ onFileSave(); }catch(_){ }
+                return;
+            }
+            // Ctrl/Cmd+N → New file (same as clicking the + tab)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')){
+                e.preventDefault();
+                try{ onFileNew(); }catch(_){ }
+                return;
+            }
             // Intercept F5 to prevent accidental page refresh
             if (e.key === 'F5') { e.preventDefault(); return; }
             const k = e.key;
@@ -2105,6 +2425,19 @@
         </div>
       </div>
     </div>
+    <!-- Side terminal host (hidden until used) -->
+    <div id="left-terminal-host" class="mt-2">
+      <div class="small text-secondary mb-1">Terminal</div>
+      <div id="terminal-side-host"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating terminal dialog (always-on-top) -->
+<div id="terminal-dialog" role="dialog" aria-label="Terminal dialog">
+  <div class="td-header">Terminal — double‑click to dock</div>
+  <div class="td-body">
+    <div id="terminal-dialog-host" class="h-100 w-100"></div>
   </div>
 </div>
 
