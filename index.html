@@ -35,7 +35,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
     <style>
-        :root { --nav-height: 56px; --editor-caret-color: #FFD400; /* default yellow; overridden by JS constant */ }
+        :root { --nav-height: 56px; --editor-caret-color: #FFD400; --tabs-pad: 40px; /* default tabs bar height reserve */ }
         html, body { height: 100%; }
         body {
             background: #0b1b3b; /* subtle QBasic navy vibe */
@@ -56,8 +56,19 @@
         .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; caret-color: var(--editor-caret-color); }
         .editor-view { display: none; height: 100%; }
         .editor-view.active { display: block; }
-        /* Tabs bar — keep visible and style first tab (fixed tab) specially */
-        #editor-tabs { position: sticky; top: var(--nav-height); z-index: 1050; background: #031634; margin-bottom: .5rem; }
+        /* Tabs bar — fix to viewport under navbar and style first tab (fixed tab) specially */
+        /* We use left/right offsets to align with slide-out drawers. */
+        #editor-tabs {
+            position: fixed;
+            top: var(--nav-height);
+            left: var(--left-offset, 0px);
+            right: var(--right-offset, 0px);
+            z-index: 1050;
+            background: #031634;
+            margin-bottom: .5rem; /* kept for visual spacing; actual space is reserved via --tabs-pad */
+        }
+        /* Reserve vertical space for the fixed tab bar inside the editor pane */
+        #editor-pane { padding-top: calc(0.5rem + var(--tabs-pad, 40px)); }
         #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; user-select: none; }
         #editor-tabs .tab-close { font-weight: bold; opacity: .7; cursor: pointer; }
         #editor-tabs .tab-close:hover { opacity: 1; }
@@ -674,6 +685,7 @@
             try{ ensureCodeMirrorForTab(firstTab); refreshAndApplyMode(firstTab); }catch(_){}
             renderTabButtonFor(firstTab);
         }
+        try{ updateTabsPad(); }catch(_){}
     }
     function createNewTab(initial){
         if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return null; }
@@ -692,6 +704,7 @@
         if (addLi) list.insertBefore(li, addLi); else list.appendChild(li);
         btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(id); });
         btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); closeTab(id); });
+        try{ updateTabsPad(); }catch(_){ }
         // settings apply to new textarea
         const s = loadSettings();
         if (s && s.editor){
@@ -769,6 +782,7 @@
         if (view){ view.remove(); }
         // remove from state
         tabs.splice(idx,1);
+        try{ updateTabsPad(); }catch(_){ }
         // activate previous
         activateTab(prev.id);
     }
@@ -811,6 +825,8 @@
     function setNavHeight() {
         const h = document.getElementById('topnav').offsetHeight || 56;
         document.body.style.setProperty('--nav-height', h + 'px');
+        // Ensure we reserve enough vertical space for the fixed tabs bar
+        try{ updateTabsPad(); }catch(_){ }
         // adjust terminal pane height depending on editor visibility and terminal mode
         const editorPane = document.getElementById('editor-pane');
         const tp = document.getElementById('terminal-pane');
@@ -835,6 +851,15 @@
             else { tp.style.height = '0%'; tp.style.display = 'none'; }
         }
         if (window.term && term.resize) try{ term.resize(); }catch(_){ }
+    }
+
+    // Keep a CSS variable in sync with the actual height of the fixed tabs bar,
+    // so the editor content can be padded down appropriately.
+    function updateTabsPad(){
+        const el = document.getElementById('editor-tabs');
+        if (!el) return;
+        const h = Math.max(32, el.offsetHeight || 0);
+        document.documentElement.style.setProperty('--tabs-pad', h + 'px');
     }
 
     function saveCode(value) {
@@ -1961,6 +1986,7 @@
         el.classList.toggle('open', open);
         document.getElementById('toggle-left-drawer')?.setAttribute('aria-expanded', String(open));
         updateDrawerOffsets();
+        try{ updateTabsPad(); }catch(_){ }
     }
     function toggleRightDrawer(force){
         const el = document.getElementById('right-drawer');
@@ -1970,6 +1996,7 @@
         el.classList.toggle('open', open);
         document.getElementById('toggle-right-drawer')?.setAttribute('aria-expanded', String(open));
         updateDrawerOffsets();
+        try{ updateTabsPad(); }catch(_){ }
     }
     function closeDrawers(){ toggleLeftDrawer(false); toggleRightDrawer(false); }
 
