@@ -1292,9 +1292,12 @@
                     // Move terminal into dialog host and show dialog
                     moveNodeToHost(CENTER_HOST, DIALOG_HOST);
                     DIALOG.style.display = 'block';
+                    // Hide side container when entering dialog
+                    SIDE_CONTAINER.style.display = 'none';
                 } else if (m === 'side'){
                     DIALOG.style.display = 'none';
-                    SIDE_CONTAINER.style.display = '';
+                    // Explicitly show side container (override CSS display:none)
+                    SIDE_CONTAINER.style.display = 'block';
                     openLeftDrawerIfNeeded();
                     collapseLeftAccordionAll();
                     // Remember previous mode to restore when accordion expands
@@ -1304,6 +1307,7 @@
                     adjustSideHeight(25);
                 } else { // center
                     DIALOG.style.display = 'none';
+                    // Hide side container when in center mode
                     SIDE_CONTAINER.style.display = 'none';
                     moveNodeToHost(CENTER_HOST, document.getElementById('terminal-pane'));
                 }
