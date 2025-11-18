@@ -46,7 +46,13 @@
         .qb-underline { text-decoration: underline; }
         /* layout */
         #work-area { height: calc(100vh - var(--nav-height)); margin-top: var(--nav-height); }
-        #editor-pane { background: #031634; }
+        /* editor background base and variable (used by CodeMirror internals) */
+        #editor-pane { background: #031634; --editor-bg: #031634; }
+        /* Soften/remove bright seam under the editor caused by Bootstrap's .border-bottom on dark theme */
+        #editor-pane.border-bottom {
+            /* Bootstrap's utility uses !important, so we match it to override */
+            border-bottom: 1px solid #1e2a55 !important;
+        }
         .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; caret-color: var(--editor-caret-color); }
         .editor-view { display: none; height: 100%; }
         .editor-view.active { display: block; }
@@ -75,7 +81,13 @@
         .terminal .prompt { color: #9ad1ff; }
         .terminal .cursor { background: #9ad1ff; }
         /* CodeMirror sizing and gutters */
-        .CodeMirror { height: 100%; font-family: inherit; font-size: inherit; background: transparent; color: inherit; }
+        .CodeMirror { height: 100%; font-family: inherit; font-size: inherit; background: var(--editor-bg, #031634); color: inherit; }
+        /* ensure internal scroll areas and fillers match editor background to avoid horizontal banding */
+        .CodeMirror-scroll,
+        .CodeMirror-lines,
+        .CodeMirror-sizer,
+        .CodeMirror-gutter-filler,
+        .CodeMirror-scrollbar-filler { background: var(--editor-bg, #031634) !important; }
         .CodeMirror-gutters { background: #0b1b3b; border-right: 1px solid #1e2a55; }
         .CodeMirror-linenumber { color: #7fa6d9; }
         /* Editor caret color (CodeMirror) */
@@ -771,12 +783,25 @@
 
     function applySettings(s) {
         if (s.editor) {
+            // Apply editor typography/colors
             document.querySelectorAll('.editor-textarea, #editor').forEach(editor=>{
                 if (s.editor.fontFamily) editor.style.fontFamily = s.editor.fontFamily + ", monospace";
                 if (s.editor.fontSize) editor.style.fontSize = s.editor.fontSize + 'px';
                 if (s.editor.color) editor.style.color = s.editor.color;
                 if (s.editor.bg) editor.style.backgroundColor = s.editor.bg;
             });
+            // Ensure CodeMirror and its internals use the same background to avoid banding
+            try{
+                const pane = document.getElementById('editor-pane');
+                if (pane && s.editor.bg){
+                    pane.style.backgroundColor = s.editor.bg;
+                    pane.style.setProperty('--editor-bg', s.editor.bg);
+                }
+                // If CodeMirror instances exist, refresh to repaint with new bg
+                if (window.tabs && Array.isArray(tabs)){
+                    tabs.forEach(t=>{ try{ if (t && t.cm && t.cm.refresh) t.cm.refresh(); }catch(_){ } });
+                }
+            }catch(_){ }
         }
         if (s.terminal) {
             const fam = s.terminal.fontFamily ? (s.terminal.fontFamily + ", monospace") : null;
