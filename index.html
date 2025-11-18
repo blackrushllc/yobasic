@@ -101,6 +101,13 @@
         .terminal .cursor { background: #9ad1ff; }
         /* CodeMirror sizing and gutters */
         .CodeMirror { height: 100%; font-family: inherit; font-size: inherit; background: var(--editor-bg, #031634); color: inherit; }
+        /* Nudge editor content down a few pixels so the first line never hugs or hides under the fixed tabs bar */
+        .CodeMirror-lines { padding-top: 32px; }
+        .CodeMirror-gutters { padding-top: 32px; }
+        /* When CodeMirror scrolls programmatically, keep a small top breathing room */
+        .CodeMirror-scroll { scroll-padding-top: 32px; }
+        /* Fallback textarea editor (before CM attaches or if disabled) */
+        .editor-textarea, #editor { padding-top: 32px; }
         /* ensure internal scroll areas and fillers match editor background to avoid horizontal banding */
         .CodeMirror-scroll,
         .CodeMirror-lines,
