@@ -56,9 +56,17 @@
         .editor-textarea, #editor { width: 100%; height: 100%; resize: none; background: transparent; color: #e6f0ff; border: none; outline: none; caret-color: var(--editor-caret-color); }
         .editor-view { display: none; height: 100%; }
         .editor-view.active { display: block; }
-        #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; }
+        /* Tabs bar — keep visible and style first tab (fixed tab) specially */
+        #editor-tabs { position: sticky; top: var(--nav-height); z-index: 1050; background: #031634; margin-bottom: .5rem; }
+        #editor-tabs .nav-link { display: flex; align-items: center; gap: .25rem; user-select: none; }
         #editor-tabs .tab-close { font-weight: bold; opacity: .7; cursor: pointer; }
         #editor-tabs .tab-close:hover { opacity: 1; }
+        /* Special colors for the first tab (data-tab-id="0"): active orange bg + black text; inactive orange text on default bg */
+        #editor-tabs .nav-link[data-tab-id="0"].active { background: #FF6600 !important; color: #000000 !important; border-color: #FF6600 #FF6600 transparent !important; }
+        #editor-tabs .nav-link[data-tab-id="0"]:not(.active) { color: #FF6600 !important; }
+        /* “+” add-tab button */
+        #add-tab-btn { padding: .25rem .5rem; line-height: 1; }
+        #add-tab-btn .plus { font-weight: bold; font-size: 1rem; }
         #terminal-pane, #terminal { height: 100%; }
         /* make terminal host a positioning context for subtle toolbar */
         #terminal { position: relative; }
@@ -531,6 +539,17 @@
             try{ tab.textarea.value = cm.getValue(); }catch(_){}
             try{ saveCode(cm.getValue()); }catch(_){}
             try{ updateExecButtonVisibility(); }catch(_){}
+            // Dirty tracking vs last saved content
+            try{
+                const cur = cm.getValue();
+                if (tab.__suppressNextDirty){
+                    tab.__suppressNextDirty = false;
+                    tab.savedContent = cur;
+                    setTabDirty(tab, false);
+                } else {
+                    setTabDirty(tab, cur !== (tab.savedContent ?? ''));
+                }
+            }catch(_){ }
         });
         tab.cm.on('cursorActivity', function(){ try{ updateExecButtonVisibility(); }catch(_){} });
         // On focus, if file has >15 lines and not in dialog mode, dock terminal to side below accordion
@@ -555,6 +574,35 @@
         else tab.cm.setOption('lint', false);
         setTimeout(()=>{ try{ tab.cm.refresh(); }catch(_){} }, 0);
     }
+    function findTabByFullName(fullName){
+        if (!fullName) return null;
+        const fn = String(fullName).toLowerCase();
+        return tabs.find(t => String(t.fullName||'').toLowerCase() === fn) || null;
+    }
+    function renderTabButtonFor(tab){
+        const btn = document.querySelector(`#editor-tabs [data-tab-id="${tab.id}"]`);
+        if (!btn) return;
+        const titleEl = btn.querySelector('.tab-title');
+        const dirtyEl = btn.querySelector('.tab-dirty');
+        if (titleEl) titleEl.textContent = tab.displayName || 'Untitled';
+        if (dirtyEl) dirtyEl.textContent = tab.dirty ? '*' : '';
+        btn.title = tab.fullName || tab.displayName || 'Untitled';
+    }
+    function setTabDirty(tab, dirty){
+        if (!tab) return;
+        tab.dirty = !!dirty;
+        renderTabButtonFor(tab);
+    }
+    function ensureAddTabButton(){
+        const list = document.getElementById('editor-tabs');
+        if (!list) return;
+        if (document.getElementById('add-tab-btn')) return;
+        const li = document.createElement('li'); li.className = 'nav-item'; li.id = 'add-tab-li';
+        const btn = document.createElement('button'); btn.className = 'nav-link'; btn.type = 'button'; btn.id = 'add-tab-btn'; btn.title = 'New File (Ctrl+N)';
+        btn.innerHTML = '<span class="plus">+</span>';
+        li.appendChild(btn); list.appendChild(li);
+        btn.addEventListener('click', function(e){ e.preventDefault(); onFileNew(); });
+    }
     
     function getActiveTab(){ return tabs.find(t => t.id === activeTabId); }
     function getTabById(id){ return tabs.find(t => t.id === id); }
@@ -574,8 +622,7 @@
         const tab = getTabById(tabId); if (!tab) return;
         tab.displayName = displayName || 'Untitled';
         tab.fullName = fullName || null;
-        const btn = document.querySelector(`#editor-tabs [data-tab-id="${tabId}"]`);
-        if (btn){ btn.querySelector('.tab-title').textContent = tab.displayName; btn.title = tab.fullName || tab.displayName; }
+        renderTabButtonFor(tab);
     }
     function activateTab(tabId){
         const tab = getTabById(tabId); if (!tab) return;
@@ -603,24 +650,29 @@
         if (list.children.length === 0){
             const li = document.createElement('li'); li.className = 'nav-item';
             const btn = document.createElement('button'); btn.className = 'nav-link active'; btn.type='button'; btn.setAttribute('data-tab-id','0'); btn.title='Untitled';
-            btn.innerHTML = '<span class="tab-title">Untitled</span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
+            btn.innerHTML = '<span class="tab-title">Untitled</span><span class="tab-dirty" aria-hidden="true"></span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
             li.appendChild(btn); list.appendChild(li);
             btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(0); });
-            btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); onFileCloseTab(); });
+            btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); closeTab(0); });
+            ensureAddTabButton();
         }
         // Register first tab object using existing #editor
         if (!tabs.find(t=>t.id===0)){
             const textarea = document.getElementById('editor');
             const view = document.querySelector('#editor-views .editor-view[data-tab-id="0"]');
-            const firstTab = { id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled' };
+            const firstTab = { id: 0, textarea, view, fullName: null, readOnly: false, displayName: 'Untitled', savedContent: '', dirty: false };
             tabs.push(firstTab);
-            // bind input autosave on first tab too
-            textarea.addEventListener('input', function(){ saveCode(); });
+            // bind input autosave on first tab too (fallback if CM not yet attached) + dirty tracking
+            textarea.addEventListener('input', function(){
+                saveCode();
+                try{ setTabDirty(firstTab, (textarea.value||'') !== (firstTab.savedContent||'')); }catch(_){ }
+            });
             // attach Tab key handling
             try{ attachEditorKeyHandlers(textarea); }catch(_){ }
             try{ attachEditorSelectionHandlers(textarea); }catch(_){ }
             // Upgrade to CodeMirror
             try{ ensureCodeMirrorForTab(firstTab); refreshAndApplyMode(firstTab); }catch(_){}
+            renderTabButtonFor(firstTab);
         }
     }
     function createNewTab(initial){
@@ -633,8 +685,11 @@
         // button
         const li = document.createElement('li'); li.className = 'nav-item';
         const btn = document.createElement('button'); btn.className='nav-link'; btn.type='button'; btn.setAttribute('data-tab-id', String(id));
-        btn.innerHTML = '<span class="tab-title">Untitled</span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
-        li.appendChild(btn); document.getElementById('editor-tabs').appendChild(li);
+        btn.innerHTML = '<span class="tab-title">Untitled</span><span class="tab-dirty" aria-hidden="true"></span> <span class="tab-close" aria-label="Close" title="Close">×</span>';
+        li.appendChild(btn);
+        const list = document.getElementById('editor-tabs');
+        const addLi = document.getElementById('add-tab-li');
+        if (addLi) list.insertBefore(li, addLi); else list.appendChild(li);
         btn.addEventListener('click', function(e){ if (e.target.classList.contains('tab-close')) return; activateTab(id); });
         btn.querySelector('.tab-close').addEventListener('click', function(e){ e.stopPropagation(); closeTab(id); });
         // settings apply to new textarea
@@ -645,10 +700,11 @@
             if (s.editor.color) ta.style.color = s.editor.color;
             if (s.editor.bg) ta.style.backgroundColor = s.editor.bg;
         }
-        ta.addEventListener('input', function(){ saveCode(); });
         try{ attachEditorKeyHandlers(ta); }catch(_){ }
         try{ attachEditorSelectionHandlers(ta); }catch(_){ }
-        const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled' };
+        const tab = { id, textarea: ta, view, fullName: null, readOnly: false, displayName: 'Untitled', savedContent: '', dirty: false };
+        // Fallback input listener for early typing before CM attaches (rare)
+        ta.addEventListener('input', function(){ saveCode(); try{ setTabDirty(tab, (ta.value||'') !== (tab.savedContent||'')); }catch(_){ } });
         tabs.push(tab);
         try{ ensureCodeMirrorForTab(tab); }catch(_){}
         // initial content/meta
@@ -658,8 +714,13 @@
             if (initial.readOnly){ tab.readOnly = !!initial.readOnly; }
             const title = initial.displayName || (initial.fullName ? (initial.fullName.includes('/')? initial.fullName.split('/').pop() : initial.fullName) : 'Untitled');
             setTabTitle(id, title, initial.fullName || title);
+            // Treat opened files as not dirty initially
+            tab.savedContent = (typeof initial.content === 'string') ? initial.content : (tab.textarea.value || '');
+            tab.dirty = false; renderTabButtonFor(tab);
         } else {
             setTabTitle(id, 'Untitled', 'Untitled');
+            tab.savedContent = tab.textarea.value || '';
+            tab.dirty = false; renderTabButtonFor(tab);
         }
         // show editor and activate
         openEditor(true);
@@ -680,10 +741,22 @@
     function closeTab(id){
         const idx = tabs.findIndex(t=>t.id===id);
         if (idx < 0) return;
+        const t = tabs[idx];
+        // warn if unsaved changes
+        if (t && t.dirty){
+            const ok = confirm('This document has unsaved changes. Close anyway?');
+            if (!ok) return;
+        }
         if (id === 0 || tabs.length === 1){
             // clear first/only tab per spec
             const t0 = getTabById(id);
-            if (t0){ t0.textarea.value = ''; t0.fullName = null; t0.readOnly = false; setTabTitle(id, 'Untitled', 'Untitled'); saveCode(''); }
+            if (t0){
+                t0.textarea.value = '';
+                if (t0.cm) try{ t0.cm.setValue(''); }catch(_){}
+                t0.fullName = null; t0.readOnly = false; t0.savedContent = ''; setTabDirty(t0, false);
+                setTabTitle(id, 'Untitled', 'Untitled'); saveCode('');
+                refreshAndApplyMode(t0);
+            }
             activateTab(id);
             return;
         }
@@ -1003,6 +1076,9 @@
                 first.textarea.value = code; // only overwrite the first time we open in this session
                 if (first.cm) try{ first.cm.setValue(code); }catch(_){}
                 setTabTitle(0, 'Untitled', 'Untitled');
+                // Treat initial content as clean
+                first.savedContent = code;
+                setTabDirty(first, false);
             }
             // Place caret on a new line at the end of the initial code for the first editor
             if (first && first.textarea){
@@ -1423,6 +1499,9 @@
             const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
             const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
             if (!file) return;
+            // If already open (same full path), just activate that tab
+            const existing = findTabByFullName(file.name);
+            if (existing){ activateTab(existing.id); bootstrap.Modal.getOrCreateInstance(document.getElementById('modalOpen')).hide(); return; }
             const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
             createNewTab({
                 content: file.content || '',
@@ -1797,7 +1876,7 @@
             // keep tab title consistent
             const base = currentFileName.includes('/') ? currentFileName.split('/').pop() : currentFileName;
             setTabTitle(activeTabId, base, currentFileName);
-            const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; }
+            const t = getActiveTab(); if (t){ t.fullName = currentFileName; t.readOnly = false; t.savedContent = content; setTabDirty(t, false); }
             try{ refreshAndApplyMode(getActiveTab()); }catch(_){ }
             try{ await buildVfsTree(); }catch(_){ }
             term && term.echo && term.echo('[Saved] ' + currentFileName);
@@ -1857,7 +1936,7 @@
         // Update tab metadata and title/tooltip
         const base = targetName.includes('/') ? targetName.split('/').pop() : targetName;
         setTabTitle(activeTabId, base, targetName);
-        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; try{ refreshAndApplyMode(t); }catch(_){ } }
+        const t = getActiveTab(); if (t){ t.fullName = targetName; t.readOnly = false; t.savedContent = content; setTabDirty(t, false); try{ refreshAndApplyMode(t); }catch(_){ } }
         try{ await buildVfsTree(); }catch(_){ }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSaveAs')).hide();
         term && term.echo && term.echo('[Saved] ' + targetName);
@@ -2123,6 +2202,9 @@
                 const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
                 const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
                 if (!file) return;
+                // avoid duplicate open: if already open by full path, activate
+                const existing = findTabByFullName(file.name);
+                if (existing){ activateTab(existing.id); openEditor(true); return; }
                 const displayName = fullName.includes('/') ? fullName.split('/').pop() : fullName;
                 createNewTab({ content: file.content || '', fullName: file.name, readOnly: !!file.readOnly, displayName });
                 openEditor(true);
@@ -2158,6 +2240,18 @@
         try{ buildVfsTree(); }catch(e){ console.warn('VFS tree build failed', e); }
         // Extra global keyboard: F1 toggles right; F8 executes selection (if any) when editor focused; F9 runs whole program when editor focused; ESC closes drawers unless modal open
         document.addEventListener('keydown', function(e){
+            // Ctrl/Cmd+S → Save (or Save As when untitled/read-only)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')){
+                e.preventDefault();
+                try{ onFileSave(); }catch(_){ }
+                return;
+            }
+            // Ctrl/Cmd+N → New file (same as clicking the + tab)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')){
+                e.preventDefault();
+                try{ onFileNew(); }catch(_){ }
+                return;
+            }
             // Intercept F5 to prevent accidental page refresh
             if (e.key === 'F5') { e.preventDefault(); return; }
             const k = e.key;
