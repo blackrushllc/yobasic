@@ -1042,6 +1042,14 @@
           const pos = hay.indexOf(nee);
           return pos >= 0 ? (pos + 1) : 0;
         }
+        case 'VAL': {
+          // Convert string to number; ignore leading spaces, parse until invalid char; return 0 if no numeric value
+          if (!args || args.length === 0 || args[0] == null) return 0;
+          const s = String(args[0]).trim();
+          // Use parseFloat to emulate BASIC VAL behavior for decimals; fallback to 0 on NaN
+          const n = parseFloat(s);
+          return Number.isFinite(n) ? n : 0;
+        }
         // --- Math functions ---
         case 'ABS': return Math.abs(Number(args && args[0] != null ? args[0] : 0));
         case 'ATN':
@@ -2133,7 +2141,8 @@
         }
         // FUNC/FUNCTION/SUB declarations
         if (/^(FUNC|FUNCTION)\b/i.test(u) || /^SUB\b/i.test(u)){
-          const m = t.match(/^(FUNC|FUNCTION|SUB)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*(?:BEGIN\s*)?$/i);
+          // Allow optional BASIC type suffix ($ for string, % for integer) in function names
+          const m = t.match(/^(FUNC|FUNCTION|SUB)\s+([A-Za-z_][A-Za-z0-9_\$%]*)\s*\((.*?)\)\s*(?:BEGIN\s*)?$/i);
           if (!m) throw new Error(`Invalid ${t.split(/\s+/)[0]} declaration at line ${i+1}`);
           const kind = m[1].toUpperCase().replace('FUNCTION','FUNC');
           const name = m[2].toUpperCase();
