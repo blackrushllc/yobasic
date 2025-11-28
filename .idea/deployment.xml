@@ -122,7 +122,7 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="YORE1">
+      <paths name="YoBASIC">
         <serverdata>
           <mappings>
             <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
@@ -130,6 +130,13 @@
         </serverdata>
       </paths>
       <paths name="track-my-implants">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="yore1/basilbasic">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
