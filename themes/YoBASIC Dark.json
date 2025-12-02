@@ -1,0 +1,28 @@
+{
+  "id": "yobasic-dark",
+  "name": "YoBASIC Dark",
+  "version": 1,
+  "variables": {
+    "--app-bg": "#0b1b3b",
+    "--app-fg": "#e6f0ff",
+    "--accent": "#FF6600",
+    "--border": "#1e2a55",
+    "--editor-bg": "#031634",
+    "--editor-fg": "#e6f0ff",
+    "--terminal-bg": "#001a33",
+    "--terminal-fg": "#e6f0ff"
+  },
+  "editor": {
+    "fontFamily": "Courier New",
+    "fontSize": 16
+  },
+  "terminal": {
+    "fontFamily": "Courier New",
+    "fontSize": 16
+  },
+  "meta": {
+    "author": "YoBASIC",
+    "created": "2025-12-02",
+    "updated": "2025-12-02"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "yobasic-light",
+  "name": "YoBASIC Light",
+  "version": 1,
+  "variables": {
+    "--app-bg": "#f7f9fc",
+    "--app-fg": "#0b2545",
+    "--accent": "#0066cc",
+    "--border": "#c6d0e1",
+    "--editor-bg": "#ffffff",
+    "--editor-fg": "#0b2545",
+    "--terminal-bg": "#f1f5fb",
+    "--terminal-fg": "#0b2545"
+  },
+  "editor": {
+    "fontFamily": "Courier New",
+    "fontSize": 16
+  },
+  "terminal": {
+    "fontFamily": "Courier New",
+    "fontSize": 16
+  },
+  "meta": {
+    "author": "YoBASIC",
+    "created": "2025-12-02",
+    "updated": "2025-12-02"
+  }
+}
