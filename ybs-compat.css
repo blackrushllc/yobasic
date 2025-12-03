@@ -1,0 +1,44 @@
+/* YoBASIC Bootstrap-compat (Track A): maps subset of Bootstrap class names to our tokens */
+
+/* Background and text utilities */
+.bg-dark{ background-color: var(--surface-2) !important; }
+.bg-transparent{ background-color: transparent !important; }
+.text-light{ color: var(--app-fg) !important; }
+.text-secondary{ color: var(--muted-fg) !important; }
+
+/* Borders */
+.border-bottom{ border-bottom: 1px solid var(--border) !important; }
+.border-secondary{ border-color: var(--border) !important; }
+
+/* Navbar helpers */
+.navbar-dark{ color-scheme: dark; }
+.navbar-nav{ display:flex; align-items:center; }
+
+/* Buttons */
+.btn-secondary{ --_bg: #6c757d; --_fg: #fff; --_bd: #6c757d; }
+.btn-outline-primary{ --_bg: transparent; --_fg: var(--btn-primary); --_bd: var(--btn-primary); }
+.btn-outline-secondary{ --_bg: transparent; --_fg: #6c757d; --_bd: #6c757d; }
+
+/* Dropdown caret indicator */
+.dropdown-toggle::after{ content:""; display:inline-block; margin-left:.25rem; vertical-align:.25em; border-top:.3em solid; border-right:.3em solid transparent; border-bottom:0; border-left:.3em solid transparent; }
+
+/* Collapsible */
+.collapse{ display: none; }
+.collapse.show{ display:block; }
+
+/* Accordion (minimal) */
+.accordion{ --_acc-border: var(--border); --_acc-bg: transparent; }
+.accordion-item{ background: var(--_acc-bg); border:1px solid var(--_acc-border); border-radius:.375rem; }
+.accordion-header{ margin:0; }
+.accordion-button{ width:100%; text-align:left; padding:.5rem .75rem; background: var(--surface-2); color: var(--app-fg); border:0; border-bottom:1px solid var(--border); cursor:pointer; }
+.accordion-button.collapsed{ border-bottom-color: transparent; }
+.accordion-body{ padding: .5rem .75rem; background: var(--surface-1); }
+.accordion-collapse{ border-top:0; }
+
+/* List group */
+.list-group{ display:block; border-radius:.375rem; overflow:hidden; }
+.list-group-item{ display:block; width:100%; padding:.5rem .75rem; border:1px solid var(--border); background: var(--surface-1); color: var(--app-fg); }
+.list-group-item + .list-group-item{ border-top:0; }
+.list-group-item-action{ cursor:pointer; }
+.list-group-item-dark{ background: var(--surface-2); }
+.list-group-item.active{ background: var(--accent); color: #000; }

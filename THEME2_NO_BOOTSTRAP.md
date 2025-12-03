@@ -109,3 +109,59 @@ Two safe tracks; pick Track A first for speed, then optionally proceed to Track 
 - Introduce `--nav-bg` with default `#0a0a0a` (or pick a shade that matches your Dark theme). Switch the navbar to use it immediately so the mismatch with `#212529` disappears without waiting for full Track A completion.
 
 If you want, I can draft `ybs.css` and a first pass of `ybs-compat.css` that covers exactly the classes used in `index.html`, and add the CodeMirror theme styles next.
+
+---
+
+## Status Update — Track A Implemented (2025‑12‑03)
+
+Completed in this commit:
+- Removed Bootstrap CSS from index.html and kept Bootstrap Icons + Bootstrap JS bundle.
+- Added custom stylesheets:
+  - ybs.css — core tokens, utilities, grid subset, navbar, buttons, dropdowns, tabs, forms, modals, list groups, scrollbars, and a CodeMirror theme (.cm-s-yobasic) driven by CSS variables.
+  - ybs-compat.css — minimal compatibility mappings for Bootstrap class names used by the app (bg/text utilities, borders, button variants, dropdown caret, collapse, accordion, list group).
+- Wired CodeMirror to use the new theme: theme: 'yobasic'.
+- Navbar color now governed by --nav-bg (default #0a0a0a), eliminating the old #212529 mismatch.
+- Ensured modals, dropdowns, tabs, list groups, and grid/layout used in index.html render under the new styles while Bootstrap JS drives interactions.
+
+What to test now (Track A verification):
+- Navbar visual integration and dropdown menus open/close properly.
+- Settings, Identity, About, Open and Save As modals open/close with backdrop; focus and buttons look coherent.
+- Tabs render and switch; the fixed “+” button and the first tab accent state look correct.
+- Forms (inputs/selects/color pickers) in Settings appear styled and focus ring is visible.
+- List groups in Open/Save dialogs, and the Explorer list in the left drawer look correct; active state shows.
+- Accordion in the left drawer expands/collapses and styles remain legible.
+- Editor uses the CodeMirror ‘yobasic’ theme; terminal/colors align with the active theme.
+- Scrollbars show customized styling.
+
+Known limitations to revisit after testing:
+- Compat layer is intentionally minimal; some Bootstrap utility classes not used in index.html are not implemented.
+- Positioning for dropdowns relies on Bootstrap JS default behavior; advanced placement (auto-flip) is not customized.
+- Additional spacing utilities may be added on demand when new UI pieces appear.
+
+## Track B — Remaining Tasks (post‑testing)
+After Track A stabilizes in testing, proceed with removing Bootstrap JS by introducing a tiny dependency‑free UI layer.
+
+1) Implement ybui.js behaviors
+   - Dropdown: click toggle, close on outside/Escape, simple below-trigger positioning, keyboard navigation.
+   - Modal: open/close APIs, backdrop injection, focus trap and return, ESC, scroll lock, aria attributes.
+   - Tabs: activate/deactivate panels via aria-controls and data attributes; maintain active classes.
+   - Collapse/Accordion: expand/collapse with CSS classes; manage data-parent behavior in the left drawer.
+
+2) Replace Bootstrap usages in index.html JS
+   - bootstrap.Dropdown → YBUI.Dropdown
+   - bootstrap.Modal → YBUI.Modal
+   - bootstrap.Tab → YBUI.Tab (or inline activation logic)
+   - bootstrap.Collapse → YBUI.Collapse
+   - Update event names where code listens for 'show.bs.collapse' to custom events (e.g., 'ybui:show').
+
+3) Remove the Bootstrap bundle
+   - Delete the <script> reference to bootstrap.bundle.min.js after verifying parity.
+
+4) Polish and docs
+   - Add API notes for YBUI to IMPLEMENTATION-NOTES.md or STYLE_GUIDE.md.
+   - Expand compat styles or remove ybs-compat.css as we fully migrate class names to our native layer.
+
+Exit criteria for Track B:
+- No Bootstrap JS present; all interactions handled by ybui.js.
+- All existing menus/modals/tabs/collapse functionality works as before with keyboard and mouse.
+- No visual regressions compared to the end state of Track A.
