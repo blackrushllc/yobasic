@@ -97,7 +97,7 @@
         /* make terminal host a positioning context for subtle toolbar */
         #terminal { position: relative; }
         /* Subtle terminal toolbar */
-        #terminal-toolbar { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 2px 6px; display: flex; gap: 8px; align-items: center; z-index: 5; opacity: .75; }
+        #terminal-toolbar { position: absolute; top: 6px; left: 30%; transform: translateX(-50%); background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 2px 6px; display: flex; gap: 8px; align-items: center; z-index: 5; opacity: .75; }
         #terminal-toolbar:hover { opacity: 1; }
         #terminal-toolbar button { background: transparent; border: 0; color: #e6f0ff; padding: 2px 4px; line-height: 1; font-size: 14px; cursor: pointer; opacity: .9; }
         #terminal-toolbar button:hover { opacity: 1; color: #fff; }
@@ -675,9 +675,10 @@
         if (window.CodeMirror && CodeMirror.defineSimpleMode){
             CodeMirror.defineSimpleMode('yobasic', {
               start: [
-                { regex: /'.*$/i, token: 'comment' },
+                { regex: /\/\/.*$/, token: 'comment' },
                 { regex: /\bREM\b.*$/i, token: 'comment' },
                 { regex: /"([^"\\]|\\.)*"?/, token: 'string' },
+                { regex: /'([^'\\]|\\.)*'?/, token: 'string' },
                 { regex: /\b(\d+\.\d*|\.\d+|\d+)\b/, token: 'number' },
                 { regex: new RegExp("\\b(" + BASIC_KEYWORDS.join("|") + ")\\b", "i"), token: 'keyword' },
                 { regex: /\b(AND|OR|NOT|MOD)\b/i, token: 'operator' },
@@ -685,7 +686,7 @@
                 { regex: /[A-Z][A-Z0-9_]*\$/i, token: 'variable-2' },
                 { regex: /[A-Z][A-Z0-9_]*/i, token: 'variable' }
               ],
-              meta: { lineComment: "'" }
+              meta: { lineComment: "//" }
             });
         }
     }catch(_){ /* mode define failed */ }
@@ -1011,7 +1012,8 @@
     let currentFileReadOnly = false;
 
     function setNavHeight() {
-        const h = document.getElementById('topnav').offsetHeight || 56;
+        // const h = document.getElementById('topnav').offsetHeight || 56;
+        const h = 56;
         document.body.style.setProperty('--nav-height', h + 'px');
         // Ensure we reserve enough vertical space for the fixed tabs bar
         try{ updateTabsPad(); }catch(_){ }

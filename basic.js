@@ -160,7 +160,10 @@
           // Clear memory before each top-level program run
           this.reset();
         }
-        const lines = Array.isArray(program) ? program.slice() : String(program).split(/\r?\n/);
+        // Build logical lines to support multi-line strings
+        const lines = Array.isArray(program)
+          ? program.slice()
+          : this._coalesceLogicalLines(String(program));
         this._lastProgramLines = lines;
         // Prepass: collect function/sub blocks and program-scope labels
         this._prepass(lines);
@@ -1267,39 +1270,72 @@
 
     // --- Parsing utilities ---
     _stripComments(s){
-      // Remove //, REM, or ' comments not inside strings. Preserve single-quoted strings when clearly used as literals.
-      let i = 0, inS = false, inD = false;
+      // Remove // comments anywhere and REM comments at line start, outside of strings.
+      // Single quote is no longer a comment starter; it always denotes a string delimiter.
+      let i = 0;
+      let inQuote = null; // ' or " or null
       while (i < s.length){
         const c = s[i];
-        if (!inS && !inD){
-          // start of //
+        if (!inQuote){
+          // // comment
           if (c === '/' && s[i+1] === '/') return s.slice(0, i);
-          // REM comment at line start or after spaces
-          if ((i === 0 || /^\s+$/.test(s.slice(0,i))) && (s.slice(i, i+3).toUpperCase() === 'REM')) return s.slice(0, i);
-          // Single-quote comment anywhere outside strings unless it looks like a single-quoted string literal context
-          if (c === '\''){
-            // Determine previous non-space character
-            let j = i - 1; while (j >= 0 && /\s/.test(s[j])) j--;
-            const prev = j >= 0 ? s[j] : null;
-            const looksLikeString = prev === '=' || prev === '(' || prev === '[' || prev === '{' || prev === ',' || prev === ':';
-            if (!looksLikeString){
-              return s.slice(0, i);
-            } else {
-              // skip over the single-quoted string literal
-              const seg = this._readString(s, i);
-              i = seg.end; continue;
-            }
+          // REM comment at line start or after only spaces
+          if ((i === 0 || /^\s+$/.test(s.slice(0,i))) && s.slice(i, i+3).toUpperCase() === 'REM'){
+            return s.slice(0, i);
           }
+          if (c === '"' || c === '\'') { inQuote = c; i++; continue; }
+          i++;
+          continue;
+        } else {
+          // inside a string, honor escapes
+          if (c === '\\') { i += 2; continue; }
+          if (c === inQuote) { inQuote = null; i++; continue; }
+          i++;
+          continue;
         }
-        if (c === '"' && !inS){ inD = !inD; i++; continue; }
-        if (c === '\'' && !inD){
-          // treat as part of a single-quoted string (legacy support) if we got here
-          inS = !inS; i++; continue;
-        }
-        if (c === '\\' && (inD || inS)) { i += 2; continue; }
-        i++;
       }
       return s;
+    }
+
+    _coalesceLogicalLines(raw){
+      // Merge physical lines into logical lines so that strings may span multiple lines.
+      const lines = String(raw).split(/\r?\n/);
+      const out = [];
+      let buf = '';
+      let inQuote = null; // ' or " or null
+      let interpDepth = 0; // #{...} depth when inside a double-quoted string
+      for (let i = 0; i < lines.length; i++){
+        const line = lines[i];
+        let j = 0;
+        while (j < line.length){
+          const ch = line[j];
+          if (!inQuote){
+            if (ch === '"' || ch === '\'') { inQuote = ch; buf += ch; j++; continue; }
+            buf += ch; j++; continue;
+          } else {
+            buf += ch; j++;
+            if (ch === '\\'){
+              if (j < line.length){ buf += line[j]; j++; }
+              continue;
+            }
+            if (inQuote === '"'){
+              // Track interpolation markers to avoid closing the string while inside #{...}
+              if (ch === '#' && line[j] === '{') { interpDepth++; buf += line[j]; j++; continue; }
+              if (ch === '}' && interpDepth > 0) { interpDepth--; continue; }
+            }
+            if (ch === inQuote && interpDepth === 0){ inQuote = null; continue; }
+          }
+        }
+        if (inQuote){
+          // Continue string on next line: embed a real newline character
+          buf += '\n';
+        } else {
+          out.push(buf);
+          buf = '';
+        }
+      }
+      if (buf.trim() !== '') out.push(buf);
+      return out;
     }
 
     _splitStatements(line){
@@ -1448,9 +1484,21 @@
         }
         // Single-quoted strings pass through untouched (no interpolation)
         if (c === '\''){
-          const { value, end, quote } = this._readString(s, i);
-          out += quote + value + quote;
-          i = end;
+          // Copy raw single-quoted literal preserving escapes
+          let j = i + 1;
+          out += '\'';
+          let closed = false;
+          while (j < s.length){
+            const ch = s[j];
+            out += ch; j++;
+            if (ch === '\\'){
+              if (j < s.length){ out += s[j]; j++; }
+              continue;
+            }
+            if (ch === '\''){ closed = true; break; }
+          }
+          if (!closed) throw new Error('Unterminated string literal');
+          i = j;
           continue;
         }
         out += c;
@@ -1478,7 +1526,14 @@
         // strings (single or double) should pass through; double quotes were already handled but keep safe
         if (c==='"' || c==='\''){
           const {value, end, quote} = this._readString(s, i);
-          out += quote + value.replace(/\\/g,'\\\\').replace(new RegExp(quote,'g'),'\\'+quote) + quote;
+          // Escape for valid JS source literal
+          const escaped = String(value)
+            .replace(/\\/g, '\\\\')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/[\u2028\u2029]/g, m => m === '\u2028' ? '\\u2028' : '\\u2029')
+            .replace(new RegExp(quote, 'g'), '\\' + quote);
+          out += quote + escaped + quote;
           i = end;
           continue;
         }
@@ -1593,19 +1648,34 @@
     }
 
     _readString(s, start){
-      const quote = s[start];
+      // Reads a single- or double-quoted string starting at index 'start'.
+      // Applies quote-specific escape semantics and returns the interpreted value.
+      const quote = s[start]; // ' or "
       let i = start + 1;
-      let val = '';
+      let out = '';
       while (i < s.length){
         const c = s[i];
         if (c === '\\'){
-          if (i+1 < s.length){ val += c + s[i+1]; i += 2; continue; }
-          else { i++; break; }
+          const n = s[i+1];
+          if (typeof n === 'undefined'){ i++; break; }
+          if (quote === '"'){
+            if (n === 'n'){ out += '\n'; i += 2; continue; }
+            if (n === 't'){ out += '\t'; i += 2; continue; }
+            if (n === 'r'){ out += '\r'; i += 2; continue; }
+            if (n === '"'){ out += '"'; i += 2; continue; }
+            if (n === '#'){ out += '#'; i += 2; continue; } // allow \#{ -> literal '#{'
+            if (n === '}'){ out += '}'; i += 2; continue; } // allow \} -> literal '}'
+            // default: keep backslash+char literally
+            out += '\\' + n; i += 2; continue;
+          } else { // single-quoted
+            if (n === '\''){ out += '\''; i += 2; continue; }
+            out += '\\' + n; i += 2; continue;
+          }
         }
-        if (c === quote){ i++; break; }
-        val += c; i++;
+        if (c === quote){ i++; return { value: out, end: i, quote }; }
+        out += c; i++;
       }
-      return { value: val, end: i, quote };
+      throw new Error('Unterminated string literal');
     }
 
     _toString(v){
@@ -2415,7 +2485,9 @@
     YoBasic.checkSyntax = function checkSyntax(source){
       try{
         const src = String(source||'');
-        const lines = src.split(/\r?\n/);
+        // Use interpreter's logical line coalescing to handle multi-line strings
+        const interp = new BasicInterpreter({ debug:false });
+        const lines = interp._coalesceLogicalLines(src);
         const errors = [];
         const stack = []; // block types
         let paren = 0;
@@ -2432,26 +2504,23 @@
 
         for (let i=0; i<lines.length; i++){
           const raw = lines[i];
-          // strip REM and ' comments (but honor quotes)
-          let inStr = false; let prev = '';
+          // Strip // and REM comments outside strings, supporting both quote types
           let clean = '';
+          let inQuote = null;
           for (let j=0; j<raw.length; j++){
             const ch = raw[j];
-            const two = (prev + ch).toUpperCase();
-            if (!inStr && ch === "'" ){ // single-quote comment start
-              break;
+            if (!inQuote){
+              if (ch === '/' && raw[j+1] === '/') { break; }
+              if ((j === 0 || /^\s+$/.test(raw.slice(0,j))) && raw.slice(j, j+3).toUpperCase() === 'REM'){
+                break;
+              }
+              if (ch === '"' || ch === '\''){ inQuote = ch; clean += ch; continue; }
+              clean += ch;
+            } else {
+              clean += ch;
+              if (ch === '\\'){ if (j+1 < raw.length){ clean += raw[++j]; } continue; }
+              if (ch === inQuote){ inQuote = null; }
             }
-            if (!inStr && /REM\s$/i.test(clean)){
-              // we just completed "REM "; treat the rest as comment
-              clean = clean.slice(0, clean.length - 4); // drop REM and space
-              break;
-            }
-            if (ch === '"' && prev !== '\\') inStr = !inStr;
-            clean += ch;
-            prev = ch;
-          }
-          if (inStr){
-            errors.push({ message: 'Unterminated string', line: i, column: Math.max(0, raw.length-1) });
           }
 
           // paren balance and block detection (ignore inside strings; already removed)

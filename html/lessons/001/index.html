@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>YoBASIC Tutorial – Chapter 1: Getting Started</title>
+
+    <link rel="stylesheet" href="../../tutorial.css" />
+</head>
+<body>
+
+<article class="tutorial"
+         data-chapter="1"
+         data-slug="getting-started">
+
+    <h3><a href="/basic/html"><<</a> Chapter 1 – Getting Started <a href="/basic/html/lessons/002">>></a></h3>
+
+        <video class="tutorial-video"
+               controls
+               controlsList="nofullscreen noremoteplayback nodownload"
+               disablePictureInPicture
+               playsinline>
+            <source src="YoBASIC1.mp4"
+                    type="video/mp4" />
+            Your browser does not support the video tag.</video>
+
+    <p>In this chapter you’ll learn how to run your first BASIC programs
+    in the YoBASIC web IDE.</p>
+
+            <!-- =========================
+                 Example 1: Hello World
+                 ========================= -->
+
+    <section class="example"
+             data-example-id="ch1-hello-world"
+             data-example-title="HELLO.BAS">
+        <div class="example-header">
+            <h2>Example 1 – Hello World</h2>
+            <button class="example-open"
+                    data-example-id="ch1-hello-world">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+        <ol>
+        <li>Click the button to open this program in a new editor tab.</li>
+        <li>Then click the Run button or press F9 to run the program.</li>
+        </ol>
+        <div class="example-files">
+            <!-- Main BASIC file -->
+            <h3>HELLO.BAS</h3>
+            <pre data-file-name="HELLO.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+PRINT "Hello from YoBASIC!"
+PRINT "This program ran from the tutorial sidebar."
+        </pre>
+        </div>
+
+        <p>
+            This simple program prints two lines of text to the BASIC terminal.
+            You can modify the text inside the quotes and run it again to see
+            your changes.
+        </p>
+    </section>
+
+    <!-- =======================================
+         Example 2: Variables and Input
+         ======================================= -->
+    <section class="example"
+             data-example-id="ch1-variables-input"
+             data-example-title="VARS.BAS">
+        <div class="example-header">
+            <h2>Example 2 – Variables and Input</h2>
+            <button class="example-open"
+                    data-example-id="ch1-variables-input">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+        <ol>
+            <li>Click the button to open this program in a new editor tab.</li>
+            <li>Then click the Run button or press F9 to run the program.</li>
+        </ol>
+        <div class="example-files">
+            <h3>VARS.BAS</h3>
+            <pre data-file-name="VARS.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+REM Ask the user for their name and age, then respond
+INPUT "What is your name? ", name$
+INPUT "How old are you? ", age
+PRINT "Nice to meet you, ", name$, "!"
+PRINT "Next year you will be ", age + 1
+            </pre>
+        </div>
+        <p>
+            This program demonstrates string variables, numeric variables, and
+            reading user input using INPUT. It then prints a friendly message.
+        </p>
+    </section>
+
+    <!-- =======================================
+         Example 3: If/Then Decision
+         ======================================= -->
+    <section class="example"
+             data-example-id="ch1-even-odd"
+             data-example-title="EVENODD.BAS">
+        <div class="example-header">
+            <h2>Example 3 – Decision Making with IF</h2>
+            <button class="example-open"
+                    data-example-id="ch1-even-odd">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+        <ol>
+            <li>Click the button to open this program in a new editor tab.</li>
+            <li>Then click the Run button or press F9 to run the program.</li>
+        </ol>
+        <div class="example-files">
+            <h3>EVENODD.BAS</h3>
+            <pre data-file-name="EVENODD.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+REM Determine if a number is even or odd
+INPUT "Enter an integer: ", n
+IF n MOD 2 = 0 THEN
+  PRINT n, " is even"
+ELSE
+  PRINT n, " is odd"
+END IF
+            </pre>
+        </div>
+        <p>
+            This example uses IF/ELSE to branch logic and the MOD operator to
+            check for even or odd numbers.
+        </p>
+    </section>
+
+    <!-- =======================================
+         Example 4: For Loop
+         ======================================= -->
+    <section class="example"
+             data-example-id="ch1-for-loop"
+             data-example-title="SQUARES.BAS">
+        <div class="example-header">
+            <h2>Example 4 – Loops with FOR/NEXT</h2>
+            <button class="example-open"
+                    data-example-id="ch1-for-loop">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+        <ol>
+            <li>Click the button to open this program in a new editor tab.</li>
+            <li>Then click the Run button or press F9 to run the program.</li>
+        </ol>
+        <div class="example-files">
+            <h3>SQUARES.BAS</h3>
+            <pre data-file-name="SQUARES.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+REM Print the squares of numbers 1 through 10
+FOR i = 1 TO 10
+  PRINT i, " squared is ", i * i
+NEXT i
+            </pre>
+        </div>
+        <p>
+            This short program introduces loops using FOR and NEXT by printing
+            a small table of square numbers.
+        </p>
+    </section>
+    <nav class="chapter-nav">
+        <h3><a href="/basic/html/"><<</a> Previous - Next  <a href="/basic/html/lessons/002">>></a></h3>
+    </nav>
+</article>
+
+<!-- Iframe-side API: send "open example" messages to parent -->
+<script src="../../tutorial.js"></script>
+</body>
+</html>
