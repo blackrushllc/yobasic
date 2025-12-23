@@ -24,6 +24,7 @@
     <script src="provider-shared.js"></script>
     <script src="basic.js"></script>
     <script src="projectManager.js"></script>
+    <script src="chat.js"></script>
     <!-- CodeMirror 5 (free, MIT) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
@@ -1427,6 +1428,8 @@
                 try { await sharedProvider.listOwners(); } catch(e) { /* ignore */ }
                 await Identity.initializeFromSession();
                 updateIdentityUi();
+                // Initialize Chat
+                if (window.Chat && Chat.init) await Chat.init();
                 // After providers are ready, try loading sharedProject from URL
                 try{ await tryLoadSharedProjectFromUrl(); }catch(err){ console.warn('sharedProject load failed', err); }
             }catch(e){ console.warn('[YoBASIC] Supabase init failed', e); }
@@ -1967,6 +1970,7 @@
 
     function updateIdentityUi(){
         const me = Identity.getCurrentUser && Identity.getCurrentUser();
+        if (window.Chat && Chat.refresh) Chat.refresh();
         if (me){
             $('#identity-status').text(`You are logged in as ${me.username}.`);
             $('#identity-forms').addClass('d-none');
@@ -2711,6 +2715,20 @@
           </div>
         </div>
       </div>
+      <div class="accordion-item bg-transparent text-light border-secondary">
+        <h2 class="accordion-header" id="acc-chat-h">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acc-chat" aria-expanded="false" aria-controls="acc-chat">Chat</button>
+        </h2>
+        <div id="acc-chat" class="accordion-collapse collapse" aria-labelledby="acc-chat-h" data-bs-parent="#leftAccordion">
+          <div class="accordion-body p-2 d-flex flex-column" style="height: 350px;">
+            <div id="chat-messages" class="flex-grow-1 overflow-auto mb-2" style="font-size: 0.9rem; scroll-behavior: smooth;"></div>
+            <div class="input-group input-group-sm">
+              <input type="text" id="chat-input" class="form-control bg-dark text-light border-secondary" placeholder="Type a message...">
+              <button class="btn btn-outline-secondary" id="chat-send">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- Side terminal host (hidden until used) -->
     <div id="left-terminal-host" class="mt-2">
@@ -2741,7 +2759,7 @@
 </div>
 <script>
     // Junie, look at this:
-    const YoBasicIDE = window.YoBasicIDE || {};
+    const YoBasicIDE = window.YoBasicIDE = window.YoBasicIDE || {};
 
     // Example helper: open example files as tabs in your editor (real wiring)
     YoBasicIDE.openExample = function (payload) {
