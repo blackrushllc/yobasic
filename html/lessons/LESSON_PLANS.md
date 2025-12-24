@@ -2,9 +2,24 @@
 
 ## 001 - Hello World and the Basics
 - Introduction Video
-  - "Hello World..."
+  - KALA_FUNDAMENTAL: In this tutorial we are going to learn the fundamental concepts of programming with YoBASIC. 
+  - We are going to write simple applications the demonstrate the core concepts of programming.  
+  - By the end of this tutorial you are going to have a general understanding how how to write code in any programming language.
 - Example 1 - Hello World
-  - Listen: Hello World...
+  - Listen: This first example is what we call the "Hello World" program.
+  - Whenever any programmer starts learning a new programming language, the first program they write is usually the "Hello World" program.
+  - It is a simple program that prints the text "Hello World" to the screen.
+  - Everyone does this, just to make sure that their programming language is working properly.
+  - To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+  - You will see a new editor tab open with the code for the first example.
+  - Then, do 2 things. Click the yellow "Tron/Troff" button to turn off the "Tron" mode. This is a toggle button you can 
+    - use to turn on or off extra messages in the terminal that can help you debug your program. We don't need this on.
+  - After that, click the green "Clear" button or type the command "clear" in your terminal to clear the screen.
+  - Finally, click the "Run" button or press F9 to run the program. You will see the text "Hello from YoBASIC" printed to the terminal screen.
+  - Now do this, change the text inside the quotes to say "Hello World" or something else instead of "Hello from YoBASIC". 
+    - Then run the program again.
+  - You should see the new text printed to the screen.
+  - Now move on to the next example.
 - Example 2 – Variables and Input
   - Listen: Variables and Input...
 - Example 3 – Decision Making with IF

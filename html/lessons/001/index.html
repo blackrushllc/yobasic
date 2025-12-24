@@ -19,7 +19,7 @@
                controlsList="nofullscreen noremoteplayback nodownload"
                disablePictureInPicture
                playsinline>
-            <source src="YoBASIC1.mp4"
+            <source src="/basic/html/lessons/001/001 - Hello World and the Basics.mp4"
                     type="video/mp4" />
             Your browser does not support the video tag.</video>
 
@@ -39,6 +39,13 @@
                     data-example-id="ch1-hello-world">
                 Open in YoBASIC Editor
             </button>
+        </div>
+        <div style="text-align:center;font-size:small;">
+            <audio controls>
+                <source style="width:100%" src="/basic/html/lessons/001/001_erik_hello_world.m4a" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <p style="margin-top:-10px;color:gray;">Listen to the instructor for help with this example</p>
         </div>
         <ol>
         <li>Click the button to open this program in a new editor tab.</li>
@@ -86,9 +93,11 @@ PRINT "This program ran from the tutorial sidebar."
                  data-file-role="main">
 REM Ask the user for their name and age, then respond
 INPUT "What is your name? ", name$
-INPUT "How old are you? ", age
+INPUT "How old are you? ", age%
 PRINT "Nice to meet you, ", name$, "!"
-PRINT "Next year you will be ", age + 1
+newage% = age% + 1
+PRINT "Next year you will be ", newage%
+
             </pre>
         </div>
         <p>
