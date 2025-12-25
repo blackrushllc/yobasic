@@ -1,15 +1,16 @@
 # Lesson Plans
 
-## 001 - Hello World and the Basics
-- Introduction Video
+## TUTORIAL PAGE 001 - Hello World and the Basics
+
+### Introduction Video
   - KALA_FUNDAMENTAL: In this tutorial we are going to learn the fundamental concepts of programming with YoBASIC. 
   - We are going to write simple applications the demonstrate the core concepts of programming.  
   - By the end of this tutorial you are going to have a general understanding how how to write code in any programming language.
-- Example 1 - Hello World
+### Example 1 - Hello World
 ```
 print "Hello from YoBASIC"
 ```
-  - Listen: This first example is what we call the "Hello World" program.
+#### Listen: This first example is what we call the "Hello World" program.
   - Whenever any programmer starts learning a new programming language, the first program they write is usually the "Hello World" program.
   - It is a simple program that prints the text "Hello World" to the screen.
   - Everyone does this, just to make sure that their programming language is working properly.
@@ -23,252 +24,296 @@ print "Hello from YoBASIC"
     - Then run the program again.
   - You should see the new text printed to the screen.
   - Now move on to the next example.
-- Example 2 – Variables and Input
+### Example 2 – Variables and Input
 ```
 print "Hello from YoBASIC"
 ```
-  - Listen: Variables and Input...
-- Example 3 – Decision Making with IF
+#### Listen: Variables and Input...
+### Example 3 – Decision Making with IF
 ```
 print "Hello from YoBASIC"
 ```
-  - Listen: Decision Making with IF...
-- Example 4 – Loops with FOR/NEXT
+####  Listen: Decision Making with IF...
+### Example 4 – Loops with FOR/NEXT
 ```
 print "Hello from YoBASIC"
 ```
-  - Listen: Loops with FOR/NEXT...
-- Recap Video
+####  Listen: Loops with FOR/NEXT...
+###  Recap Video (Todo: Kala)
+  - In this lesson we learned the basics of programming with YoBASIC.
+  - We wrote our first program, the "Hello World" program, which prints text to the screen.
+  - We also learned about variables and input, decision making with IF statements, and loops with FOR/NEXT.
+  - These are the fundamental concepts of programming that you will use in every programming language.
+  - In the next lesson, we will dive deeper into variables and functions. See you there!
 
-## 002 - Variables and Functions
-- Introduction Video
+---
+
+## TUTORIAL PAGE 002 - Variables and Functions
+
+### Introduction Video
+    - In this tutorial we are going to learn about variables and functions in YoBASIC.
+    - Variables are used to store data in your program, and functions are used to group code together to perform a specific task.
+    - By the end of this tutorial you will understand how to use variables and functions in your YoBASIC programs.
+### Example 1 - Blah
+```
+LET A$ = "Hello from YoBASIC"
+PRINT A$
+
+```
+  ####  Listen: Hello World...
+### Example 2 – Blah
+```
+print "Hello from YoBASIC"
+```
+  ####  Listen: Blah...
+### Example 3 – Blah
+```
+print "Hello from YoBASIC"
+```
+  ####  Listen: Blah...
+### Example 4 – Blah
+```
+print "Hello from YoBASIC"
+```
+  ####  Listen: Blah...
+###  Recap Video 
+
+---
+
+## TUTORIAL PAGE 003 - Loops
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 003 - Loops
-- Introduction Video
+---
+
+## TUTORIAL PAGE 004 - Arrays
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 004 - Arrays
-- Introduction Video
+---
+
+## TUTORIAL PAGE 005 - Objects
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 005 - Objects
-- Introduction Video
+---
+
+## TUTORIAL PAGE 006 - Classes
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 006 - Classes
-- Introduction Video
+---
+
+## TUTORIAL PAGE 007 - Modules
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 007 - Modules
-- Introduction Video
+---
+
+## TUTORIAL PAGE 008 - Testing
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 008 - Testing
-- Introduction Video
+---
+
+## TUTORIAL PAGE 009 - Exceptions
+
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 009 - Exceptions
-- Introduction Video
+---
+
+## TUTORIAL PAGE 010 - Advanced Topics - Basil Part 1
+### Introduction Video
     - "Blah..."
-- Example 1 - Blah
+### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Hello World...
-- Example 2 – Blah
+  ####  Listen: Hello World...
+### Example 2 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 3 – Blah
+  ####  Listen: Blah...
+### Example 3 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Example 4 – Blah
+  ####  Listen: Blah...
+### Example 4 – Blah
 ```
 print "Hello from YoBASIC"
 ```
-    - Listen: Blah...
-- Recap Video
+  ####  Listen: Blah...
+###  Recap Video 
 
-## 010 - Advanced Topics - Basil Part 1
-- Introduction Video
-    - "Blah..."
-- Example 1 - Blah
-```
-print "Hello from YoBASIC"
-```
-    - Listen: Hello World...
-- Example 2 – Blah
-```
-print "Hello from YoBASIC"
-```
-    - Listen: Blah...
-- Example 3 – Blah
-```
-print "Hello from YoBASIC"
-```
-    - Listen: Blah...
-- Example 4 – Blah
-```
-print "Hello from YoBASIC"
-```
-    - Listen: Blah...
-- Recap Video
-## 011 - Advanced Topics - Basil Part 2
+---
 
-## 012 - Advanced Topics - Basil Part 3
+## TUTORIAL PAGE 011 - Advanced Topics - Basil Part 2
 
-## 013 - Advanced Topics - Hello Worlds
+
+---
+
+## TUTORIAL PAGE 012 - Advanced Topics - Basil Part 3
+
+
+---
+
+## TUTORIAL PAGE 013 - Advanced Topics - Hello Worlds
     - Python
     - Javascript
     - cplusplus
