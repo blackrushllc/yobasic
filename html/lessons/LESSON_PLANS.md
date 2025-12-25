@@ -11,34 +11,94 @@
 print "Hello from YoBASIC"
 ```
 #### Listen: This first example is what we call the "Hello World" program.
-  - Whenever any programmer starts learning a new programming language, the first program they write is usually the "Hello World" program.
-  - It is a simple program that prints the text "Hello World" to the screen.
-  - Everyone does this, just to make sure that their programming language is working properly.
-  - To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
-  - You will see a new editor tab open with the code for the first example.
-  - Then, do 2 things. Click the yellow "Tron/Troff" button to turn off the "Tron" mode. This is a toggle button you can 
-    - use to turn on or off extra messages in the terminal that can help you debug your program. We don't need this on.
-  - After that, click the green "Clear" button or type the command "clear" in your terminal to clear the screen.
-  - Finally, click the "Run" button or press F9 to run the program. You will see the text "Hello from YoBASIC" printed to the terminal screen.
-  - Now do this, change the text inside the quotes to say "Hello World" or something else instead of "Hello from YoBASIC". 
-    - Then run the program again.
-  - You should see the new text printed to the screen.
-  - Now move on to the next example.
+- Whenever any programmer starts learning a new programming language, the first program they write is usually the "Hello World" program.
+- It is a simple program that prints the text "Hello World" to the screen.
+- Everyone does this, just to make sure that their programming language is working properly.
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- You will see a new editor tab open with the code for the first example.
+- Then, do 2 things. Click the yellow "Tron/Troff" button to turn off the "Tron" mode. This is a toggle button you can 
+  - use to turn on or off extra messages in the terminal that can help you debug your program. We don't need this on.
+- After that, click the green "Clear" button or type the command "clear" in your terminal to clear the screen.
+- Finally, click the "Run" button or press F9 to run the program. You will see the text "Hello from YoBASIC" printed to the terminal screen.
+- Now do this, change the text inside the quotes to say "Hello World" or something else instead of "Hello from YoBASIC". 
+  - Then run the program again.
+- You should see the new text printed to the screen.
+- Now move on to the next example.
 ### Example 2 – Variables and Input
 ```
-print "Hello from YoBASIC"
+// Run this example to see how variables and input work in YoBASIC
+
+A$ = "Hello"
+B$ = " from YoBASIC"
+print A$ + B$
+
+INPUT "What is your name? ", B$
+print A$ + B$
+
+// Try changing the value of B$ and running the program again.
+
+// Try selecting just the last line of the program and running it alone with F8
+
 ```
 #### Listen: Variables and Input...
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- You will see a new editor tab open with the code for this example.
+- Let's talk about variables. A variable is a place in memory where you can store data.
+- In YoBASIC, a variable that ends with a dollar sign ($) is a string variable, which means it can store text.
+- Variables can be any name you want, but it is conventional to use all-caps letters and underscores to separate words in variable names.
+- In this example, we are creating 2 variables: we call them A$ and B$. We say "String" when we see the dollar signe, 
+  - which helps to let us know that these variables are intended to hold strings of text and not something else like numbers or lists
+- Notice the first and last couple of lines that start with "//". These are comments. 
+- Comments are lines that you can add to your program to explain what the code is doing. They are not executed by YoBASIC.
+- Slash-Slash is a common watershed comment symbol in most programming languages. YoBASIC also gives you other ways to add comments.
+- The first line of actual code assigns the value "Hello" to the variable A$.
+- The second line assigns the value " from YoBASIC" to the variable B$.
+- The third line prints the value of A$ plus B$.  When you plus together strings, it means to join them together.
+- The fourth line of actual code prompts the user to enter their name in a pop up box and assigns the user's input to the 
+  - variable B$, no matter what they typed.
+- The fifth line prints the text A$ plus B$ again, this time using the value of B$ instead of the literal string " from YoBASIC".
+- Now here's an extra assignment. Use you mouse to only select the last line of the program and run it with F8. Hit F8 again and again to see what happens.
 ### Example 3 – Decision Making with IF
 ```
-print "Hello from YoBASIC"
+REM Print a message if the user's number is less than 5, equal to 5, or greater than 5
+
+INPUT "Enter a number from 1 to 10? ", number%
+IF number% < 5 THEN print "The number is less than 5"
+IF number% = 5 THEN print "The number is equal to 5"
+IF number% > 5 THEN print "The number is greater than 5"
 ```
 ####  Listen: Decision Making with IF...
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- You will see a new editor tab open with the code for this example.
+- Sometimes you will want your program to make a decision based on some condition. That's one of the main things we use computers for, after all!
+- In YoBASIC, we use the IF statement to make decisions.
+- The first line of the program prompts the user to enter a number from 1 to 10.
+- The second line uses the IF statement to check if the number entered by the user is less than 5.
+- If it is, the program prints the message "The number is less than 5".
+- The third line uses the IF statement to check if the number entered by the user is equal to 5.
+- If it is, the program prints the message "The number is equal to 5".
+- The fourth line uses the IF statement to check if the number entered by the user is greater than 5.
+- If it is, the program prints the message "The number is greater than 5".
+- We can use IF a lot of different ways, and you'll learn more about them in the next section.
 ### Example 4 – Loops with FOR/NEXT
 ```
-print "Hello from YoBASIC"
+REM Print the squares of numbers 1 through 10
+
+FOR i = 1 TO 10
+  PRINT i, " squared is ", i * i
+NEXT i
 ```
 ####  Listen: Loops with FOR/NEXT...
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- You will see a new editor tab open with the code for this example.
+- Sometimes you will want your program to repeat a block of code multiple times. That's where loops come in.
+- In YoBASIC, we use the FOR/NEXT loop to repeat a block of code a specific number of times.
+- The first line of the program starts the FOR loop. It creates a variable called i and sets it to 1. 
+- The loop will continue as long as i is less than or equal to 10.
+- The second line prints the value of i, the text " squared is ", and the square of i (which is i multiplied by itself).
+- The third line ends the FOR loop and increments the value of i by 1.
+- The loop will repeat until i is greater than 10.
+- We have lots of other ways we can do loops, and you'll learn more about them as we go through the lessons.
 ###  Recap Video (Todo: Kala)
   - In this lesson we learned the basics of programming with YoBASIC.
   - We wrote our first program, the "Hello World" program, which prints text to the screen.
@@ -53,27 +113,80 @@ print "Hello from YoBASIC"
 ### Introduction Video
     - In this tutorial we are going to learn about variables and functions in YoBASIC.
     - Variables are used to store data in your program, and functions are used to group code together to perform a specific task.
-    - By the end of this tutorial you will understand how to use variables and functions in your YoBASIC programs.
-### Example 1 - Blah
+    - By the end of this tutorial you will understand how variables and functions are used together in most programming languages.
+### Example 1 - Using a very simple function, or "CALLING"
 ```
-LET A$ = "Hello from YoBASIC"
-PRINT A$
+// Create a function called PRINTME
+FUNCTION PRINTME()
+  print "------------------"
+  print "Hello from YoBASIC"
+  print "------------------"
+END FUNCTION
+
+// Then run the function
+PRINTME()
 
 ```
-  ####  Listen: Hello World...
-### Example 2 – Blah
+  ####  Listen: 
+- To use a function, we must first create it.  After we create a function, we then call it by name whenever we want to use it.
+- In this example, we are calling the function PRINTME, which prints text to the screen in between lines of dashes.
+### Example 2 – Sending a variable to a function
 ```
-print "Hello from YoBASIC"
+// Create a function called PRINTME that takes a string variable as a parameter
+FUNCTION PRINTME(TextToPrint$)
+  print "------------------"
+  print TextToPrint$
+  print "------------------"
+END FUNCTION
+
+// Then run the function with a different string each time
+A$ = "Hello from YoBASIC"
+PRINTME(A$)
+
+B$ = "I can reuse functions!"
+PRINTME(B$)
 ```
   ####  Listen: Blah...
-### Example 3 – Blah
+### Example 3 – Another function example with multiple parameters
 ```
-print "Hello from YoBASIC"
+// Create a function called PRINTME that takes a two string variables as a parameters
+FUNCTION PRINTME(TextToPrint$, LinesToPrint$)
+  print LinesToPrint$
+  print TextToPrint$
+  print LinesToPrint$
+END FUNCTION
+
+// Then run the function with a different string each time
+A$ = "Hello from YoBASIC"
+PRINTME(A$, "------------------")
+
+B$ = "I can reuse functions!"
+PRINTME(B$, "====")
 ```
   ####  Listen: Blah...
-### Example 4 – Blah
+### Example 4 – A function that can call itself!
 ```
-print "Hello from YoBASIC"
+// Create a function called fib() that calculates 
+
+FUNCTION fib%(n%)
+    IF n% < 2 THEN 
+        rVal% =  n%
+    ELSE    
+        rVal% =   fib%(n% - 1) + fib%(n% - 2)
+    END IF   
+    RETURN rVal%
+END FUNCTION
+
+PRINT fib%(10); // 55
+
+TODO: ERROR!!!! - ALSO RETURN inside IF/END IF block errors with a different error
+
+[BASIC] Run Program
+[BASIC ERROR] RETURN without GOSUB at line 9
+[BASIC] End Run Program
+RETURN without GOSUB at line 9
+
+
 ```
   ####  Listen: Blah...
 ###  Recap Video 
