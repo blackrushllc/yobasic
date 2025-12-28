@@ -249,7 +249,7 @@ NEXT i
 - In this tutorial we learned about loops in YoBASIC.
 - We learned how to use GOTO and GOSUB to create loops, as well as WHILE/END WHILE and FOR/NEXT loops.
 - Loops are an essential part of programming and are used to automate repetitive tasks and process large amounts of data efficiently.
-- In the next tutorial, we will learn about arrays, lists and dictionaries. See you there!
+- In the next tutorial, we will learn about arrays, lists, and dictionaries. See you there!
 ###  Recap Video 
 
 ---
