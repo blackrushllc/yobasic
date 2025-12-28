@@ -205,31 +205,56 @@ RETURN without GOSUB at line 9
     - Loops are important because they allow us to automate repetitive tasks and process large amounts of data efficiently.
     - By the end of this tutorial you will understand how to use loops in your programs.
     
-### Example 1 - Blah
+### Example 1 - Looping with GOTO 
 ```
-print "Hello from YoBASIC"
+start:
+  print "Hello from YoBASIC"
+  INPUT "Do you want to see this again? (Y/N) ", answer$
+  IF answer$ = "Y" OR answer$ = "y" THEN GOTO start
 ```
   ####  Listen: Hello World...
-### Example 2 – Blah
+### Example 2 – Looping with GOSUB
 ```
-print "Hello from YoBASIC"
+start:
+    print "Hello from YoBASIC"
+    INPUT "Do you want to see the time and date? (Y/N/Q) ", answer$
+    IF answer$ = "Y" OR answer$ = "y" THEN GOSUB time_and_date
+    IF answer$ = "Q" OR answer$ = "q" THEN END
+    PRINT "You pressed ", answer$
+    GOTO start
+    
+time_and_date:
+    print "The current date and time is: ", DATE$ + " " + TIME$
+    RETURN
 ```
   ####  Listen: Blah...
-### Example 3 – Blah
+### Example 3 – Looping with WHILE/END WHILE
 ```
 print "Hello from YoBASIC"
+counter% = 1
+WHILE counter% <= 5
+  print "This is loop iteration number "; counter%
+  counter% = counter% + 1
+END WHILE
 ```
   ####  Listen: Blah...
-### Example 4 – Blah
+### Example 4 – Loopingn with FOR/NEXT
 ```
 print "Hello from YoBASIC"
+FOR i = 1 TO 5
+  print "This is loop iteration number ", i
+NEXT i
 ```
-  ####  Listen: Blah...
+  ####  Listen: Lesson Recap
+- In this tutorial we learned about loops in YoBASIC.
+- We learned how to use GOTO and GOSUB to create loops, as well as WHILE/END WHILE and FOR/NEXT loops.
+- Loops are an essential part of programming and are used to automate repetitive tasks and process large amounts of data efficiently.
+- In the next tutorial, we will learn about arrays, lists and dictionaries. See you there!
 ###  Recap Video 
 
 ---
 
-## TUTORIAL PAGE 004 - Arrays, Lists and Dictionaries
+## TUTORIAL PAGE 004 - Arrays, Lists, and Dictionaries
 
 ### Introduction Video
     - Things are starting to get interesting now! We're going to learn about arrays, lists and dictionaries in YoBASIC.
