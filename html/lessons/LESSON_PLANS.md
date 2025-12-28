@@ -190,13 +190,21 @@ RETURN without GOSUB at line 9
 ```
   ####  Listen: Blah...
 ###  Recap Video 
-
+- In this tutorial we learned about variables and functions in YoBASIC.
+- We learned how to create functions, call them, and pass variables to them as parameters.
+- We also learned about recursion, which is when a function calls itself.
+- These concepts are fundamental to programming and are used in most programming languages.
+- In the next tutorial, we will learn about loops and how to use them in YoBASIC. See you there!
 ---
 
 ## TUTORIAL PAGE 003 - Loops
 
 ### Introduction Video
-    - "Blah..."
+    - Hi! In this tutorial we are going to learn about loops in YoBASIC.
+    - Loops are used to repeat a block of code multiple times.
+    - Loops are important because they allow us to automate repetitive tasks and process large amounts of data efficiently.
+    - By the end of this tutorial you will understand how to use loops in your programs.
+    
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
@@ -221,10 +229,13 @@ print "Hello from YoBASIC"
 
 ---
 
-## TUTORIAL PAGE 004 - Arrays
+## TUTORIAL PAGE 004 - Arrays, Lists and Dictionaries
 
 ### Introduction Video
-    - "Blah..."
+    - Things are starting to get interesting now! We're going to learn about arrays, lists and dictionaries in YoBASIC.
+    - These are data structures that allow us to store and organize multiple values in a single variable, and they are essential for handling complex data in our programs.
+    - By combining loops, logic and functions with arrays, lists and dictionaries, we can create powerful and efficient programs.
+    - By the end of this tutorial you will understand how to use arrays, lists and dictionaries
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
@@ -249,10 +260,15 @@ print "Hello from YoBASIC"
 
 ---
 
-## TUTORIAL PAGE 005 - Objects
+## TUTORIAL PAGE 005 - Classes and Objects
 
 ### Introduction Video
-    - "Blah..."
+    - Objects are like arrays, lists and dictionaries, but they are more powerful and flexible because they can also contain functions and code.
+    - Objects allow us to create complex data structures that can represent real-world entities and behaviors.
+    - Classes are like blueprints for creating objects. They define the code and data that an object will have.
+    - Classes and Objects are a fundamental concept in object-oriented programming (OOP), which is a popular programming paradigm used in many modern programming languages.
+    - Classes and Objects are especially cool because you can create reusable code that can be shared and extended across different programs.
+    - By the end of this tutorial you will understand how to create classes and use objects in YoBASIC
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
@@ -277,10 +293,13 @@ print "Hello from YoBASIC"
 
 ---
 
-## TUTORIAL PAGE 006 - Classes
+## TUTORIAL PAGE 006 - Web Pages
 
 ### Introduction Video
-    - "Blah..."
+    - In this tutorial we are going to learn about how to create web pages with YoBASIC.
+    - YoBASIC has built-in support for creating web pages and web applications, which makes it easy to build dynamic and interactive web content.
+    - We will also learn how to create "Views" in YoBASIC, which are reusable components that can be used to build web pages.
+    - By the end of this tutorial you will understand how to create web pages and views in YoBASIC.
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
@@ -305,10 +324,14 @@ print "Hello from YoBASIC"
 
 ---
 
-## TUTORIAL PAGE 007 - Modules
+## TUTORIAL PAGE 007 -  Storing Data
 
 ### Introduction Video
-    - "Blah..."
+    - In this tutorial we are going to learn about how to store data in YoBASIC.
+    - YoBASIC provides several ways to store data, including files, databases, and cloud storage.
+    - YoBASIC has built-in support for storing data in databases, which makes it easy to create applications that can save and retrieve data.
+    - We will also learn how to use SQL (Structured Query Language) to interact with databases and perform operations like creating tables, inserting data, and querying data.
+    - By the end of this tutorial you will understand how to store and retrieve data in YoBASIC.
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
@@ -333,10 +356,20 @@ print "Hello from YoBASIC"
 
 ---
 
-## TUTORIAL PAGE 008 - Testing
+## TUTORIAL PAGE 008 - Sharing your Work in a Web Page
 
 ### Introduction Video
-    - "Blah..."
+
+```
+FYI we made this video already, maybe we can use that between 008 and 008b (008a?):
+KALA_MAKE_WEBSITE_DOWNLOAD_BASIL: In this tutorial we are going to generate a sample website that you can on your 
+browse on your local computer. Click on the link below to download and install Basil, and then come back here for chapter two.
+```
+
+    - In this tutorial we are going to create a sharable web page in YoBASIC.
+    - YoBASIC makes it easy to share your web pages with others by providing built-in support for hosting and sharing web pages online.
+    - We will learn how to create a web page, publish it online, and share it with others.
+    - By the end of this tutorial you will understand how to share your web page in YoBASIC.
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
@@ -358,13 +391,47 @@ print "Hello from YoBASIC"
 ```
   ####  Listen: Blah...
 ###  Recap Video 
+
+---
+
+## TUTORIAL PAGE 008b - Projects - Creating and Sharing a Web Application
+
+### Introduction Video
+    - KALA_CREATE_WEBAPP_SHARE_PUBLISH_SHARE: In this tutorial we are going to use YoBASIC to create a web application 
+        - that you can share with your friends.  We will build on the basics that we've learned so far to create a web 
+        - project that does something useful, and then publish and share your work online!
+### Example 1 - Blah
+```
+print "Hello from YoBASIC"
+```
+####  Listen: Hello World...
+### Example 2 – Blah
+```
+print "Hello from YoBASIC"
+```
+####  Listen: Blah...
+### Example 3 – Blah
+```
+print "Hello from YoBASIC"
+```
+####  Listen: Blah...
+### Example 4 – Blah
+```
+print "Hello from YoBASIC"
+```
+####  Listen: Blah...
+###  Recap Video
 
 ---
 
 ## TUTORIAL PAGE 009 - Exceptions
 
 ### Introduction Video
-    - "Blah..."
+    - Error! In this tutorial we are going to learn about exceptions in YoBASIC.
+    - Exceptions are used to handle errors and unexpected situations in your programs.
+    - By using exceptions, you can make your programs more robust and reliable.
+    - We will learn how to use try/catch blocks to handle exceptions and perform error handling
+    - By the end of this tutorial you will understand how to use exceptions in YoBASIC.
 ### Example 1 - Blah
 ```
 print "Hello from YoBASIC"
