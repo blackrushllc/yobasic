@@ -285,3 +285,22 @@ To avoid confusion, define this ordering:
 * “Arrange Icons” (by name/type) + “Auto arrange” toggle
 * basic snap: when moving a window near edges, show a subtle boundary hint
 
+Updates:
+
+This is fantastic.  We need to spruce it up a little bit starting with these items:
+
+The "Terminal" is not implementing Basic.JS.  We want and instance the basic interpreter just like we do in index.html.
+
+Wire up the login/logout functionality to work just like index.html or explain why this might be difficult to do.
+
+Wire up the settings button to load the same settings tabbed dialog as index.html does when you click the settings button.  We will use the unused tabs 3 and 4 to place settings for the desktop in the future.
+
+When refreshing the screen we seem to lose positioning of the icons and several of them reappear in the same location at the upper left and must be dragged apart.  I want to retain the positions of all icons in local storage so they retain their position after refreshing the page.
+
+Add the "Notepad" applet as an icon on the desktop by default.
+
+Allow both the Notepad and the tabbed editor applets to access the full "File" menu option set found in index.html including New, Open, Save, Save As and Close.
+
+The color set used in the "Downloads" and "File Explorer" are very low contrast.  Let the colors of the elements be much darker so that they can be visible on the white background of the dialogs.
+
+The color set used in the task bar has a similar problem, being a very low contrast which seems to be white text on a very light great background color.  Set the color of the text elements in these buttons to be much darker.

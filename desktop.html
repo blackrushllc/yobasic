@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YoBASIC Desktop</title>
+    <!-- YoBASIC Styles -->
+    <link rel="stylesheet" href="ybs.css">
+    <link rel="stylesheet" href="ybs-compat.css">
+    <link rel="stylesheet" href="desktop.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- jQuery -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <!-- jQuery Terminal -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+    <script src="https://unpkg.com/js-polyfills/keyboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
+
+    <!-- CodeMirror 5 (for Notepad and Tabbed Editor) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/simple.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <!-- Project Scripts -->
+    <script src="vfs.js"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="identity.js"></script>
+    <script src="provider-examples.js"></script>
+    <script src="provider-shared.js"></script>
+    <script src="basic.js"></script>
+    <script src="projectManager.js"></script>
+    <script src="chat.js"></script>
+</head>
+<body class="desktop-mode">
+    <nav id="top-navbar" class="desktop-navbar">
+        <div class="nav-left">
+            <div class="dropdown">
+                <button class="nav-link dropdown-toggle" id="menu-file">File</button>
+                <div class="dropdown-menu" id="dropdown-file">
+                    <button class="dropdown-item" id="btn-new-project">New Project</button>
+                    <button class="dropdown-item" id="btn-open-explorer">File Explorer</button>
+                    <hr>
+                    <button class="dropdown-item" id="btn-exit">Exit to IDE</button>
+                </div>
+            </div>
+            <div class="dropdown">
+                <button class="nav-link dropdown-toggle" id="menu-window">Window</button>
+                <div class="dropdown-menu" id="dropdown-window">
+                    <!-- Dynamic window list -->
+                </div>
+            </div>
+            <div class="dropdown">
+                <button class="nav-link dropdown-toggle" id="menu-help">Help</button>
+                <div class="dropdown-menu" id="dropdown-help">
+                    <button class="dropdown-item" id="btn-about">About</button>
+                </div>
+            </div>
+        </div>
+        <div class="nav-right">
+            <button class="nav-link" id="btn-settings" title="Settings"><i class="bi bi-gear"></i></button>
+            <button class="nav-link" id="btn-identity"><i class="bi bi-person-circle"></i> Login</button>
+        </div>
+    </nav>
+
+    <main id="desktop-area">
+        <div id="desktop-icons-grid"></div>
+        <div id="window-container"></div>
+    </main>
+
+    <footer id="taskbar">
+        <div id="taskbar-items"></div>
+        <div id="taskbar-clock"></div>
+    </footer>
+
+    <script src="desktop.js"></script>
+</body>
+</html>
