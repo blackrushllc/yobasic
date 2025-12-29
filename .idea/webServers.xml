@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="efb9f136-e27d-462a-b9eb-a88cd07dc633" name="YoBASIC">
+        <fileTransfer rootFolder="/var/www/yore1/web/basic" accessType="SFTP" host="YoBASIC.com" port="22" sshConfigId="3bb7fb51-6276-4ab6-bf35-2dd3730af541" sshConfig="root@YoBASIC.com:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
