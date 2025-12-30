@@ -1,0 +1,15 @@
+This code is a simple program that outputs text to the console. Here's a brief explanation of what each part does:
+
+1. **`PRINTLN "Hello World!";`**: This line prints "Hello World!" to the console, followed by a newline.
+
+2. **`FOR I% = 1 TO 5`**: This starts a loop that will iterate 5 times, with the loop variable `I%` taking values from 1 to 5.
+
+3. **`BEGIN ... END`**: This block contains the code that will be executed during each iteration of the loop.
+
+4. **`PRINTLN "This is loop number ", I%;`**: Inside the loop, this line prints "This is loop number " followed by the current value of `I%`, and then moves to the next line.
+
+5. **`NEXT`**: This indicates the end of the loop. After executing the block for the current value of `I%`, the loop will increment `I%` and repeat until it reaches 5.
+
+6. **`PRINT "Goodbye!";`**: After the loop has completed, this line prints "Goodbye!" to the console without adding a newline at the end.
+
+In summary, the program outputs "Hello World!", then prints a message for each iteration of the loop (from 1 to 5), and finally prints "Goodbye!".

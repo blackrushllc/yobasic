@@ -294,6 +294,7 @@ $(function() {
                 { id: 'chat', type: 'system', title: 'Chat', icon: IconMap['chat'], launch: 'chat' },
                 { id: 'downloads', type: 'system', title: 'Downloads', icon: IconMap['download'], launch: 'downloads' },
                 { id: 'ide', type: 'url', title: 'YoBASIC IDE', icon: IconMap['link'], url: 'index.html' },
+                { id: 'ide', type: 'url', title: 'Minimal IDE', icon: IconMap['link'], url: 'test.html' },
                 { id: 'docs', type: 'url', title: 'Basil Docs', icon: IconMap['link'], url: 'https://blackrushbasic.com/' },
                 { id: 'website', type: 'url', title: 'Basil Website', icon: IconMap['link'], url: 'https://basilbasic.com/' },
                 { id: 'shared-files', type: 'system', title: 'Shared Projects', icon: IconMap['box'], launch: 'explorer', requiresAuth: true, authScope: 'shared' }

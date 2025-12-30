@@ -1,0 +1,5 @@
+```basil
+PRINTLN "Hello! Here's a Dad Joke for you:";
+PRINT "Why don't skeletons fight each other? ";
+PRINTLN "They don't have the guts!";
+```

@@ -550,7 +550,7 @@
     const EDITOR_CARET_COLOR = '#FFD400'; // Yellow by default
     try { document.documentElement.style.setProperty('--editor-caret-color', EDITOR_CARET_COLOR); } catch(_) {}
     let term, basic;
-    let debugOn = true;
+    let debugOn = false;
     let currentMenu = null; // bootstrap.Dropdown instance
 
     // --- Tabbed editor state ---
@@ -1534,7 +1534,7 @@
         }
 
         // Initialize terminal in dedicated div
-        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: true, vfs, hostReadFile, hostExtern, hostCallModule });
+        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: false, vfs, hostReadFile, hostExtern, hostCallModule });
         term = $('#terminal').terminal(function(command) {
             if (command !== '') {
                 try {
@@ -1548,7 +1548,7 @@
                 }
             }
         }, {
-            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is ON (TRON).',
+            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is OFF (TROFF).',
             name: 'js_demo',
             prompt: "\nOK\n\n"
         });

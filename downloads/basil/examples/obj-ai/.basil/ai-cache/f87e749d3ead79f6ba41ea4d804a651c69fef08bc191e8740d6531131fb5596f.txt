@@ -1,0 +1,8 @@
+#TITLE myprog
+#DESCRIPTION Output a greeting and then tell a Dad Joke
+#OUTPUT examples\generated\generated.basil
+
+PRINT "Hello! Welcome to my program."
+PRINT "Here's a Dad Joke for you:"
+PRINT "Why don't skeletons fight each other?"
+PRINT "They don't have the guts!"

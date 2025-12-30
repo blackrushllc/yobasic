@@ -1351,7 +1351,16 @@
         if (!inD && !inS){
           if (c === '(' || c === '[' || c === '{') depth++;
           else if (c === ')' || c === ']' || c === '}') depth = Math.max(0, depth-1);
-          else if ((c === ';' || c === ':') && depth === 0){ out.push(cur); cur=''; continue; }
+          else if ((c === ';' || c === ':') && depth === 0){
+            // FIX: If the current segment starts with IF, do not split.
+            // This allows the IF statement to "own" the rest of the line's
+            // separators, preserving the integrity of THEN and ELSE clauses.
+            if (/^\s*IF\b/i.test(cur)) {
+               // Skip splitting; let cur accumulate the separator and the rest of the line
+            } else {
+              out.push(cur); cur=''; continue; 
+            }
+          }
         }
         cur += c;
       }
@@ -1740,7 +1749,8 @@
       // startIdx points to a WHILE line
       const stack = ['WHILE'];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const u = this._lineTrim(lines, i).toUpperCase();
+        const t = this._lineTrim(lines, i);
+        const u = t.toUpperCase();
         if (!u) continue;
         // Openers
         if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
@@ -1751,6 +1761,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) {
           for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'WHILE'){ stack.splice(k,1); break; } }
@@ -1763,6 +1774,7 @@
         if (/^END\s+TRY\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'TRY'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+SUB\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'SUB'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) {
           const popped = stack.pop();
           if (stack.length === 0 && popped === 'WHILE') return i;
@@ -1776,7 +1788,8 @@
       // startIdx points to SELECT CASE
       const stack = ['SELECT'];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const u = this._lineTrim(lines, i).toUpperCase();
+        const t = this._lineTrim(lines, i);
+        const u = t.toUpperCase();
         if (!u) continue;
         // Openers
         if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
@@ -1787,6 +1800,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
         if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
@@ -1799,6 +1813,7 @@
         if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped==='SELECT') return i; continue; }
       }
       throw new Error(`Unterminated SELECT CASE (no matching END/END SELECT) starting at line ${startIdx+1}`);
@@ -1821,6 +1836,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
         if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
@@ -1829,6 +1845,7 @@
         if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) { stack.pop(); continue; }
         // CASE at top-level only
         if (stack.length === 0 && /^CASE\b/i.test(t)){
@@ -2078,7 +2095,8 @@
       // startIdx points to a DO line
       const stack = ['DO'];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const u = this._lineTrim(lines, i).toUpperCase();
+        const t = this._lineTrim(lines, i);
+        const u = t.toUpperCase();
         if (!u) continue;
         // Openers
         if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
@@ -2089,6 +2107,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
         if (/^LOOP\b/.test(u)) {
@@ -2099,8 +2118,9 @@
         if (/^NEXT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FOR' || stack[k]==='FOREACH'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+SELECT\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SELECT'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
-        if (/^END\s+SUB\b/.test(u)) { stack.pop(); if (stack.length===0) return i; continue; }
-        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { stack.pop(); if (stack.length===0) return i; continue; }
+        if (/^END\s+SUB\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'SUB'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped==='DO') return i; continue; }
       }
       throw new Error(`Unterminated DO (no matching END/LOOP) starting at line ${startIdx+1}`);
@@ -2111,7 +2131,8 @@
       const first = this._lineTrim(lines, startIdx).toUpperCase().startsWith('FOREACH') ? 'FOREACH' : 'FOR';
       const stack = [first];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const u = this._lineTrim(lines, i).toUpperCase();
+        const t = this._lineTrim(lines, i);
+        const u = t.toUpperCase();
         if (!u) continue;
         // Openers
         if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
@@ -2122,6 +2143,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
         if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
@@ -2134,6 +2156,7 @@
         if (/^END\s+TRY\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='TRY'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped===first) return i; continue; }
       }
       throw new Error(`Unterminated loop (no matching END/NEXT) starting at line ${startIdx+1}`);
@@ -2146,7 +2169,8 @@
       const opener = openerLine.startsWith('SUB') ? 'SUB' : 'FUNC';
       const stack = [opener];
       for (let i = startIdx + 1; i < lines.length; i++){
-        const u = this._lineTrim(lines, i).toUpperCase();
+        const t = this._lineTrim(lines, i);
+        const u = t.toUpperCase();
         if (!u) continue;
         // Openers
         if (/^WHILE\b/.test(u)) { stack.push('WHILE'); continue; }
@@ -2157,6 +2181,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
         if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
@@ -2173,6 +2198,7 @@
           if (stack.length === 0 && opener === 'FUNC') return i;
           continue;
         }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) {
           const popped = stack.pop();
           if (stack.length === 0 && popped === opener) return i;
@@ -2260,6 +2286,7 @@
         if (/^TRY\b/.test(u)) { stack.push('TRY'); continue; }
         if (/^(FUNC|FUNCTION)\b/.test(u)) { stack.push('FUNC'); continue; }
         if (/^SUB\b/.test(u)) { stack.push('SUB'); continue; }
+        if (/^IF\b/.test(u) && !/^IF\s+(.+?)\s+THEN\s+(?!BEGIN\b).+$/i.test(t)) { stack.push('IF'); continue; }
         // Closers
         if (/^WEND\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='WHILE'){ stack.splice(k,1); break; } } continue; }
         if (/^LOOP\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='DO'){ stack.splice(k,1); break; } } continue; }
@@ -2272,6 +2299,7 @@
         }
         if (/^END\s+SUB\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='SUB'){ stack.splice(k,1); break; } } continue; }
         if (/^END\s+(FUNC|FUNCTION)\b/.test(u)) { for (let k=stack.length-1;k>=0;k--){ if (stack[k]==='FUNC'){ stack.splice(k,1); break; } } continue; }
+        if (/^END\s*IF\b/.test(u) || /^ENDIF\b/.test(u)) { for (let k = stack.length - 1; k >= 0; k--){ if (stack[k] === 'IF'){ stack.splice(k,1); break; } } continue; }
         if (/^END\b/.test(u)) { const popped = stack.pop(); if (stack.length===0 && popped==='TRY'){ endIdx = i; break; } continue; }
         // Depth-1 markers
         if (stack.length === 1 && stack[0] === 'TRY'){
@@ -2399,7 +2427,7 @@
       const given = (args || []).length;
       if (given !== arity) throw new Error(`Arity mismatch for ${f.name}: expected ${arity}, got ${given}`);
       if (!Array.isArray(this._lastProgramLines)) throw new Error('No program loaded for function execution');
-      const body = this._lastProgramLines.slice(f.start + 1, f.end);
+      const body = f.body;
       const locals = Object.create(null);
       this.callStack.push({ name: f.name, locals });
       // Bind parameters in local scope
