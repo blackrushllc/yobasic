@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>YoBASIC Tutorial – Chapter 2: Core Examples</title>
+
+    <link rel="stylesheet" href="../../tutorial.css" />
+    </head>
+<body>
+
+<article class="tutorial"
+         data-chapter="2"
+         data-slug="core-examples">
+
+    <h3><a href="/basic/html/lessons/001"><<</a> Chapter 2 – Core Examples  <a href="/basic/html/lessons/003">>></a></h3>
+
+    <video class="tutorial-video"
+           controls
+           controlsList="nofullscreen noremoteplayback nodownload"
+           disablePictureInPicture
+           playsinline>
+        <source src="yoBASIC2.mp4" type="video/mp4" />
+        Your browser does not support the video tag.</video>
+
+    <p>This chapter gives you a single, longer program that walks through many
+    tiny examples in sequence. Load it into the editor, skim through the code,
+    and run it to see how the basics work together.</p>
+
+    <section class="example"
+             data-example-id="ch2-megademo"
+             data-example-title="MEGADEMO.BAS">
+        <div class="example-header">
+            <h2>Example 1 – The MEGA DEMO Program</h2>
+            <button class="example-open" data-example-id="ch2-megademo">
+                Open in YoBASIC Editor
+            </button>
+        </div>
+        <ol>
+            <li>Click the button to open this program in a new editor tab.</li>
+            <li>Then click the Run button or press F9 to run the program.</li>
+        </ol>
+        <div class="example-files">
+            <h3>MEGADEMO.BAS</h3>
+            <pre data-file-name="MEGADEMO.BAS"
+                 data-file-language="basic"
+                 data-file-role="main">
+REM ==========================================
+REM MEGADEMO.BAS – Many tiny BASIC examples
+REM Run this and follow the on-screen prompts.
+REM ==========================================
+
+REM --- 0. Title and simple output ---
+PRINT "YoBASIC MEGA DEMO"
+PRINT "-------------------"
+PRINT
+
+REM --- 1. Hello and string printing ---
+PRINT "1) Hello, world!"
+PRINT "Strings can be printed with quotes."
+PRINT
+
+REM --- 2. Simple math ---
+PRINT "2) Simple math:"
+PRINT "  2 + 2 = ", 2 + 2
+PRINT "  10 - 3 = ", 10 - 3
+PRINT "  6 * 7 = ", 6 * 7
+PRINT "  20 / 5 = ", 20 / 5
+PRINT
+
+REM --- 3. Variables ---
+PRINT "3) Variables:"
+LET a = 5
+LET b = 12
+LET sum = a + b
+PRINT "  a = ", a
+PRINT "  b = ", b
+PRINT "  a + b = ", sum
+PRINT
+
+REM --- 4. Input ---
+PRINT "4) INPUT:"
+INPUT "  Enter your name: ", name$
+PRINT "  Hello, ", name$, "!"
+INPUT "  Enter a number: ", n
+PRINT "  You typed ", n
+PRINT
+
+REM --- 5. Decisions with IF / ELSEIF / END IF ---
+PRINT "5) IF / ELSEIF examples:"
+IF n &lt; 0 THEN
+  PRINT "  ", n, " is negative"
+ELSEIF n = 0 THEN
+  PRINT "  It's exactly zero"
+ELSE
+  PRINT "  ", n, " is positive"
+END IF
+PRINT
+
+REM --- 6. Even or odd using MOD ---
+PRINT "6) Even or odd:"
+IF n MOD 2 = 0 THEN
+  PRINT "  ", n, " is even"
+ELSE
+  PRINT "  ", n, " is odd"
+END IF
+PRINT
+
+REM --- 7. For loop (counting up) ---
+PRINT "7) FOR loop counting 1..5:"
+FOR i = 1 TO 5
+  PRINT "  i = ", i
+NEXT i
+PRINT
+
+REM --- 8. For loop with STEP and counting down ---
+PRINT "8) FOR loop counting down:"
+FOR j = 10 TO 0 STEP -2
+  PRINT "  j = ", j
+NEXT j
+PRINT
+
+REM --- 9. Nested loops: small table ---
+PRINT "9) Nested loops: multiplication table 1..3"
+FOR r = 1 TO 3
+  FOR c = 1 TO 3
+    PRINT r, "x", c, "=", r * c
+  NEXT c
+NEXT r
+PRINT
+
+REM --- 10. Accumulators and running totals ---
+PRINT "10) Running total of 1..10"
+LET total = 0
+FOR k = 1 TO 10
+  LET total = total + k
+NEXT k
+PRINT "  total = ", total
+PRINT
+
+REM --- 11. Small menu with INPUT and IF ---
+PRINT "11) Tiny menu:"
+PRINT "  1) Square a number"
+PRINT "  2) Cube a number"
+PRINT "  3) Double a number"
+INPUT "  Choose 1-3: ", choice
+INPUT "  Enter value: ", x
+IF choice = 1 THEN
+  PRINT "  square = ", x * x
+ELSEIF choice = 2 THEN
+  PRINT "  cube = ", x * x * x
+ELSEIF choice = 3 THEN
+  PRINT "  double = ", x * 2
+ELSE
+  PRINT "  (unknown choice)"
+END IF
+PRINT
+
+REM --- 12. Simple string building ---
+PRINT "12) Strings:"
+INPUT "  Favorite color? ", color$
+PRINT "  ", name$, "'s favorite color is ", color$
+PRINT
+
+REM --- 13. Basic validation with IF ---
+PRINT "13) Validation: enter a number from 1 to 5"
+INPUT "  Number: ", m
+IF m &lt; 1 OR m &gt; 5 THEN
+  PRINT "  That wasn't between 1 and 5."
+ELSE
+  PRINT "  Thanks! You chose ", m
+END IF
+PRINT
+
+REM --- 14. Simple pattern printing ---
+PRINT "14) Pattern printing:"
+FOR row = 1 TO 5
+  line$ = ""
+  FOR col = 1 TO row
+    line$ = line$ + "*"
+  NEXT col
+  PRINT line$
+NEXT row
+PRINT
+
+REM --- 15. Mini "FizzBuzz" ---
+PRINT "15) FizzBuzz from 1..20:"
+FOR t = 1 TO 20
+  IF t MOD 15 = 0 THEN
+    PRINT "FizzBuzz"
+  ELSEIF t MOD 3 = 0 THEN
+    PRINT "Fizz"
+  ELSEIF t MOD 5 = 0 THEN
+    PRINT "Buzz"
+  ELSE
+    PRINT t
+  END IF
+NEXT t
+PRINT
+
+REM --- 16. End ---
+PRINT "End of MEGA DEMO."
+PRINT "Feel free to edit the code and run again!"
+            </pre>
+        </div>
+
+        <p>
+            This long example chains together many tiny demonstrations: printing,
+            variables, arithmetic, INPUT, IF/ELSE, MOD, nested and stepped FOR/NEXT
+            loops, a running total, and simple string building. Edit it to experiment!
+        </p>
+    </section>
+
+    <nav class="chapter-nav">
+        <p>
+        <h3><a href="/basic/html/lessons/001"><<</a> Previous - Next  <a href="/basic/html/lessons/003">>></a></h3>
+        </p>
+    </nav>
+</article>
+
+<!-- Iframe-side API: send "open example" messages to parent -->
+<script src="../../tutorial.js"></script>
+</body>
+</html>
