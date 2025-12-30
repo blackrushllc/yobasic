@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YoBASIC Minimal Test IDE</title>
+    <!-- YoBASIC Styles -->
+    <link rel="stylesheet" href="ybs.css">
+    <link rel="stylesheet" href="ybs-compat.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- jQuery & jQuery Terminal -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+
+    <script src="https://unpkg.com/js-polyfills/keyboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
+
+    <!-- CodeMirror 5 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/simple.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+
+    <!-- BASIC JS and dependencies -->
+    <script src="vfs.js"></script>
+    <script src="basic.js"></script>
+
+    <style>
+        :root {
+            /* Minimal black/white IDE UI */
+            --ide-bg: #000000;
+            --ide-fg: #ffffff;
+            --ide-border: #333333;
+            --ide-toolbar-bg: #111111;
+            
+            /* Re-using YoBASIC Dark colors for Editor/Terminal as requested */
+            --app-bg: var(--ide-bg);
+            --app-fg: var(--ide-fg);
+            --border: var(--ide-border);
+            --editor-bg: #031634;
+            --editor-fg: #e6f0ff;
+            --terminal-bg: #001a33;
+            --terminal-fg: #e6f0ff;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            overflow: hidden; background: var(--ide-bg); color: var(--ide-fg);
+            font-family: "Courier New", Consolas, "Lucida Console", monospace;
+        }
+
+        #container {
+            display: flex; flex-direction: column; height: 100vh; width: 100vw;
+        }
+
+        #top-half {
+            height: 50%; display: flex; flex-direction: column; border-bottom: 1px solid var(--ide-border);
+            overflow: hidden;
+        }
+
+        #toolbar {
+            padding: 8px 12px; display: flex; gap: 15px; background: var(--ide-toolbar-bg); align-items: center; border-bottom: 1px solid var(--ide-border);
+            flex-shrink: 0;
+        }
+
+        #editor-container {
+            flex-grow: 1; overflow: hidden; background: var(--editor-bg);
+        }
+
+        #bottom-half {
+            height: 50%; overflow: hidden; background: var(--terminal-bg);
+        }
+
+        .CodeMirror { height: 100%; font-size: 15px; }
+
+        /* Minimal Button Style */
+        .btn-test {
+            background: #222; color: #fff; border: 1px solid #555; padding: 4px 10px; cursor: pointer; 
+            font-size: 13px; font-family: inherit; display: inline-flex; align-items: center; gap: 5px;
+            border-radius: 3px;
+        }
+        .btn-test:hover { background: #333; border-color: #777; }
+        .btn-test:active { background: #444; }
+        
+        #btn-run { border-color: #2ecc71; color: #2ecc71; }
+        #btn-run:hover { background: rgba(46, 204, 113, 0.1); }
+        
+        #btn-bug { border-color: #f1c40f; color: #f1c40f; }
+        #btn-bug:hover { background: rgba(241, 196, 15, 0.1); }
+
+        .hint { font-size: 11px; opacity: 0.5; margin-left: -5px; user-select: none; }
+
+        /* Terminal Overrides */
+        #terminal .terminal { 
+            --background: var(--terminal-bg); 
+            --color: var(--terminal-fg);
+            --size: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="top-half">
+        <div id="toolbar">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button id="btn-run" class="btn-test" title="Run (F9)"><i class="bi bi-play-fill"></i> Run</button>
+                <span class="hint">F9</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button id="btn-exec" class="btn-test" title="Run Selection (F8)"><i class="bi bi-lightning-charge-fill"></i> Run Selection</button>
+                <span class="hint">F8</span>
+            </div>
+            <button id="btn-clear" class="btn-test" title="Clear Terminal"><i class="bi bi-ban-fill"></i> Clear</button>
+            <button id="btn-bug" class="btn-test" title="Toggle Tron/Troff"><i class="bi bi-bug-fill"></i> Tron/Troff</button>
+            <div style="margin-left: auto; font-size: 11px; opacity: 0.4; letter-spacing: 1px;">YOBASIC TEST IDE</div>
+        </div>
+        <div id="editor-container">
+            <textarea id="editor">PRINT "YoBASIC Test Environment"
+PRINT "--------------------------"
+FOR I = 1 TO 3
+  PRINT "Testing line ", I
+NEXT I
+PRINT "Done."</textarea>
+        </div>
+    </div>
+    <div id="bottom-half">
+        <div id="terminal" style="height: 100%;"></div>
+    </div>
+</div>
+
+<script>
+    $(function() {
+        // 1. Initialize VFS
+        const vfs = new VirtualFileSystem();
+        window.__vfsInstance__ = vfs;
+
+        // 2. Define BASIC mode for CodeMirror using live keywords from basic.js
+        var BASIC_KEYWORDS = (window.YoBasic && YoBasic.getKeywords) ? YoBasic.getKeywords() : [];
+        if (window.CodeMirror && CodeMirror.defineSimpleMode) {
+            CodeMirror.defineSimpleMode('yobasic', {
+                start: [
+                    { regex: /\/\/.*$/, token: 'comment' },
+                    { regex: /\bREM\b.*$/i, token: 'comment' },
+                    { regex: /"([^"\\]|\\.)*"?/, token: 'string' },
+                    { regex: /'([^'\\]|\\.)*'?/, token: 'string' },
+                    { regex: /\b(\d+\.\d*|\.\d+|\d+)\b/, token: 'number' },
+                    { regex: new RegExp("\\b(" + BASIC_KEYWORDS.join("|") + ")\\b", "i"), token: 'keyword' },
+                    { regex: /\b(AND|OR|NOT|MOD)\b/i, token: 'operator' },
+                    { regex: /[+\-*/=<>()]/, token: 'operator' },
+                    { regex: /[A-Z][A-Z0-9_]*\$/i, token: 'variable-2' },
+                    { regex: /[A-Z][A-Z0-9_]*/i, token: 'variable' }
+                ],
+                meta: { lineComment: "//" }
+            });
+        }
+
+        // 3. Syntax Linting via basic.js
+        function basicLint(text, options, cm) {
+            try {
+                if (!window.YoBasic || !YoBasic.checkSyntax) return [];
+                const res = YoBasic.checkSyntax(text);
+                if (res.ok) return [];
+                return (res.errors || []).map(function(e) {
+                    const from = CodeMirror.Pos(Math.max(0, e.line | 0), Math.max(0, e.column | 0));
+                    const to = CodeMirror.Pos(Math.max(0, (e.endLine != null ? e.endLine : e.line) | 0), Math.max(0, (e.endColumn != null ? e.endColumn : (e.column | 0) + 1)));
+                    return { from, to, message: e.message || 'Syntax error', severity: 'error' };
+                });
+            } catch (e) { return []; }
+        }
+
+        // 4. Initialize CodeMirror
+        var editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+            mode: 'yobasic',
+            lineNumbers: true,
+            lineWrapping: true,
+            matchBrackets: true,
+            theme: 'yobasic',
+            gutters: ['CodeMirror-linenumbers', 'CodeMirror-lint-markers'],
+            lint: { getAnnotations: basicLint, async: false, delay: 800 }
+        });
+
+        // 5. Initialize BasicInterpreter
+        var basic = new BasicInterpreter({
+            term: null,
+            autoEcho: false,
+            debug: true,
+            vfs: vfs,
+            hostReadFile: (path) => vfs.readData(path),
+            hostExtern: (name, args) => { console.log('Extern:', name, args); return ''; },
+            hostCallModule: (m, f, a) => { throw new Error('Unknown module: ' + m); }
+        });
+
+        // 6. Initialize Terminal
+        var term = $('#terminal').terminal(function(command) {
+            if (command !== '') {
+                try {
+                    basic.setTerm(term);
+                    var out = basic.lineExecute(command);
+                    if (out) {
+                        String(out).split(/\n/).forEach(line => { this.echo(line); });
+                    }
+                } catch(e) {
+                    this.error(new String(e));
+                }
+            }
+        }, {
+            greetings: '🌱YoBASIC Minimal Test IDE\nTRACE is ON (TRON).',
+            name: 'yobasic_test',
+            prompt: "OK\n"
+        });
+        basic.setTerm(term);
+        window.term = term;
+
+        // 7. Button Actions
+        function runProgram() {
+            const code = editor.getValue();
+            basic.setTerm(term);
+            term.clear();
+            try {
+                const outLines = basic.runProgram(code);
+                if (outLines && outLines.length) {
+                    outLines.forEach(l => { if (l !== null && l !== undefined) term.echo(String(l)); });
+                }
+            } catch(e) {
+                term.error(new String(e));
+            }
+        }
+
+        function runSelection() {
+            const sel = editor.getSelection();
+            if (!sel) return;
+            basic.setTerm(term);
+            try {
+                const outLines = basic.runProgram(sel);
+                if (outLines && outLines.length) {
+                    outLines.forEach(l => { if (l !== null && l !== undefined) term.echo(String(l)); });
+                }
+            } catch(e) {
+                term.error(new String(e));
+            }
+        }
+
+        $('#btn-run').on('click', runProgram);
+        $('#btn-exec').on('click', runSelection);
+        $('#btn-clear').on('click', function() {
+            term.clear();
+        });
+        $('#btn-bug').on('click', function() {
+            basic.debug = !basic.debug;
+            term.echo("TRACE is " + (basic.debug ? "ON (TRON)" : "OFF (TROFF)"));
+        });
+
+        // 8. Keyboard Shortcuts
+        $(window).on('keydown', function(e) {
+            if (e.keyCode === 120) { // F9
+                e.preventDefault();
+                runProgram();
+            } else if (e.keyCode === 119) { // F8
+                e.preventDefault();
+                runSelection();
+            }
+        });
+
+        // Make editor focused initially
+        editor.focus();
+    });
+</script>
+</body>
+</html>

@@ -283,6 +283,8 @@ $(function() {
             this.updateIdentity();
         },
 
+        // Todo: Add minimal IDE link for test.html and RESET button
+
         loadIcons() {
             this.icons = [
                 { id: 'terminal', type: 'system', title: 'Terminal', icon: IconMap['file-bas'], launch: 'terminal' },
