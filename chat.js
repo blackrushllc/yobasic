@@ -110,13 +110,14 @@
                 if (hasNewForeignMessage) {
                     playNotificationSound();
                 }
+                const forceScroll = isFirstLoad;
                 isFirstLoad = false;
-                renderComments([...data].reverse());
+                renderComments([...data].reverse(), forceScroll);
             }
         }
 
-        function renderComments(comments) {
-            const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 20;
+        function renderComments(comments, forceScroll = false) {
+            const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 50;
             
             messagesContainer.innerHTML = '';
             const currentUser = global.Identity && global.Identity.getCurrentUser && global.Identity.getCurrentUser();
@@ -197,8 +198,10 @@
                 messagesContainer.appendChild(div);
             });
             
-            if (wasAtBottom) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            if (wasAtBottom || forceScroll) {
+                setTimeout(() => {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 50);
             }
         }
 
