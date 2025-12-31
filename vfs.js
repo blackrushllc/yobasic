@@ -142,6 +142,21 @@
       this.saveToLocalStorage();
     }
 
+    renameFile(oldName, newName) {
+      const oldKey = String(oldName);
+      const newKey = String(newName);
+      const f = this.files[oldKey];
+      if (!f) throw new Error('File not found');
+      if (f.readOnly) throw new Error('Cannot rename read-only system file');
+      if (this.files[newKey]) throw new Error('Target file already exists');
+
+      const newFile = clone(f);
+      newFile.name = newKey;
+      this.files[newKey] = newFile;
+      delete this.files[oldKey];
+      this.saveToLocalStorage();
+    }
+
     // Async routed operations (Phase 2)
     async getFileAsync(name){
       const n = String(name);

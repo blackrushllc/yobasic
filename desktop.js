@@ -68,6 +68,7 @@ $(function() {
 
         createWindow(options) {
             const id = options.id || 'win-' + Math.random().toString(36).substr(2, 9);
+            const persistenceId = options.persistenceId || id;
             
             if (options.singleton && this.windows[id]) {
                 this.focusWindow(id);
@@ -75,8 +76,15 @@ $(function() {
                 return this.windows[id];
             }
 
+            // Load persisted geometry
+            const saved = this.loadWindowGeometry(persistenceId);
+            const width = saved ? saved.width : (options.width || 600);
+            const height = saved ? saved.height : (options.height || 400);
+            const left = saved ? saved.x : (options.x || 100);
+            const top = saved ? saved.y : (options.y || 100);
+
             const $win = $(`
-                <div class="window ${options.className || ''} ${options.modal ? 'modal-window' : ''}" id="${id}" style="width: ${options.width || 600}px; height: ${options.height || 400}px; left: ${options.x || 100}px; top: ${options.y || 100}px;">
+                <div class="window ${options.className || ''} ${options.modal ? 'modal-window' : ''}" id="${id}" style="width: ${width}px; height: ${height}px; left: ${left}px; top: ${top}px;">
                     <div class="window-header">
                         <div class="window-title">${options.title || 'Window'}</div>
                         <div class="window-controls">
@@ -98,6 +106,7 @@ $(function() {
 
             const winObj = {
                 id,
+                persistenceId,
                 $el: $win,
                 options,
                 isMaximized: false,
@@ -188,6 +197,14 @@ $(function() {
 
                 $(document).on('mouseup.win-drag', () => {
                     $(document).off('.win-drag');
+                    if (!win.isMaximized) {
+                        this.saveWindowGeometry(win.persistenceId, {
+                            x: parseInt($el.css('left')),
+                            y: parseInt($el.css('top')),
+                            width: $el.width(),
+                            height: $el.height()
+                        });
+                    }
                 });
             });
 
@@ -207,6 +224,14 @@ $(function() {
 
                 $(document).on('mouseup.win-resize', () => {
                     $(document).off('.win-resize');
+                    if (!win.isMaximized) {
+                        this.saveWindowGeometry(win.persistenceId, {
+                            x: parseInt($el.css('left')),
+                            y: parseInt($el.css('top')),
+                            width: $el.width(),
+                            height: $el.height()
+                        });
+                    }
                 });
             });
 
@@ -299,6 +324,29 @@ $(function() {
                 $btn.click(() => this.restoreWindow(win.id));
                 $windowMenu.append($btn);
             });
+        },
+
+        closeAll() {
+            Object.keys(this.windows).forEach(id => {
+                this.closeWindow(id);
+            });
+        },
+
+        minimizeAll() {
+            Object.keys(this.windows).forEach(id => {
+                this.minimizeWindow(id);
+            });
+        },
+
+        saveWindowGeometry(id, rect) {
+            const geometries = JSON.parse(localStorage.getItem('desktop.windowGeometry') || '{}');
+            geometries[id] = rect;
+            localStorage.setItem('desktop.windowGeometry', JSON.stringify(geometries));
+        },
+
+        loadWindowGeometry(id) {
+            const geometries = JSON.parse(localStorage.getItem('desktop.windowGeometry') || '{}');
+            return geometries[id] || null;
         }
     };
 
@@ -318,7 +366,7 @@ $(function() {
         // Todo: Add minimal IDE link for test.html and RESET button
 
         loadIcons() {
-            this.icons = [
+            const systemIcons = [
                 { id: 'terminal', type: 'system', title: 'Terminal', icon: IconMap['file-bas'], launch: 'terminal' },
                 { id: 'notepad', type: 'system', title: 'Notepad', icon: IconMap['file-text'], launch: 'notepad' },
                 { id: 'explorer', type: 'system', title: 'File Explorer', icon: IconMap['folder'], launch: 'explorer' },
@@ -326,18 +374,33 @@ $(function() {
                 { id: 'chat', type: 'system', title: 'Chat', icon: IconMap['chat'], launch: 'chat' },
                 { id: 'downloads', type: 'system', title: 'Downloads', icon: IconMap['download'], launch: 'downloads' },
                 { id: 'ide', type: 'url', title: 'YoBASIC IDE', icon: IconMap['link'], url: 'index.html' },
-                { id: 'ide', type: 'url', title: 'Minimal IDE', icon: IconMap['link'], url: 'test.html' },
+                { id: 'ide-minimal', type: 'url', title: 'Minimal IDE', icon: IconMap['link'], url: 'test.html' },
                 { id: 'docs', type: 'url', title: 'Basil Docs', icon: IconMap['link'], url: 'https://blackrushbasic.com/' },
                 { id: 'website', type: 'url', title: 'Basil Website', icon: IconMap['link'], url: 'https://basilbasic.com/' },
                 { id: 'shared-files', type: 'system', title: 'Shared Projects', icon: IconMap['box'], launch: 'explorer', requiresAuth: true, authScope: 'shared' }
             ];
             
             // Add custom iFrames from spec
-            const iframes = [
+            const defaultIframes = [
                 { id: 'yoreweb', type: 'iframe', title: 'YoreWeb', icon: IconMap['link'], url: 'https://yoreweb.com/' },
                 { id: 'blackrushdrive', type: 'iframe', title: 'Blackrush Drive', icon: IconMap['link'], url: 'https://blackrushdrive.com/' }
             ];
-            iframes.forEach(f => this.icons.push(f));
+
+            const customIcons = JSON.parse(localStorage.getItem('desktop.customIcons') || '[]');
+            
+            // Initial load or if no custom icons yet, use default iframes
+            if (localStorage.getItem('desktop.customIcons') === null) {
+                this.icons = [...systemIcons, ...defaultIframes];
+                this.saveCustomIcons();
+            } else {
+                this.icons = [...systemIcons, ...customIcons];
+            }
+        },
+
+        saveCustomIcons() {
+            const systemIds = ['terminal', 'notepad', 'explorer', 'editor', 'chat', 'downloads', 'ide', 'ide-minimal', 'docs', 'website', 'shared-files'];
+            const customIcons = this.icons.filter(i => !systemIds.includes(i.id));
+            localStorage.setItem('desktop.customIcons', JSON.stringify(customIcons));
         },
 
         renderIcons() {
@@ -368,12 +431,16 @@ $(function() {
                     $ctx.empty().append(`
                         <button class="dropdown-item" id="ctx-open">Open</button>
                         ${icon.id.endsWith('.bas') ? '<button class="dropdown-item" id="ctx-edit">Edit</button>' : ''}
+                        <button class="dropdown-item" id="ctx-rename">Rename</button>
+                        <button class="dropdown-item" id="ctx-delete">Delete</button>
                         <hr>
                         <button class="dropdown-item" id="ctx-props">Properties</button>
                     `).css({ display: 'block', left: e.clientX, top: e.clientY });
 
                     $('#ctx-open').click(() => this.launchIcon(icon));
                     $('#ctx-edit').click(() => AppLauncher.notepad(icon.id));
+                    $('#ctx-rename').click(() => this.renameDesktopIcon(icon));
+                    $('#ctx-delete').click(() => this.deleteDesktopIcon(icon));
                 });
 
                 // Icon dragging
@@ -418,9 +485,10 @@ $(function() {
             if (icon.type === 'url') {
                 window.open(icon.url, '_blank');
             } else if (icon.type === 'system') {
-                AppLauncher[icon.launch](icon.authScope === 'shared' ? 'shared' : undefined);
+                const arg = icon.path || (icon.authScope === 'shared' ? 'shared' : undefined);
+                AppLauncher[icon.launch](arg, icon.id);
             } else if (icon.type === 'iframe') {
-                AppLauncher.iframe(icon.url, icon.title);
+                AppLauncher.iframe(icon.url, icon.title, icon.id);
             }
         },
 
@@ -435,6 +503,28 @@ $(function() {
             this.renderIcons();
         },
 
+        renameDesktopIcon(icon) {
+            const newName = prompt('Enter new name for shortcut:', icon.title);
+            if (newName && newName !== icon.title) {
+                icon.title = newName;
+                this.saveCustomIcons();
+                this.renderIcons();
+            }
+        },
+
+        deleteDesktopIcon(icon) {
+            const systemIds = ['terminal', 'notepad', 'explorer', 'editor', 'chat', 'downloads', 'ide', 'ide-minimal', 'docs', 'website', 'shared-files'];
+            if (systemIds.includes(icon.id)) {
+                alert('System shortcuts cannot be deleted.');
+                return;
+            }
+            if (confirm(`Are you sure you want to delete the shortcut "${icon.title}"?`)) {
+                this.icons = this.icons.filter(i => i.id !== icon.id);
+                this.saveCustomIcons();
+                this.renderIcons();
+            }
+        },
+
         setupEvents() {
             const $ctx = $('<div class="context-menu"></div>');
             $('body').append($ctx);
@@ -446,6 +536,11 @@ $(function() {
                     <button class="dropdown-item" id="ctx-refresh">Refresh</button>
                     <hr>
                     <button class="dropdown-item" id="ctx-new-url">Add URL Shortcut...</button>
+                    <button class="dropdown-item" id="ctx-new-iframe">Add Iframe Widget...</button>
+                    <button class="dropdown-item" id="ctx-new-widget">Add Built-in Widget...</button>
+                    <hr>
+                    <button class="dropdown-item" id="ctx-minimize-all">Minimize All</button>
+                    <button class="dropdown-item" id="ctx-close-all">Close All</button>
                 `).css({
                     display: 'block',
                     left: e.clientX,
@@ -462,9 +557,70 @@ $(function() {
                     const url = prompt('URL:');
                     if (name && url) {
                         this.icons.push({ id: 'custom-' + Date.now(), type: 'url', title: name, icon: IconMap['link'], url });
+                        this.saveCustomIcons();
                         this.renderIcons();
                     }
                 });
+                $('#ctx-new-iframe').click(() => {
+                    const name = prompt('Widget Name:');
+                    const url = prompt('Iframe URL:');
+                    if (name && url) {
+                        this.icons.push({ id: 'custom-' + Date.now(), type: 'iframe', title: name, icon: IconMap['link'], url });
+                        this.saveCustomIcons();
+                        this.renderIcons();
+                    }
+                });
+                $('#ctx-new-widget').click(() => {
+                    const name = prompt('Widget Name:', 'Clock');
+                    if (name) {
+                        // For now, let's just add a clock as a built-in widget if they type "Clock"
+                        // Or maybe we just add it anyway.
+                        this.icons.push({ id: 'custom-' + Date.now(), type: 'system', title: name, icon: IconMap['gear'], launch: 'notepad' }); // placeholder
+                        this.saveCustomIcons();
+                        this.renderIcons();
+                    }
+                });
+                $('#ctx-minimize-all').click(() => WindowManager.minimizeAll());
+                $('#ctx-close-all').click(() => WindowManager.closeAll());
+            });
+
+            $desktop.on('dragover', (e) => {
+                e.preventDefault();
+                e.originalEvent.dataTransfer.dropEffect = 'copy';
+            });
+
+            $desktop.on('drop', (e) => {
+                e.preventDefault();
+                const dataStr = e.originalEvent.dataTransfer.getData('application/json');
+                if (dataStr) {
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (data.type === 'vfs-file') {
+                            const isBas = data.path.endsWith('.bas');
+                            this.icons.push({
+                                id: 'custom-' + Date.now(),
+                                type: 'system',
+                                title: data.name,
+                                icon: data.icon,
+                                launch: isBas ? 'terminal' : 'notepad',
+                                path: data.path // Store the path to launch it correctly
+                            });
+
+                            // We need to update launch logic for custom icons with paths
+                            this.saveCustomIcons();
+                            this.renderIcons();
+                            
+                            // Set position where dropped
+                            const lastIcon = this.icons[this.icons.length - 1];
+                            const currentPositions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
+                            currentPositions[lastIcon.id] = { x: e.clientX - 40, y: e.clientY - 40 };
+                            localStorage.setItem('desktop.iconPositions', JSON.stringify(currentPositions));
+                            this.renderIcons();
+                        }
+                    } catch (err) {
+                        console.error('Drop handling error:', err);
+                    }
+                }
             });
 
             $(document).on('mousedown', (e) => {
@@ -516,6 +672,7 @@ $(function() {
         resetDesktop() {
             if (confirm('Are you sure you want to reset the desktop to default settings? All custom icons will be removed and positions will be reset.')) {
                 localStorage.removeItem('desktop.iconPositions');
+                localStorage.removeItem('desktop.windowGeometry');
                 this.loadIcons();
                 this.renderIcons();
             }
@@ -729,9 +886,10 @@ $(function() {
             });
         },
 
-        terminal(initialFile = null) {
+        terminal(initialFile = null, persistenceId = null) {
             WindowManager.createWindow({
                 title: 'Basic.JS Terminal',
+                persistenceId: persistenceId || (initialFile ? 'terminal-' + initialFile : 'terminal'),
                 icon: IconMap['file-bas'],
                 className: 'terminal-window',
                 onOpen: async (win) => {
@@ -774,7 +932,7 @@ $(function() {
             });
         },
 
-        explorer(options = {}) {
+        explorer(options = {}, persistenceId = null) {
             if (typeof options === 'string') {
                 options = { initialPath: options };
             }
@@ -782,6 +940,7 @@ $(function() {
             const win = WindowManager.createWindow({
                 id: isSelect ? undefined : 'explorer',
                 singleton: !isSelect,
+                persistenceId: persistenceId || (isSelect ? undefined : 'explorer'),
                 title: options.title || 'File Explorer',
                 modal: options.modal || false,
                 icon: IconMap['folder'],
@@ -910,13 +1069,30 @@ $(function() {
         _renderExplorerItem(win, $grid, name, icon, onclick, disabled = false, tooltip = '', fullPath = '') {
             const $item = $(`
                 <div class="explorer-item ${disabled ? 'disabled' : ''}" 
+                     data-path="${fullPath}"
+                     draggable="${!disabled && fullPath ? 'true' : 'false'}"
                      ${tooltip ? `title="${tooltip}"` : ''}>
                     <i class="bi ${icon}"></i>
                     <span>${name}</span>
                 </div>
             `);
             if (!disabled) {
+                $item.on('dragstart', (e) => {
+                    if (!fullPath) return;
+                    const dragData = {
+                        type: 'vfs-file',
+                        path: fullPath,
+                        name: name,
+                        icon: icon
+                    };
+                    e.originalEvent.dataTransfer.setData('application/json', JSON.stringify(dragData));
+                    e.originalEvent.dataTransfer.effectAllowed = 'copy';
+                });
                 $item.dblclick(onclick);
+                $item.click((e) => {
+                    if (!e.ctrlKey) win.$el.find('.explorer-item').removeClass('selected');
+                    $item.addClass('selected');
+                });
                 if (fullPath) {
                     const ext = fullPath.split('.').pop().toLowerCase();
                     $item.on('contextmenu', (e) => {
@@ -937,13 +1113,18 @@ $(function() {
                                 <button class="dropdown-item" id="ctx-vfs-open">Open</button>
                                 ${ext === 'bas' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
                                 <hr>
-                                <button class="dropdown-item" id="ctx-vfs-copy">Copy</button>
+                                <button class="dropdown-item" id="ctx-vfs-rename">Rename</button>
+                                <button class="dropdown-item" id="ctx-vfs-duplicate">Duplicate</button>
+                                <button class="dropdown-item" id="ctx-vfs-delete">Delete</button>
                             `);
                             $('#ctx-vfs-open').click(() => {
                                 if (ext === 'bas') this.terminal(fullPath);
                                 else this.notepad(fullPath);
                             });
                             $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
+                            $('#ctx-vfs-rename').click(() => this.renameVfsFile(win, fullPath));
+                            $('#ctx-vfs-duplicate').click(() => this.duplicateVfsFile(win, fullPath));
+                            $('#ctx-vfs-delete').click(() => this.deleteVfsFile(win, fullPath));
                         }
                         $ctx.css({ display: 'block', left: e.clientX, top: e.clientY });
                     });
@@ -952,13 +1133,14 @@ $(function() {
             $grid.append($item);
         },
 
-        notepad(path = null) {
+        notepad(path = null, persistenceId = null) {
             const id = 'notepad-' + Math.random().toString(36).substr(2, 9);
             let currentPath = path;
 
             WindowManager.createWindow({
                 id,
                 singleton: false,
+                persistenceId: persistenceId || (path ? 'notepad-' + path : 'notepad'),
                 title: path ? `Notepad - ${path}` : 'Notepad (Untitled)',
                 icon: IconMap['file-text'],
                 onOpen: async (win) => {
@@ -1192,12 +1374,82 @@ $(function() {
             }
         },
 
-        iframe(url, title) {
+        iframe(url, title, persistenceId = null) {
             WindowManager.createWindow({
                 title,
+                persistenceId: persistenceId || 'iframe-' + url,
                 icon: IconMap['link'],
                 onOpen: (win) => {
                     win.$el.find('.window-body').html(`<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`);
+                }
+            });
+        },
+
+        deleteVfsFile(win, path) {
+            if (confirm(`Are you sure you want to delete "${path}"?`)) {
+                try {
+                    vfs.deleteFile(path);
+                    const folderPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+                    this.renderVfsExplorer(win, folderPath);
+                } catch (e) {
+                    alert(e.message);
+                }
+            }
+        },
+
+        renameVfsFile(win, path) {
+            const oldName = path.split('/').pop();
+            const newName = prompt('Enter new name:', oldName);
+            if (newName && newName !== oldName) {
+                const folderPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+                const newPath = (folderPath ? folderPath + '/' : '') + newName;
+                try {
+                    vfs.renameFile(path, newPath);
+                    this.renderVfsExplorer(win, folderPath);
+                } catch (e) {
+                    alert(e.message);
+                }
+            }
+        },
+
+        duplicateVfsFile(win, path) {
+            const oldName = path.split('/').pop();
+            const dotIdx = oldName.lastIndexOf('.');
+            const base = dotIdx !== -1 ? oldName.substring(0, dotIdx) : oldName;
+            const ext = dotIdx !== -1 ? oldName.substring(dotIdx) : '';
+            const newName = prompt('Enter name for duplicate:', base + ' - Copy' + ext);
+            if (newName) {
+                const folderPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+                const newPath = (folderPath ? folderPath + '/' : '') + newName;
+                try {
+                    const file = vfs.getFile(path);
+                    if (file) {
+                        vfs.writeFile(newPath, file.content, file.kind);
+                        this.renderVfsExplorer(win, folderPath);
+                    }
+                } catch (e) {
+                    alert(e.message);
+                }
+            }
+        },
+
+        about() {
+            WindowManager.createWindow({
+                id: 'about',
+                singleton: true,
+                title: 'About YoBASIC',
+                icon: IconMap['info'],
+                width: 400,
+                height: 250,
+                onOpen: (win) => {
+                    win.$el.find('.window-body').html(`
+                        <div class="p-3">
+                            <h5 class="mb-3">YoBASIC Desktop</h5>
+                            <p>YoBASIC is a subset of the Basil🌿 programming language and presented here as an interactive learning tool for beginners and a sandbox for experienced developers.</p>
+                            <p>Both the Editor and the file I/O functions in BASIC make use of a simulated file system that uses local storage in your browser and will persist between sessions. </p>
+                            <p><a href="https://basilbasic.com" target="_blank" rel="noopener" style="color: #000080; text-decoration: underline;">Visit basilbasic.com</a></p>
+                        </div>
+                    `);
                 }
             });
         }
@@ -1206,6 +1458,62 @@ $(function() {
     // Identity Events
     window.addEventListener('identity-change', () => {
         DesktopManager.updateIdentity();
+    });
+
+    $(document).on('keydown', (e) => {
+        if (e.key === 'Delete') {
+            // Check for selected desktop icons
+            const $selectedIcons = $('.desktop-icon.selected');
+            if ($selectedIcons.length > 0) {
+                const names = $selectedIcons.map(function() { return $(this).find('span').text(); }).get();
+                if (confirm(`Are you sure you want to delete ${$selectedIcons.length} shortcut(s): ${names.join(', ')}?`)) {
+                    const systemIds = ['terminal', 'notepad', 'explorer', 'editor', 'chat', 'downloads', 'ide', 'ide-minimal', 'docs', 'website', 'shared-files'];
+                    let anySystem = false;
+                    $selectedIcons.each(function() {
+                        const id = $(this).data('id');
+                        const icon = DesktopManager.icons.find(i => i.id === id);
+                        if (icon) {
+                            if (!systemIds.includes(icon.id)) {
+                                DesktopManager.icons = DesktopManager.icons.filter(i => i.id !== icon.id);
+                            } else {
+                                anySystem = true;
+                            }
+                        }
+                    });
+                    if (anySystem) alert('Some system shortcuts could not be deleted.');
+                    DesktopManager.saveCustomIcons();
+                    DesktopManager.renderIcons();
+                }
+                return;
+            }
+            
+            // Check for selected explorer items
+            const $selectedFiles = $('.explorer-item.selected');
+            if ($selectedFiles.length > 0) {
+                const paths = $selectedFiles.map(function() { return $(this).data('path'); }).get().filter(p => p);
+                if (paths.length > 0) {
+                    if (confirm(`Are you sure you want to delete ${paths.length} file(s)?`)) {
+                        let success = 0;
+                        paths.forEach(p => {
+                            try {
+                                vfs.deleteFile(p);
+                                success++;
+                            } catch (err) {
+                                console.error('Failed to delete', p, err);
+                            }
+                        });
+                        if (success > 0) {
+                            // Refresh all open explorer windows
+                            Object.values(WindowManager.windows).forEach(win => {
+                                if (win.$el.find('.explorer-grid').length > 0) {
+                                    AppLauncher.renderVfsExplorer(win, win.currentPath || '');
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
     });
 
     // Clock
