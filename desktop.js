@@ -1627,7 +1627,7 @@ $(function() {
                 icon: IconMap['chat'],
                 onOpen: (win) => {
                     win.$el.find('.window-body').html(`
-                        <div class="p-2 d-flex flex-column h-100" style="background: var(--surface-1); color: var(--app-fg);">
+                        <div class="d-flex flex-column h-100" style="background: var(--surface-1); color: var(--app-fg); padding: 8px 8px 16px 8px;">
                             <div id="chat-messages" class="flex-grow-1 overflow-auto mb-2" style="font-size: 0.9rem; scroll-behavior: smooth;"></div>
                             <div class="input-group input-group-sm d-flex gap-1">
                                 <input type="text" id="chat-input" class="form-control bg-dark text-light border-secondary flex-grow-1" placeholder="Type a message...">

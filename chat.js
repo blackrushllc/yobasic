@@ -3,6 +3,15 @@
     'use strict';
 
     let guestIp = null;
+    const notificationSound = new Audio('media/alert.mp3');
+    notificationSound.load();
+
+    function playNotificationSound() {
+        notificationSound.currentTime = 0;
+        notificationSound.play().catch(e => {
+            if (e.name !== 'NotAllowedError') console.warn('[Chat] Audio play failed:', e);
+        });
+    }
 
     async function getHandle() {
         if (global.Identity && global.Identity.isLoggedIn()) {
@@ -35,6 +44,7 @@
         return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
+
     let supabaseInstance = null;
     let currentChannel = null;
     let refreshInterval = null;
@@ -59,6 +69,10 @@
             return;
         }
 
+        const knownIds = new Set();
+        const mySentIds = new Set();
+        let isFirstLoad = true;
+
         if (refreshInterval) clearInterval(refreshInterval);
         if (currentChannel) currentChannel.unsubscribe();
 
@@ -80,8 +94,25 @@
                 return;
             }
 
-            // Reverse to show oldest at top, newest at bottom
-            renderComments(data ? [...data].reverse() : []);
+            if (data) {
+                let hasNewForeignMessage = false;
+                const myHandle = await getHandle();
+
+                data.forEach(comment => {
+                    if (!knownIds.has(comment.id)) {
+                        if (!isFirstLoad && !mySentIds.has(comment.id) && comment.handle !== myHandle) {
+                            hasNewForeignMessage = true;
+                        }
+                        knownIds.add(comment.id);
+                    }
+                });
+
+                if (hasNewForeignMessage) {
+                    playNotificationSound();
+                }
+                isFirstLoad = false;
+                renderComments([...data].reverse());
+            }
         }
 
         function renderComments(comments) {
@@ -179,18 +210,23 @@
             const handle = await getHandle();
             const user = global.Identity && global.Identity.getCurrentUser && global.Identity.getCurrentUser();
 
-            const { error } = await supabase
+            const { data: insertedData, error } = await supabase
                 .from('comments')
                 .insert({
                     handle: handle,
                     content: content,
                     user_id: user ? user.id : null
-                });
+                })
+                .select();
 
             if (error) {
                 console.error('[Chat] Error sending comment:', error);
                 alert('Could not send comment: ' + error.message);
             } else {
+                if (insertedData && insertedData[0]) {
+                    mySentIds.add(insertedData[0].id);
+                    knownIds.add(insertedData[0].id);
+                }
                 // Refresh locally in case Realtime is slow/disabled
                 loadComments();
             }
@@ -226,16 +262,18 @@
         // Real-time subscription
         currentChannel = supabase
             .channel('public:comments')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, () => {
                 loadComments();
             })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'comments' }, () => loadComments())
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'comments' }, () => loadComments())
             .subscribe();
 
         // Initial load
         loadComments();
         
         // Periodic refresh (fallback if Realtime is disabled)
-        refreshInterval = setInterval(loadComments, 30000);
+        refreshInterval = setInterval(loadComments, 5000);
         
         // Expose refresh
         global.Chat.refresh = loadComments;
