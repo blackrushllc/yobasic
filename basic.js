@@ -176,8 +176,12 @@
         const raw = lines[i];
         const lineNo = i + 1;
         try{
-          let stmtLine = this._stripComments(raw).trim();
-          if (stmtLine === ''){ i++; continue; }
+          let fullLine = this._stripComments(raw).trim();
+          if (fullLine === ''){ i++; continue; }
+
+          const lineStmts = this._splitStatements(fullLine);
+          let stmtLine = lineStmts[0].trim();
+          if (stmtLine === '') { i++; continue; }
 
           // Skip function/sub bodies at top-level execution
           if (/^(FUNC|FUNCTION)\b/i.test(stmtLine) || /^SUB\b/i.test(stmtLine)){
@@ -209,6 +213,9 @@
               break; // terminate program
             }
             switch (top.type){
+              case 'BLOCK': {
+                stack.pop(); i++; continue;
+              }
               case 'WHILE': {
                 const whileLine = this._stripComments(lines[top.start]).trim();
                 const condExpr = whileLine.replace(/^WHILE\b/i, '').replace(/\s+BEGIN\s*$/i, '').trim();
@@ -262,6 +269,12 @@
 
           // DECLARE SUB/FUNCTION/FUNC ... (forward declarations) -> no-op at runtime
           if (/^DECLARE\b\s+(SUB|FUNC|FUNCTION)\b/i.test(stmtLine)) { i++; continue; }
+
+          // BEGIN (generic block)
+          if (/^BEGIN\b\s*$/i.test(stmtLine)){
+            stack.push({ type: 'BLOCK', start: i });
+            i++; continue;
+          }
 
           // GOTO
           if (/^GOTO\s+/i.test(stmtLine)){
@@ -524,9 +537,9 @@
             let mode = 'ARRAY'; // ARRAY or OBJECT or DIM
             if (srcVal && typeof srcVal === 'object' && srcVal.__dim){
               mode = 'DIM';
-              // flatten indices linear order 1..N
+              // flatten indices linear order 0..N-1
               const total = srcVal.data.length;
-              iter = Array.from({length: total}, (_,k)=>k+1); // 1-based positions
+              iter = Array.from({length: total}, (_, k) => k); // 0-based positions
             } else if (Array.isArray(srcVal)){
               iter = srcVal.map((_, idx)=>idx);
               mode = 'ARRAY';
@@ -603,7 +616,7 @@
           }
 
           // For regular statements, allow multi-statements per line
-          const stmts = this._splitStatements(stmtLine);
+          const stmts = lineStmts;
           for (const stmt of stmts){
             if (stmt.trim() === '') continue;
             if (this.debug) this._dbg(`Exec line: ${stmt}`);
@@ -875,6 +888,14 @@
         return;
       }
 
+      // RETURN
+      if (/^RETURN\b/i.test(stmt)){
+        const expr = stmt.replace(/^RETURN\b/i, '').trim();
+        let value = null;
+        if (expr) value = this._evalExpression(expr);
+        const ex = new Error('RETURN'); ex.__ctrl='FUNC_RETURN'; ex.__ret=value; throw ex;
+      }
+
       // LET or direct assignment
       if (/^LET\b/i.test(stmt)){
         const after = stmt.replace(/^LET\b/i, '').trim();
@@ -1008,9 +1029,29 @@
           return true;
         }
         // --- Core string functions ---
-        case 'LEN': return (args && args.length) ? String(args[0]).length : 0;
+        case 'LEN': {
+          const val = (args && args.length) ? args[0] : null;
+          if (val && typeof val === 'object' && val.__dim) return val.data.length;
+          return val != null ? String(val).length : 0;
+        }
         case 'INT': return (args && args.length) ? (parseInt(args[0],10)|0) : 0;
         case 'STR': return (args && args.length) ? String(args[0]) : '';
+        case 'CHR$':
+        case 'CHR': return String.fromCharCode(Number(args && args[0] != null ? args[0] : 0));
+        case 'SPACE$':
+        case 'SPACE': return ' '.repeat(Math.max(0, Number(args && args[0] != null ? args[0] : 0) | 0));
+        case 'STRING$':
+        case 'STRING': {
+          const n = Math.max(0, Number(args && args[0] != null ? args[0] : 0) | 0);
+          const char = args && args[1] != null ? (typeof args[1] === 'number' ? String.fromCharCode(args[1]) : String(args[1])[0]) : ' ';
+          return char.repeat(n);
+        }
+        case 'INPUT$':
+        case 'INPUTC$':
+        case 'INPUT': {
+          const prompt = (args && args.length) ? String(args[0]) : '? ';
+          return this.inputSync(prompt);
+        }
         case 'MID$':
         case 'MID': {
           const s = String(args && args[0] != null ? args[0] : '');
@@ -2334,10 +2375,10 @@
         if (var2){ this._assignVariable(var1, key); this._assignVariable(var2, val); }
         else { this._assignVariable(var1, val); }
       } else if (mode === 'DIM'){
-        const pos1 = iter[idx]; // 1-based linear position
-        const val = this._dimGetLinear(src, pos1);
+        const pos = iter[idx]; // 0-based linear position
+        const val = this._dimGetLinear(src, pos);
         this._assignVariable(var1, val);
-        if (var2){ this._assignVariable(var2, pos1); }
+        if (var2){ this._assignVariable(var2, pos); }
       }
     }
 
@@ -2370,14 +2411,17 @@
         const boundsText = m[2].trim();
         if (!boundsText) throw new Error('DIM requires bounds for ' + name);
         const boundExprs = this._parseCommaExprList(boundsText); // evaluated
-        const dims = boundExprs.map(v=>Number(v));
-        if (!dims.length || dims.some(d=>!Number.isFinite(d) || d <= 0)) throw new Error('DIM bounds must be positive integers for ' + name);
-        const total = dims.reduce((a,b)=>a * (b|0), 1);
+        const userBounds = boundExprs.map(v => Number(v));
+        if (!userBounds.length || userBounds.some(d => !Number.isFinite(d) || d < 0)) {
+          throw new Error('DIM bounds must be non-negative integers for ' + name);
+        }
+        // For 0-based indexing where DIM A(5) means 0 to 5, the size of each dimension is bound + 1
+        const sizes = userBounds.map(d => (d | 0) + 1);
+        const total = sizes.reduce((a, b) => a * b, 1);
         const isString = /\$$/.test(nameRaw);
-        const initVal = isString ? '' : 0;
         const data = new Array(total);
         for (let i=0;i<total;i++) data[i] = isString ? '' : 0;
-        this.vars[name] = { __dim: true, name, dims: dims.map(d=>d|0), base:1, data, isString };
+        this.vars[name] = { __dim: true, name, dims: sizes, base: 0, data, isString };
       }
     }
 
@@ -2413,8 +2457,8 @@
       else meta.data[pos] = Number.isFinite(Number(value)) ? Number(value) : value;
     }
 
-    _dimGetLinear(meta, oneBasedPos){
-      const idx = (oneBasedPos|0) - 1;
+    _dimGetLinear(meta, linearPos){
+      const idx = (linearPos|0);
       if (idx < 0 || idx >= meta.data.length) throw new Error('Index out of bounds');
       return meta.data[idx];
     }
