@@ -76,11 +76,11 @@ $(function() {
             }
 
             const $win = $(`
-                <div class="window ${options.className || ''}" id="${id}" style="width: ${options.width || 600}px; height: ${options.height || 400}px; left: ${options.x || 100}px; top: ${options.y || 100}px;">
+                <div class="window ${options.className || ''} ${options.modal ? 'modal-window' : ''}" id="${id}" style="width: ${options.width || 600}px; height: ${options.height || 400}px; left: ${options.x || 100}px; top: ${options.y || 100}px;">
                     <div class="window-header">
                         <div class="window-title">${options.title || 'Window'}</div>
                         <div class="window-controls">
-                            <button class="win-btn btn-min" title="Minimize">_</button>
+                            <button class="win-btn btn-min" title="Minimize" ${options.modal ? 'style="display:none"' : ''}>_</button>
                             <button class="win-btn btn-max" title="Maximize">□</button>
                             <button class="win-btn btn-close" title="Close">×</button>
                         </div>
@@ -91,6 +91,10 @@ $(function() {
             `);
 
             $windowContainer.append($win);
+
+            if (options.modal) {
+                this.showOverlay();
+            }
 
             const winObj = {
                 id,
@@ -111,6 +115,22 @@ $(function() {
 
             this.updateWindowMenu();
             return winObj;
+        },
+
+        showOverlay() {
+            let $overlay = $('.window-overlay');
+            if ($overlay.length === 0) {
+                $overlay = $('<div class="window-overlay"></div>');
+                $('body').append($overlay);
+            }
+            $overlay.show();
+        },
+
+        hideOverlay() {
+            const anyModal = Object.values(this.windows).some(w => w.options.modal);
+            if (!anyModal) {
+                $('.window-overlay').hide();
+            }
         },
 
         createWindowMenuBar($win, menuDef) {
@@ -199,7 +219,13 @@ $(function() {
             const win = this.windows[id];
             if (!win) return;
             $('.window').removeClass('active');
-            win.$el.addClass('active').css('z-index', ++zIndexCounter);
+            
+            let zIndex = ++zIndexCounter;
+            if (win.options.modal) {
+                zIndex += 30000; // Above overlay (19999) and taskbar/navbar (10000)
+            }
+
+            win.$el.addClass('active').css('z-index', zIndex);
             $('.taskbar-item').removeClass('active');
             $(`.taskbar-item[data-id="${id}"]`).addClass('active');
         },
@@ -236,12 +262,16 @@ $(function() {
 
         closeWindow(id) {
             const win = this.windows[id];
+            if (!win) return;
             if (win.options.onClose) {
                 if (win.options.onClose(win) === false) return;
             }
             win.$el.remove();
             $(`.taskbar-item[data-id="${id}"]`).remove();
             delete this.windows[id];
+            if (win.options.modal) {
+                this.hideOverlay();
+            }
             this.updateWindowMenu();
         },
 
@@ -709,8 +739,8 @@ $(function() {
                     win.$el.find('.window-body').append($term);
                     const interpreter = new BasicInterpreter({
                         term: null,
-                        autoEcho: false,
-                        debug: true,
+                        autoEcho: true,
+                        debug: false,
                         vfs,
                         hostReadFile,
                         hostExtern,
@@ -720,21 +750,19 @@ $(function() {
                         if (command !== '') {
                             try {
                                 interpreter.setTerm(term);
-                                var out = interpreter.lineExecute(command);
-                                if (out) {
-                                    String(out).split(/\n/).forEach(line => { if (line.length) this.echo(line); });
-                                }
+                                interpreter.lineExecute(command);
                             } catch (e) {
-                                this.error(new String(e));
+                                console.error(e);
                             }
                         }
                     }, {
-                        greetings: '🌱YoBASIC v1.0 Terminal\nCopyright (C) 1979-2026\nType "HELP" for guidance.',
+                        greetings: initialFile ? '' : '🌱YoBASIC v1.0 Terminal\nCopyright (C) 1979-2026\nType "HELP" for guidance.',
                         name: win.id,
                         height: '100%',
                         prompt: '> '
                     });
                     win.interpreter = interpreter;
+                    interpreter.setTerm(term);
                     if (initialFile) {
                         const content = await vfs.readProgramAsync(initialFile);
                         if (content) {
@@ -746,30 +774,38 @@ $(function() {
             });
         },
 
-        explorer(initialPath = '') {
+        explorer(options = {}) {
+            if (typeof options === 'string') {
+                options = { initialPath: options };
+            }
+            const isSelect = !!options.onSelect;
             const win = WindowManager.createWindow({
-                id: 'explorer',
-                singleton: true,
-                title: 'File Explorer',
+                id: isSelect ? undefined : 'explorer',
+                singleton: !isSelect,
+                title: options.title || 'File Explorer',
+                modal: options.modal || false,
                 icon: IconMap['folder'],
                 onOpen: (win) => {
-                    this.renderVfsExplorer(win, initialPath);
+                    win.explorerOptions = options;
+                    this.renderVfsExplorer(win, options.initialPath || '');
                 }
             });
-            if (win && win.currentPath !== undefined && win.currentPath !== initialPath) {
-                this.renderVfsExplorer(win, initialPath);
+            if (win && win.currentPath !== undefined && win.currentPath !== (options.initialPath || '')) {
+                this.renderVfsExplorer(win, options.initialPath || '');
             }
         },
 
         async renderVfsExplorer(win, currentPath = '') {
             const $body = win.$el.find('.window-body');
             win.currentPath = currentPath;
+            const isSelectMode = win.explorerOptions && win.explorerOptions.onSelect;
 
             // Layout
             $body.html(`
                 <div class="explorer-toolbar p-1 border-bottom d-flex gap-2 align-items-center" style="font-size: 11px; background: rgba(0,0,0,0.05);">
                     <button class="btn btn-sm btn-outline-secondary btn-up" title="Up One Level" style="padding: 0px 5px;"><i class="bi bi-arrow-90deg-up"></i></button>
                     <div class="flex-grow-1 text-truncate">Location: <strong>${currentPath || '/'}</strong></div>
+                    ${isSelectMode ? '<button class="btn btn-sm btn-primary btn-select-current" style="padding: 0px 10px; font-size:10px;">Select</button>' : ''}
                     <button class="btn btn-sm btn-outline-secondary btn-refresh" title="Refresh" style="padding: 0px 5px;"><i class="bi bi-arrow-clockwise"></i></button>
                 </div>
                 <div class="explorer-grid p-2"></div>
@@ -788,12 +824,19 @@ $(function() {
                 this.renderVfsExplorer(win, currentPath);
             });
 
+            if (isSelectMode) {
+                $body.find('.btn-select-current').click(() => {
+                    win.explorerOptions.onSelect(currentPath);
+                    WindowManager.closeWindow(win.id);
+                });
+            }
+
             // Render ".." (Up one level) if not at root
             if (currentPath) {
                 const parts = currentPath.split('/');
                 parts.pop();
                 const upPath = parts.join('/');
-                this._renderExplorerItem($grid, '..', IconMap['folder-symlink'], () => this.renderVfsExplorer(win, upPath));
+                this._renderExplorerItem(win, $grid, '..', IconMap['folder-symlink'], () => this.renderVfsExplorer(win, upPath));
             }
 
             // Get files
@@ -843,7 +886,7 @@ $(function() {
                     disabled = true;
                     tooltip = 'You must log in to access shared files.';
                 }
-                this._renderExplorerItem($grid, folderName, IconMap['folder-fill'], () => {
+                this._renderExplorerItem(win, $grid, folderName, IconMap['folder-fill'], () => {
                     if (!disabled) this.renderVfsExplorer(win, folderPath);
                 }, disabled, tooltip);
             });
@@ -852,14 +895,19 @@ $(function() {
             filesAtLevel.sort((a, b) => a.name.localeCompare(b.name)).forEach(f => {
                 const fileName = f.name.split('/').pop();
                 const ext = fileName.split('.').pop().toLowerCase();
-                this._renderExplorerItem($grid, fileName, getIconForExt(ext), () => {
+                this._renderExplorerItem(win, $grid, fileName, getIconForExt(ext), () => {
+                    if (isSelectMode) {
+                        win.explorerOptions.onSelect(f.name);
+                        WindowManager.closeWindow(win.id);
+                        return;
+                    }
                     if (ext === 'bas') this.terminal(f.name);
                     else this.notepad(f.name);
                 }, false, '', f.name);
             });
         },
 
-        _renderExplorerItem($grid, name, icon, onclick, disabled = false, tooltip = '', fullPath = '') {
+        _renderExplorerItem(win, $grid, name, icon, onclick, disabled = false, tooltip = '', fullPath = '') {
             const $item = $(`
                 <div class="explorer-item ${disabled ? 'disabled' : ''}" 
                      ${tooltip ? `title="${tooltip}"` : ''}>
@@ -875,17 +923,29 @@ $(function() {
                         e.preventDefault();
                         e.stopPropagation();
                         const $ctx = $('.context-menu');
-                        $ctx.empty().append(`
-                            <button class="dropdown-item" id="ctx-vfs-open">Open</button>
-                            ${ext === 'bas' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
-                            <hr>
-                            <button class="dropdown-item" id="ctx-vfs-copy">Copy</button>
-                        `).css({ display: 'block', left: e.clientX, top: e.clientY });
-                        $('#ctx-vfs-open').click(() => {
-                            if (ext === 'bas') this.terminal(fullPath);
-                            else this.notepad(fullPath);
-                        });
-                        $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
+                        $ctx.empty();
+                        
+                        const isSelectMode = win.explorerOptions && win.explorerOptions.onSelect;
+
+                        if (isSelectMode) {
+                            $ctx.append(`<button class="dropdown-item" id="ctx-vfs-select">Select</button>`);
+                            $('#ctx-vfs-select').click(() => {
+                                onclick();
+                            });
+                        } else {
+                            $ctx.append(`
+                                <button class="dropdown-item" id="ctx-vfs-open">Open</button>
+                                ${ext === 'bas' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
+                                <hr>
+                                <button class="dropdown-item" id="ctx-vfs-copy">Copy</button>
+                            `);
+                            $('#ctx-vfs-open').click(() => {
+                                if (ext === 'bas') this.terminal(fullPath);
+                                else this.notepad(fullPath);
+                            });
+                            $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
+                        }
+                        $ctx.css({ display: 'block', left: e.clientX, top: e.clientY });
                     });
                 }
             }
@@ -923,8 +983,20 @@ $(function() {
                     };
 
                     const onOpen = () => {
-                        // For now, simpler: just open explorer
-                        AppLauncher.explorer();
+                        AppLauncher.explorer({
+                            modal: true,
+                            title: 'Select a file to open',
+                            onSelect: async (path) => {
+                                const content = await vfs.readProgramAsync(path);
+                                if (content !== null) {
+                                    currentPath = path;
+                                    editor.setValue(content);
+                                    if (path.endsWith('.bas')) editor.setOption('mode', 'simplemode');
+                                    else editor.setOption('mode', 'text/plain');
+                                    updateTitle();
+                                }
+                            }
+                        });
                     };
 
                     const onSave = async () => {
@@ -1027,7 +1099,18 @@ $(function() {
                             title: 'File',
                             items: [
                                 { title: 'New', click: onNew },
-                                { title: 'Open...', click: () => AppLauncher.explorer() },
+                                { title: 'Open...', click: () => AppLauncher.explorer({
+                                    modal: true,
+                                    title: 'Select a folder to open',
+                                    onSelect: async (path) => {
+                                        const content = await vfs.readProgramAsync(path);
+                                        if (content !== null) {
+                                            currentPath = path;
+                                            editor.setValue(content);
+                                            updateUI();
+                                        }
+                                    }
+                                }) },
                                 { title: 'Save', click: onSave },
                                 { title: 'Save As...', click: onSaveAs },
                                 { separator: true },

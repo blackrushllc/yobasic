@@ -660,6 +660,7 @@
         }catch(e){
           // TRY routing or function return propagation
           if (e && e.__ctrl === 'FUNC_RETURN') { throw e; }
+          if (e && e.__ctrl === 'TERMINATE') { break; }
           // Route to nearest TRY frame if present
           let idx = stack.length - 1;
           while (idx >= 0 && stack[idx].type !== 'TRY') idx--;
@@ -737,6 +738,11 @@
       let v;
       if (typeof window !== 'undefined' && typeof window.prompt === 'function'){
         v = window.prompt(p, '');
+      }
+      if (v === null) {
+        const ex = new Error('Program terminated');
+        ex.__ctrl = 'TERMINATE';
+        throw ex;
       }
       if (!isDefined(v)) v = '';
       return v;
@@ -1130,6 +1136,26 @@
           const rest = (args || []).slice(1);
           return this._usingFormat(fmt, rest);
         }
+        case 'ALERT': {
+          const msg = (args && args.length) ? String(args[0]) : '';
+          if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+            window.alert(msg);
+          } else {
+            this.echo(msg);
+          }
+          return '';
+        }
+        case 'CONFIRM': {
+          const msg = (args && args.length) ? String(args[0]) : '';
+          if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+            if (!window.confirm(msg)) {
+              const ex = new Error('Program terminated');
+              ex.__ctrl = 'TERMINATE';
+              throw ex;
+            }
+          }
+          return true;
+        }
         case 'READFILE$':
         case 'READFILE': {
           const path = String(args && args[0] != null ? args[0] : '');
@@ -1476,6 +1502,7 @@
         );
         return val;
       }catch(e){
+        if (e && e.__ctrl === 'TERMINATE') throw e;
         throw new Error('Expression error: ' + (e && e.message ? e.message : String(e)) + ` in: ${expr}`);
       }
     }
@@ -2538,7 +2565,8 @@
       ],
       operators: ['AND','OR','NOT','MOD'],
       functions: [
-        'LEN','LEFT$','RIGHT$','MID$','INSTR','STR$','VAL','RND','SQR','SIN','COS','TAN','TAB','SPC'
+        'LEN','LEFT$','RIGHT$','MID$','INSTR','STR$','VAL','RND','SQR','SIN','COS','TAN','TAB','SPC',
+        'ALERT','CONFIRM'
       ]
     });
 
