@@ -23,6 +23,8 @@ $(function() {
     const IconMap = {
         'folder': 'bi-folder',
         'folder-open': 'bi-folder2-open',
+        'folder-fill': 'bi-folder-fill',
+        'folder-symlink': 'bi-folder-symlink',
         'file-text': 'bi-file-earmark-text',
         'file-code': 'bi-file-earmark-code',
         'file-js': 'bi-filetype-js',
@@ -386,7 +388,7 @@ $(function() {
             if (icon.type === 'url') {
                 window.open(icon.url, '_blank');
             } else if (icon.type === 'system') {
-                AppLauncher[icon.launch]();
+                AppLauncher[icon.launch](icon.authScope === 'shared' ? 'shared' : undefined);
             } else if (icon.type === 'iframe') {
                 AppLauncher.iframe(icon.url, icon.title);
             }
@@ -744,62 +746,150 @@ $(function() {
             });
         },
 
-        explorer() {
-            WindowManager.createWindow({
+        explorer(initialPath = '') {
+            const win = WindowManager.createWindow({
                 id: 'explorer',
                 singleton: true,
                 title: 'File Explorer',
                 icon: IconMap['folder'],
                 onOpen: (win) => {
-                    this.renderVfsExplorer(win);
+                    this.renderVfsExplorer(win, initialPath);
                 }
+            });
+            if (win && win.currentPath !== undefined && win.currentPath !== initialPath) {
+                this.renderVfsExplorer(win, initialPath);
+            }
+        },
+
+        async renderVfsExplorer(win, currentPath = '') {
+            const $body = win.$el.find('.window-body');
+            win.currentPath = currentPath;
+
+            // Layout
+            $body.html(`
+                <div class="explorer-toolbar p-1 border-bottom d-flex gap-2 align-items-center" style="font-size: 11px; background: rgba(0,0,0,0.05);">
+                    <button class="btn btn-sm btn-outline-secondary btn-up" title="Up One Level" style="padding: 0px 5px;"><i class="bi bi-arrow-90deg-up"></i></button>
+                    <div class="flex-grow-1 text-truncate">Location: <strong>${currentPath || '/'}</strong></div>
+                    <button class="btn btn-sm btn-outline-secondary btn-refresh" title="Refresh" style="padding: 0px 5px;"><i class="bi bi-arrow-clockwise"></i></button>
+                </div>
+                <div class="explorer-grid p-2"></div>
+            `);
+
+            const $grid = $body.find('.explorer-grid');
+            
+            $body.find('.btn-up').click(() => {
+                if (!currentPath) return;
+                const parts = currentPath.split('/');
+                parts.pop();
+                this.renderVfsExplorer(win, parts.join('/'));
+            }).prop('disabled', !currentPath);
+
+            $body.find('.btn-refresh').click(() => {
+                this.renderVfsExplorer(win, currentPath);
+            });
+
+            // Render ".." (Up one level) if not at root
+            if (currentPath) {
+                const parts = currentPath.split('/');
+                parts.pop();
+                const upPath = parts.join('/');
+                this._renderExplorerItem($grid, '..', IconMap['folder-symlink'], () => this.renderVfsExplorer(win, upPath));
+            }
+
+            // Get files
+            let allFiles = [];
+            try {
+                if (currentPath.startsWith('shared')) {
+                    allFiles = await vfs.listByFolderAsync('shared');
+                } else if (currentPath.startsWith('examples')) {
+                    allFiles = await vfs.listByFolderAsync('examples');
+                } else {
+                    allFiles = vfs.listFiles();
+                }
+            } catch (e) {
+                console.error('Failed to list files', e);
+            }
+
+            const folders = new Set();
+            const filesAtLevel = [];
+            const prefix = currentPath ? currentPath + '/' : '';
+
+            // Standard folders at root
+            if (!currentPath) {
+                folders.add('projects');
+                folders.add('examples');
+                folders.add('data');
+                folders.add('shared');
+            }
+
+            allFiles.forEach(f => {
+                if (f.name.startsWith(prefix)) {
+                    const rel = f.name.slice(prefix.length);
+                    const parts = rel.split('/');
+                    if (parts.length > 1) {
+                        folders.add(parts[0]);
+                    } else if (parts[0] !== '') {
+                        filesAtLevel.push(f);
+                    }
+                }
+            });
+
+            // Render Folders
+            Array.from(folders).sort().forEach(folderName => {
+                const folderPath = prefix + folderName;
+                let disabled = false;
+                let tooltip = '';
+                if (folderPath === 'shared' && !Identity.isLoggedIn()) {
+                    disabled = true;
+                    tooltip = 'You must log in to access shared files.';
+                }
+                this._renderExplorerItem($grid, folderName, IconMap['folder-fill'], () => {
+                    if (!disabled) this.renderVfsExplorer(win, folderPath);
+                }, disabled, tooltip);
+            });
+
+            // Render Files
+            filesAtLevel.sort((a, b) => a.name.localeCompare(b.name)).forEach(f => {
+                const fileName = f.name.split('/').pop();
+                const ext = fileName.split('.').pop().toLowerCase();
+                this._renderExplorerItem($grid, fileName, getIconForExt(ext), () => {
+                    if (ext === 'bas') this.terminal(f.name);
+                    else this.notepad(f.name);
+                }, false, '', f.name);
             });
         },
 
-        renderVfsExplorer(win) {
-            const $body = win.$el.find('.window-body');
-            $body.html('<div class="explorer-toolbar p-1 border-bottom d-flex gap-2"></div><div class="explorer-grid p-2"></div>');
-            const files = vfs.listFiles();
-            const $grid = $body.find('.explorer-grid').css({
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, 70px)',
-                gap: '10px'
-            });
-
-            files.forEach(f => {
-                const path = f.name;
-                const ext = path.split('.').pop();
-                const $file = $(`
-                    <div class="explorer-item d-flex flex-column align-items-center text-center" style="cursor:pointer; width:70px; font-size:11px;">
-                        <i class="bi ${getIconForExt(ext)}" style="font-size:24px;"></i>
-                        <span style="word-break:break-all">${f.name}</span>
-                    </div>
-                `);
-                $file.dblclick(() => {
-                    if (ext === 'bas') {
-                        this.terminal(path);
-                    } else {
-                        this.notepad(path);
-                    }
-                });
-                $file.on('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const $ctx = $('.context-menu');
-                    $ctx.empty().append(`
-                        <button class="dropdown-item" id="ctx-vfs-open">Open</button>
-                        ${ext === 'bas' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
-                        <hr>
-                        <button class="dropdown-item">Copy</button>
-                    `).css({ display: 'block', left: e.clientX, top: e.clientY });
-                    $('#ctx-vfs-open').click(() => {
-                        if (ext === 'bas') this.terminal(path);
-                        else this.notepad(path);
+        _renderExplorerItem($grid, name, icon, onclick, disabled = false, tooltip = '', fullPath = '') {
+            const $item = $(`
+                <div class="explorer-item ${disabled ? 'disabled' : ''}" 
+                     ${tooltip ? `title="${tooltip}"` : ''}>
+                    <i class="bi ${icon}"></i>
+                    <span>${name}</span>
+                </div>
+            `);
+            if (!disabled) {
+                $item.dblclick(onclick);
+                if (fullPath) {
+                    const ext = fullPath.split('.').pop().toLowerCase();
+                    $item.on('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const $ctx = $('.context-menu');
+                        $ctx.empty().append(`
+                            <button class="dropdown-item" id="ctx-vfs-open">Open</button>
+                            ${ext === 'bas' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
+                            <hr>
+                            <button class="dropdown-item" id="ctx-vfs-copy">Copy</button>
+                        `).css({ display: 'block', left: e.clientX, top: e.clientY });
+                        $('#ctx-vfs-open').click(() => {
+                            if (ext === 'bas') this.terminal(fullPath);
+                            else this.notepad(fullPath);
+                        });
+                        $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
                     });
-                    $('#ctx-vfs-edit').click(() => this.notepad(path));
-                });
-                $grid.append($file);
-            });
+                }
+            }
+            $grid.append($item);
         },
 
         notepad(path = null) {
@@ -988,16 +1078,16 @@ $(function() {
                         <button class="win-btn btn-up" ${data.parentPath === null ? 'disabled' : ''} title="Up"><i class="bi bi-arrow-up"></i></button>
                         <span class="breadcrumb" style="font-size:12px">${data.path}</span>
                     </div>
-                    <div class="explorer-grid p-2" style="display:grid; grid-template-columns: repeat(auto-fill, 80px); gap:10px;"></div>
+                    <div class="explorer-grid p-2"></div>
                 `);
 
                 const $grid = $body.find('.explorer-grid');
                 data.items.forEach(item => {
                     const icon = item.type === 'dir' ? IconMap['folder'] : getIconForExt(item.ext);
                     const $item = $(`
-                        <div class="explorer-item d-flex flex-column align-items-center text-center" style="cursor:pointer; width:80px; font-size:11px;">
-                            <i class="bi ${icon}" style="font-size:32px;"></i>
-                            <span style="word-break:break-all">${item.name}</span>
+                        <div class="explorer-item">
+                            <i class="bi ${icon}"></i>
+                            <span>${item.name}</span>
                         </div>
                     `);
                     $item.dblclick(() => {
@@ -1042,7 +1132,15 @@ $(function() {
     }, 1000);
 
     // Initial Launch
-    Identity.initializeFromSession().then(() => {
+    Identity.initializeFromSession().then(async () => {
+        try {
+            await getSupabase();
+            const examplesProvider = new SupabaseExamplesProvider();
+            const sharedProvider = new SupabaseSharedProvider(Identity);
+            vfs.setProviders({ examples: examplesProvider, shared: sharedProvider });
+        } catch (e) {
+            console.error('[YoBASIC] Desktop VFS providers init failed', e);
+        }
         DesktopManager.init();
     });
     
