@@ -37,11 +37,13 @@ $(function() {
         'file-music': 'bi-file-earmark-music',
         'file-play': 'bi-file-earmark-play',
         'link': 'bi-link-45deg',
+        'iframe': 'bi-window-stack',
         'gear': 'bi-gear',
         'info': 'bi-info-circle',
         'chat': 'bi-chat-dots',
         'download': 'bi-download',
         'windows': 'bi-windows',
+        'display': 'bi-pc-display',
         'box': 'bi-box-seam'
     };
 
@@ -168,7 +170,10 @@ $(function() {
                 $menuBar.append($menu);
             });
             $win.find('.window-header').after($menuBar);
-            $(document).click(() => $('.win-menu-content').removeClass('show'));
+            if (!this._menubarListenerAdded) {
+                $(document).click(() => $('.win-menu-content').removeClass('show'));
+                this._menubarListenerAdded = true;
+            }
         },
 
         setupWindowEvents(win) {
@@ -355,12 +360,43 @@ $(function() {
      */
     const DesktopManager = {
         icons: [],
+        GRID: { w: 80, h: 90, gap: 10, padding: 10 },
 
         init() {
             this.loadIcons();
             this.renderIcons();
             this.setupEvents();
             this.updateIdentity();
+        },
+
+        snapToGrid(x, y) {
+            const c = Math.round((x - this.GRID.padding) / (this.GRID.w + this.GRID.gap));
+            const r = Math.round((y - this.GRID.padding) / (this.GRID.h + this.GRID.gap));
+            return {
+                x: this.GRID.padding + c * (this.GRID.w + this.GRID.gap),
+                y: this.GRID.padding + r * (this.GRID.h + this.GRID.gap)
+            };
+        },
+
+        getFreeSpot(occupiedPositions) {
+            const containerWidth = $('#desktop-area').width() || window.innerWidth;
+            const containerHeight = $('#desktop-area').height() || window.innerHeight;
+            const cols = Math.floor((containerWidth - this.GRID.padding * 2 + this.GRID.gap) / (this.GRID.w + this.GRID.gap));
+            const rows = Math.floor((containerHeight - this.GRID.padding * 2 + this.GRID.gap) / (this.GRID.h + this.GRID.gap));
+
+            for (let c = 0; c < (cols || 10); c++) {
+                for (let r = 0; r < (rows || 10); r++) {
+                    const x = this.GRID.padding + c * (this.GRID.w + this.GRID.gap);
+                    const y = this.GRID.padding + r * (this.GRID.h + this.GRID.gap);
+                    
+                    const isOccupied = Object.values(occupiedPositions).some(pos => 
+                        Math.abs(pos.x - x) < 5 && Math.abs(pos.y - y) < 5
+                    );
+                    
+                    if (!isOccupied) return { x, y };
+                }
+            }
+            return { x: 0, y: 0 };
         },
 
         // Todo: Add minimal IDE link for test.html and RESET button
@@ -373,6 +409,9 @@ $(function() {
                 { id: 'editor', type: 'system', title: 'Tabbed Editor', icon: IconMap['file-code'], launch: 'editor' },
                 { id: 'chat', type: 'system', title: 'Chat', icon: IconMap['chat'], launch: 'chat' },
                 { id: 'downloads', type: 'system', title: 'Downloads', icon: IconMap['download'], launch: 'downloads' },
+                { id: 'settings', type: 'system', title: 'Settings', icon: IconMap['gear'], launch: 'settings' },
+                { id: 'about', type: 'system', title: 'About', icon: IconMap['info'], launch: 'about' },
+                { id: 'desktop', type: 'system', title: 'Desktop', icon: IconMap['display'], launch: 'explorer', path: 'projects' },
                 { id: 'ide', type: 'url', title: 'YoBASIC IDE', icon: IconMap['link'], url: 'index.html' },
                 { id: 'ide-minimal', type: 'url', title: 'Minimal IDE', icon: IconMap['link'], url: 'test.html' },
                 { id: 'docs', type: 'url', title: 'Basil Docs', icon: IconMap['link'], url: 'https://blackrushbasic.com/' },
@@ -382,34 +421,50 @@ $(function() {
             
             // Add custom iFrames from spec
             const defaultIframes = [
-                { id: 'yoreweb', type: 'iframe', title: 'YoreWeb', icon: IconMap['link'], url: 'https://yoreweb.com/' },
-                { id: 'blackrushdrive', type: 'iframe', title: 'Blackrush Drive', icon: IconMap['link'], url: 'https://blackrushdrive.com/' }
+                { id: 'yoreweb', type: 'iframe', title: 'YoreWeb', icon: IconMap['iframe'], url: 'https://yoreweb.com/' },
+                { id: 'blackrushdrive', type: 'iframe', title: 'Blackrush Drive', icon: IconMap['iframe'], url: 'https://blackrushdrive.com/' }
             ];
 
-            const customIcons = JSON.parse(localStorage.getItem('desktop.customIcons') || '[]');
+            const savedIcons = localStorage.getItem('desktop.customIcons');
             
             // Initial load or if no custom icons yet, use default iframes
-            if (localStorage.getItem('desktop.customIcons') === null) {
+            if (savedIcons === null) {
                 this.icons = [...systemIcons, ...defaultIframes];
                 this.saveCustomIcons();
             } else {
-                this.icons = [...systemIcons, ...customIcons];
+                this.icons = JSON.parse(savedIcons);
             }
         },
 
         saveCustomIcons() {
-            const systemIds = ['terminal', 'notepad', 'explorer', 'editor', 'chat', 'downloads', 'ide', 'ide-minimal', 'docs', 'website', 'shared-files'];
-            const customIcons = this.icons.filter(i => !systemIds.includes(i.id));
-            localStorage.setItem('desktop.customIcons', JSON.stringify(customIcons));
+            localStorage.setItem('desktop.customIcons', JSON.stringify(this.icons));
         },
 
         renderIcons() {
             $iconsGrid.empty();
-            const positions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
+            let positions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
+            let occupied = {};
+            let positionsChanged = false;
             
             this.icons.forEach(icon => {
-                const pos = positions[icon.id];
-                const style = pos ? `position: absolute; left: ${pos.x}px; top: ${pos.y}px;` : '';
+                let pos = positions[icon.id];
+
+                if (pos) {
+                    pos = this.snapToGrid(pos.x, pos.y);
+                    const isOccupied = Object.values(occupied).some(o => 
+                        Math.abs(o.x - pos.x) < 5 && Math.abs(o.y - pos.y) < 5
+                    );
+                    if (isOccupied) pos = null;
+                }
+
+                if (!pos) {
+                    pos = this.getFreeSpot(occupied);
+                    positions[icon.id] = pos;
+                    positionsChanged = true;
+                }
+
+                occupied[icon.id] = pos;
+                const style = `position: absolute; left: ${pos.x}px; top: ${pos.y}px;`;
                 const $icon = $(`
                     <div class="desktop-icon ${icon.requiresAuth && !Identity.isLoggedIn() ? 'disabled' : ''}" data-id="${icon.id}" title="${icon.requiresAuth && !Identity.isLoggedIn() ? 'Requires login' : ''}" style="${style}">
                         <i class="bi ${icon.icon}"></i>
@@ -442,6 +497,18 @@ $(function() {
                     $('#ctx-edit').click(() => AppLauncher.notepad(icon.path || icon.id));
                     $('#ctx-rename').click(() => this.renameDesktopIcon(icon));
                     $('#ctx-delete').click(() => this.deleteDesktopIcon(icon));
+                    $('#ctx-props').click(() => {
+                        if (icon.type === 'url' || icon.type === 'iframe') {
+                            const newUrl = prompt('Enter new URL:', icon.url);
+                            if (newUrl !== null) {
+                                icon.url = newUrl;
+                                this.saveCustomIcons();
+                                this.renderIcons();
+                            }
+                        } else {
+                            alert('Properties for this item are not editable.');
+                        }
+                    });
                 });
 
                 // Icon dragging
@@ -466,16 +533,73 @@ $(function() {
                     $(document).on('mouseup.icon-drag', () => {
                         $(document).off('.icon-drag');
                         $icon.css('zIndex', '');
-                        // Save position
+                        
                         const finalPos = $icon.position();
-                        const currentPositions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
-                        currentPositions[icon.id] = { x: Math.round(finalPos.left), y: Math.round(finalPos.top) };
+                        const snapped = this.snapToGrid(finalPos.left, finalPos.top);
+                        
+                        let currentPositions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
+                        
+                        // Check if snapped position is occupied by another icon
+                        const otherOccupied = {};
+                        Object.keys(currentPositions).forEach(id => {
+                            if (id !== icon.id) otherOccupied[id] = currentPositions[id];
+                        });
+
+                        const isOccupied = Object.values(otherOccupied).some(o => 
+                            Math.abs(o.x - snapped.x) < 5 && Math.abs(o.y - snapped.y) < 5
+                        );
+
+                        if (isOccupied) {
+                            // If occupied, find next available spot
+                            const free = this.getFreeSpot(currentPositions);
+                            snapped.x = free.x;
+                            snapped.y = free.y;
+                        }
+
+                        currentPositions[icon.id] = snapped;
                         localStorage.setItem('desktop.iconPositions', JSON.stringify(currentPositions));
+                        
+                        $icon.css({
+                            left: snapped.x,
+                            top: snapped.y
+                        });
                     });
                 });
 
                 $iconsGrid.append($icon);
             });
+
+            if (positionsChanged) {
+                localStorage.setItem('desktop.iconPositions', JSON.stringify(positions));
+            }
+        },
+
+        addBuiltInWidget(widget) {
+            // Check if already on desktop
+            const existingIndex = this.icons.findIndex(i => i.id === widget.id);
+            if (existingIndex !== -1) {
+                // Re-order to end (but keep in icons list)
+                const item = this.icons.splice(existingIndex, 1)[0];
+                this.icons.push(item);
+                
+                // Clear its saved position so it gets moved to a free spot
+                const positions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
+                delete positions[widget.id];
+                localStorage.setItem('desktop.iconPositions', JSON.stringify(positions));
+            } else {
+                // Not on desktop, add it
+                this.icons.push({
+                    id: widget.id,
+                    type: 'system',
+                    title: widget.title,
+                    icon: widget.icon,
+                    launch: widget.launch,
+                    path: widget.path
+                });
+            }
+
+            this.saveCustomIcons();
+            this.renderIcons();
         },
 
         launchIcon(icon) {
@@ -514,11 +638,6 @@ $(function() {
         },
 
         deleteDesktopIcon(icon) {
-            const systemIds = ['terminal', 'notepad', 'explorer', 'editor', 'chat', 'downloads', 'ide', 'ide-minimal', 'docs', 'website', 'shared-files'];
-            if (systemIds.includes(icon.id)) {
-                alert('System shortcuts cannot be deleted.');
-                return;
-            }
             if (confirm(`Are you sure you want to delete the shortcut "${icon.title}"?`)) {
                 this.icons = this.icons.filter(i => i.id !== icon.id);
                 this.saveCustomIcons();
@@ -530,15 +649,45 @@ $(function() {
             const $ctx = $('<div class="context-menu"></div>');
             $('body').append($ctx);
 
+            $ctx.on('click', '.dropdown-item', (e) => {
+                if (!$(e.currentTarget).hasClass('has-submenu')) {
+                    $ctx.hide();
+                }
+            });
+
             $desktop.on('contextmenu', (e) => {
                 e.preventDefault();
+
+                const builtInWidgets = [
+                    { id: 'terminal', title: 'Terminal', icon: IconMap['file-bas'], launch: 'terminal' },
+                    { id: 'notepad', title: 'Notepad', icon: IconMap['file-text'], launch: 'notepad' },
+                    { id: 'explorer', title: 'File Explorer', icon: IconMap['folder'], launch: 'explorer' },
+                    { id: 'editor', title: 'Tabbed Editor', icon: IconMap['file-code'], launch: 'editor' },
+                    { id: 'chat', title: 'Chat', icon: IconMap['chat'], launch: 'chat' },
+                    { id: 'downloads', title: 'Downloads', icon: IconMap['download'], launch: 'downloads' },
+                    { id: 'desktop', title: 'Desktop', icon: IconMap['display'], launch: 'explorer', path: 'projects' },
+                    { id: 'settings', title: 'Settings', icon: IconMap['gear'], launch: 'settings' },
+                    { id: 'about', title: 'About', icon: IconMap['info'], launch: 'about' },
+                    { id: 'shared-files', title: 'Shared Projects', icon: IconMap['box'], launch: 'explorer', requiresAuth: true, authScope: 'shared' }
+                ];
+
+                let builtInHtml = '';
+                builtInWidgets.forEach(w => {
+                    builtInHtml += `<button class="dropdown-item ctx-add-widget" data-id="${w.id}">${w.title}</button>`;
+                });
+
                 $ctx.empty().append(`
                     <button class="dropdown-item" id="ctx-arrange">Arrange Icons</button>
                     <button class="dropdown-item" id="ctx-refresh">Refresh</button>
                     <hr>
                     <button class="dropdown-item" id="ctx-new-url">Add URL Shortcut...</button>
                     <button class="dropdown-item" id="ctx-new-iframe">Add Iframe Widget...</button>
-                    <button class="dropdown-item" id="ctx-new-widget">Add Built-in Widget...</button>
+                    <div class="dropdown-item has-submenu" id="ctx-new-widget">
+                        Add Built-in Widget
+                        <div class="context-submenu">
+                            ${builtInHtml}
+                        </div>
+                    </div>
                     <hr>
                     <button class="dropdown-item" id="ctx-minimize-all">Minimize All</button>
                     <button class="dropdown-item" id="ctx-close-all">Close All</button>
@@ -546,6 +695,15 @@ $(function() {
                     display: 'block',
                     left: e.clientX,
                     top: e.clientY
+                });
+
+                $('.ctx-add-widget').click((ev) => {
+                    const id = $(ev.target).data('id');
+                    const widget = builtInWidgets.find(w => w.id === id);
+                    if (widget) {
+                        this.addBuiltInWidget(widget);
+                    }
+                    $ctx.hide();
                 });
 
                 $('#ctx-arrange').click(() => {
@@ -566,17 +724,7 @@ $(function() {
                     const name = prompt('Widget Name:');
                     const url = prompt('Iframe URL:');
                     if (name && url) {
-                        this.icons.push({ id: 'custom-' + Date.now(), type: 'iframe', title: name, icon: IconMap['link'], url });
-                        this.saveCustomIcons();
-                        this.renderIcons();
-                    }
-                });
-                $('#ctx-new-widget').click(() => {
-                    const name = prompt('Widget Name:', 'Clock');
-                    if (name) {
-                        // For now, let's just add a clock as a built-in widget if they type "Clock"
-                        // Or maybe we just add it anyway.
-                        this.icons.push({ id: 'custom-' + Date.now(), type: 'system', title: name, icon: IconMap['gear'], launch: 'notepad' }); // placeholder
+                        this.icons.push({ id: 'custom-' + Date.now(), type: 'iframe', title: name, icon: IconMap['iframe'], url });
                         this.saveCustomIcons();
                         this.renderIcons();
                     }
@@ -672,8 +820,10 @@ $(function() {
 
         resetDesktop() {
             if (confirm('Are you sure you want to reset the desktop to default settings? All custom icons will be removed and positions will be reset.')) {
+                WindowManager.closeAll();
                 localStorage.removeItem('desktop.iconPositions');
                 localStorage.removeItem('desktop.windowGeometry');
+                localStorage.removeItem('desktop.customIcons');
                 this.loadIcons();
                 this.renderIcons();
             }
@@ -887,7 +1037,16 @@ $(function() {
             });
         },
 
-        terminal(initialFile = null, persistenceId = null) {
+        terminal(options = null, persistenceId = null) {
+            let initialFile = null;
+            let initialCode = null;
+            if (typeof options === 'string') {
+                initialFile = options;
+            } else if (options && typeof options === 'object') {
+                initialFile = options.file;
+                initialCode = options.code;
+            }
+
             WindowManager.createWindow({
                 title: 'Basic.JS Terminal',
                 persistenceId: persistenceId || (initialFile ? 'terminal-' + initialFile : 'terminal'),
@@ -915,19 +1074,22 @@ $(function() {
                             }
                         }
                     }, {
-                        greetings: initialFile ? '' : '🌱YoBASIC v1.0 Terminal\nCopyright (C) 1979-2026\nType "HELP" for guidance.',
+                        greetings: (initialFile || initialCode) ? '' : '🌱YoBASIC v1.0 Terminal\nCopyright (C) 1979-2026\nType "HELP" for guidance.',
                         name: win.id,
                         height: '100%',
                         prompt: '> '
                     });
                     win.interpreter = interpreter;
                     interpreter.setTerm(term);
+                    
                     if (initialFile) {
                         const content = await vfs.readProgramAsync(initialFile);
                         if (content) {
                             term.echo(`Running ${initialFile}...`);
                             interpreter.runProgram(content);
                         }
+                    } else if (initialCode) {
+                        interpreter.runProgram(initialCode);
                     }
                 }
             });
@@ -1146,23 +1308,97 @@ $(function() {
                 icon: IconMap['file-text'],
                 onOpen: async (win) => {
                     const $body = win.$el.find('.window-body');
-                    const $textarea = $('<textarea style="width:100%; height:100%"></textarea>');
-                    $body.append($textarea);
-                    const editor = CodeMirror.fromTextArea($textarea[0], {
+                    $body.html(`
+                        <div class="d-flex flex-column h-100">
+                            <div class="window-toolbar p-1 border-bottom d-flex gap-2 align-items-center" style="display:none; background: rgba(0,0,0,0.05); font-size: 12px;">
+                                <button class="btn btn-sm btn-success btn-run" style="padding: 2px 10px; font-size: 11px;"><i class="bi bi-play-fill"></i> Run</button>
+                                <button class="btn btn-sm btn-primary btn-run-selection" style="padding: 2px 10px; font-size: 11px; display:none;"><i class="bi bi-play"></i> Run Selection</button>
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <textarea style="width:100%; height:100%"></textarea>
+                            </div>
+                        </div>
+                    `);
+                    const editor = CodeMirror.fromTextArea($body.find('textarea')[0], {
                         lineNumbers: true,
                         mode: 'text/plain',
                         theme: 'default'
                     });
                     win.editor = editor;
 
-                    const updateTitle = () => {
+                    const updateUI = () => {
                         win.$el.find('.window-title').text(currentPath ? `Notepad - ${currentPath}` : 'Notepad (Untitled)');
+                        const isBas = currentPath && currentPath.toLowerCase().match(/\.(bas|basil)$/);
+                        const $toolbar = win.$el.find('.window-toolbar');
+                        if (isBas) {
+                            $toolbar.show();
+                        } else {
+                            $toolbar.hide();
+                        }
+                        refreshMenuBar();
                     };
+
+                    const onRun = () => {
+                        AppLauncher.terminal({ code: editor.getValue() });
+                    };
+
+                    const onRunSelection = () => {
+                        const sel = editor.getSelection();
+                        if (sel) {
+                            AppLauncher.terminal({ code: sel });
+                        }
+                    };
+
+                    const refreshMenuBar = () => {
+                        win.$el.find('.window-menubar').remove();
+                        const isBas = currentPath && currentPath.toLowerCase().match(/\.(bas|basil)$/);
+                        const menuDef = [
+                            {
+                                title: 'File',
+                                items: [
+                                    { title: 'New', click: onNew },
+                                    { title: 'Open...', click: onOpen },
+                                    { title: 'Save', click: onSave },
+                                    { title: 'Save As...', click: onSaveAs },
+                                    { separator: true },
+                                    { title: 'Close', click: () => WindowManager.closeWindow(win.id) }
+                                ]
+                            }
+                        ];
+                        if (isBas) {
+                            const runItems = [
+                                { title: 'Run', click: onRun }
+                            ];
+                            if (editor.getSelection()) {
+                                runItems.push({ title: 'Run Selection', click: onRunSelection });
+                            }
+                            menuDef.push({
+                                title: 'Run',
+                                items: runItems
+                            });
+                        }
+                        WindowManager.createWindowMenuBar(win.$el, menuDef);
+                    };
+
+                    let lastHasSelection = false;
+                    editor.on('cursorActivity', () => {
+                        const hasSelection = editor.getSelection().length > 0;
+                        const isBas = currentPath && currentPath.toLowerCase().match(/\.(bas|basil)$/);
+                        win.$el.find('.btn-run-selection').toggle(isBas && hasSelection);
+                        
+                        if (hasSelection !== lastHasSelection) {
+                            lastHasSelection = hasSelection;
+                            if (isBas) refreshMenuBar();
+                        }
+                    });
+
+                    win.$el.on('click', '.btn-run', onRun);
+                    win.$el.on('click', '.btn-run-selection', onRunSelection);
 
                     const onNew = () => {
                         currentPath = null;
                         editor.setValue('');
-                        updateTitle();
+                        updateUI();
                     };
 
                     const onOpen = () => {
@@ -1176,7 +1412,7 @@ $(function() {
                                     editor.setValue(content);
                                     if (path.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
                                     else editor.setOption('mode', 'text/plain');
-                                    updateTitle();
+                                    updateUI();
                                 }
                             }
                         });
@@ -1189,30 +1425,22 @@ $(function() {
                         }
                         await vfs.writeProgramAsync(currentPath, editor.getValue());
                         alert('Saved to ' + currentPath);
+                        updateUI();
                     };
 
                     const onSaveAs = async () => {
                         const newPath = prompt('Save as path (e.g. projects/myprog.bas):', currentPath || '');
                         if (newPath) {
                             currentPath = newPath;
-                            await onSave();
-                            updateTitle();
+                            await vfs.writeProgramAsync(currentPath, editor.getValue());
+                            alert('Saved to ' + currentPath);
+                            if (currentPath.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
+                            else editor.setOption('mode', 'text/plain');
+                            updateUI();
                         }
                     };
 
-                    WindowManager.createWindowMenuBar(win.$el, [
-                        {
-                            title: 'File',
-                            items: [
-                                { title: 'New', click: onNew },
-                                { title: 'Open...', click: onOpen },
-                                { title: 'Save', click: onSave },
-                                { title: 'Save As...', click: onSaveAs },
-                                { separator: true },
-                                { title: 'Close', click: () => WindowManager.closeWindow(win.id) }
-                            ]
-                        }
-                    ]);
+                    refreshMenuBar();
 
                     if (path) {
                         const content = await vfs.readProgramAsync(path);
@@ -1220,6 +1448,7 @@ $(function() {
                             editor.setValue(content);
                             if (path.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
                         }
+                        updateUI();
                     }
                     win.options.onResize = () => editor.refresh();
                 }
@@ -1238,10 +1467,14 @@ $(function() {
 
                     $body.html(`
                         <div class="d-flex flex-column h-100">
-                            <div class="editor-tabs-bar nav-tabs-wrapper px-2 pt-1" style="background:var(--taskbar-bg)">
+                            <div class="editor-tabs-bar nav-tabs-wrapper px-2 pt-1 d-flex justify-content-between align-items-center" style="background:var(--taskbar-bg)">
                                 <div class="nav-tab active" id="editor-active-tab-name">Untitled.bas</div>
+                                <div class="editor-toolbar-mini d-flex gap-1 pe-2">
+                                    <button class="btn btn-sm btn-success btn-run" style="padding: 0 8px; font-size: 10px; display:none;"><i class="bi bi-play-fill"></i> Run</button>
+                                    <button class="btn btn-sm btn-primary btn-run-selection" style="padding: 0 8px; font-size: 10px; display:none;"><i class="bi bi-play"></i> Run Selection</button>
+                                </div>
                             </div>
-                            <div class="editor-container flex-grow-1">
+                            <div class="editor-container flex-grow-1 overflow-hidden">
                                 <textarea style="width:100%; height:100%"></textarea>
                             </div>
                         </div>
@@ -1254,10 +1487,69 @@ $(function() {
                     });
                     win.editor = editor;
 
+                    const onRun = () => {
+                        AppLauncher.terminal({ code: editor.getValue() });
+                    };
+
+                    const onRunSelection = () => {
+                        const sel = editor.getSelection();
+                        if (sel) {
+                            AppLauncher.terminal({ code: sel });
+                        }
+                    };
+
                     const updateUI = () => {
                         const name = currentPath ? currentPath.split('/').pop() : 'Untitled.bas';
                         $('#editor-active-tab-name').text(name);
                         win.$el.find('.window-title').text(currentPath ? `Tabbed Editor - ${currentPath}` : 'Tabbed Editor');
+                        
+                        const isBas = !currentPath || currentPath.toLowerCase().match(/\.(bas|basil)$/);
+                        win.$el.find('.btn-run').toggle(!!isBas);
+                        win.$el.find('.btn-run-selection').toggle(!!(isBas && editor.getSelection()));
+                        
+                        refreshMenuBar();
+                    };
+
+                    const refreshMenuBar = () => {
+                        win.$el.find('.window-menubar').remove();
+                        const isBas = !currentPath || currentPath.toLowerCase().match(/\.(bas|basil)$/);
+                        const menuDef = [
+                            {
+                                title: 'File',
+                                items: [
+                                    { title: 'New', click: onNew },
+                                    { title: 'Open...', click: () => AppLauncher.explorer({
+                                        modal: true,
+                                        title: 'Select a file to open',
+                                        onSelect: async (path) => {
+                                            const content = await vfs.readProgramAsync(path);
+                                            if (content !== null) {
+                                                currentPath = path;
+                                                editor.setValue(content);
+                                                updateUI();
+                                            }
+                                        }
+                                    }) },
+                                    { title: 'Save', click: onSave },
+                                    { title: 'Save As...', click: onSaveAs },
+                                    { separator: true },
+                                    { title: 'Close', click: () => WindowManager.closeWindow(win.id) }
+                                ]
+                            }
+                        ];
+                        if (isBas) {
+                            const runItems = [
+                                { title: 'Run', click: onRun }
+                            ];
+                            if (editor.getSelection()) {
+                                runItems.push({ title: 'Run Selection', click: onRunSelection });
+                            }
+                            menuDef.push({
+                                title: 'Run',
+                                items: runItems
+                            });
+                        }
+                        WindowManager.createWindowMenuBar(win.$el, menuDef);
                     };
 
                     const onNew = () => {
@@ -1270,38 +1562,30 @@ $(function() {
                         if (!currentPath) return onSaveAs();
                         await vfs.writeProgramAsync(currentPath, editor.getValue());
                         alert('Saved to ' + currentPath);
+                        updateUI();
                     };
 
                     const onSaveAs = async () => {
                         const p = prompt('Save As (path):', currentPath || 'projects/untitled.bas');
-                        if (p) { currentPath = p; await onSave(); updateUI(); }
+                        if (p) { currentPath = p; await onSave(); }
                     };
 
-                    WindowManager.createWindowMenuBar(win.$el, [
-                        {
-                            title: 'File',
-                            items: [
-                                { title: 'New', click: onNew },
-                                { title: 'Open...', click: () => AppLauncher.explorer({
-                                    modal: true,
-                                    title: 'Select a folder to open',
-                                    onSelect: async (path) => {
-                                        const content = await vfs.readProgramAsync(path);
-                                        if (content !== null) {
-                                            currentPath = path;
-                                            editor.setValue(content);
-                                            updateUI();
-                                        }
-                                    }
-                                }) },
-                                { title: 'Save', click: onSave },
-                                { title: 'Save As...', click: onSaveAs },
-                                { separator: true },
-                                { title: 'Close', click: () => WindowManager.closeWindow(win.id) }
-                            ]
+                    let lastHasSelection = false;
+                    editor.on('cursorActivity', () => {
+                        const hasSelection = editor.getSelection().length > 0;
+                        const isBas = !currentPath || currentPath.toLowerCase().match(/\.(bas|basil)$/);
+                        win.$el.find('.btn-run-selection').toggle(isBas && hasSelection);
+                        
+                        if (hasSelection !== lastHasSelection) {
+                            lastHasSelection = hasSelection;
+                            if (isBas) refreshMenuBar();
                         }
-                    ]);
+                    });
 
+                    win.$el.on('click', '.btn-run', onRun);
+                    win.$el.on('click', '.btn-run-selection', onRunSelection);
+
+                    updateUI();
                     win.options.onResize = () => editor.refresh();
                 }
             });
@@ -1314,8 +1598,18 @@ $(function() {
                 title: 'Chat',
                 icon: IconMap['chat'],
                 onOpen: (win) => {
-                    win.$el.find('.window-body').html('<div id="chat-widget-container" style="height:100%"></div>');
-                    // Port chat logic
+                    win.$el.find('.window-body').html(`
+                        <div class="p-2 d-flex flex-column h-100" style="background: var(--surface-1); color: var(--app-fg);">
+                            <div id="chat-messages" class="flex-grow-1 overflow-auto mb-2" style="font-size: 0.9rem; scroll-behavior: smooth;"></div>
+                            <div class="input-group input-group-sm d-flex gap-1">
+                                <input type="text" id="chat-input" class="form-control bg-dark text-light border-secondary flex-grow-1" placeholder="Type a message...">
+                                <button class="btn btn-outline-secondary" id="chat-send">Send</button>
+                            </div>
+                        </div>
+                    `);
+                    if (window.Chat && Chat.init) {
+                        Chat.init();
+                    }
                 }
             });
         },
@@ -1379,7 +1673,7 @@ $(function() {
             WindowManager.createWindow({
                 title,
                 persistenceId: persistenceId || 'iframe-' + url,
-                icon: IconMap['link'],
+                icon: IconMap['iframe'],
                 onOpen: (win) => {
                     win.$el.find('.window-body').html(`<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`);
                 }
@@ -1468,20 +1762,10 @@ $(function() {
             if ($selectedIcons.length > 0) {
                 const names = $selectedIcons.map(function() { return $(this).find('span').text(); }).get();
                 if (confirm(`Are you sure you want to delete ${$selectedIcons.length} shortcut(s): ${names.join(', ')}?`)) {
-                    const systemIds = ['terminal', 'notepad', 'explorer', 'editor', 'chat', 'downloads', 'ide', 'ide-minimal', 'docs', 'website', 'shared-files'];
-                    let anySystem = false;
                     $selectedIcons.each(function() {
                         const id = $(this).data('id');
-                        const icon = DesktopManager.icons.find(i => i.id === id);
-                        if (icon) {
-                            if (!systemIds.includes(icon.id)) {
-                                DesktopManager.icons = DesktopManager.icons.filter(i => i.id !== icon.id);
-                            } else {
-                                anySystem = true;
-                            }
-                        }
+                        DesktopManager.icons = DesktopManager.icons.filter(i => i.id !== id);
                     });
-                    if (anySystem) alert('Some system shortcuts could not be deleted.');
                     DesktopManager.saveCustomIcons();
                     DesktopManager.renderIcons();
                 }
@@ -1554,4 +1838,19 @@ $(function() {
     $('#btn-new-project').click(() => alert('New Project dialog coming soon.'));
     $('#btn-open-explorer').click(() => AppLauncher.explorer());
     $('#btn-about').click(() => AppLauncher.about());
+
+    // Bridge for Chat "Open" button
+    window.YoBasicIDE = window.YoBasicIDE || {};
+    window.YoBasicIDE.openExample = function(payload) {
+        const files = Array.isArray(payload.files) ? payload.files : [];
+        if (files.length === 0) return;
+        
+        AppLauncher.editor();
+        const win = WindowManager.windows['editor'];
+        if (win && win.editor) {
+            win.editor.setValue(files[0].content || '');
+            WindowManager.focusWindow('editor');
+            WindowManager.restoreWindow('editor');
+        }
+    };
 });

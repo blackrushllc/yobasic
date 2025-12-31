@@ -35,8 +35,16 @@
         return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
+    let supabaseInstance = null;
+    let currentChannel = null;
+    let refreshInterval = null;
+
     async function initChat() {
-        const supabase = await global.getSupabase();
+        if (!supabaseInstance) {
+            supabaseInstance = await global.getSupabase();
+        }
+        const supabase = supabaseInstance;
+        
         if (!supabase) {
             console.warn('[Chat] Supabase not available, chat disabled.');
             return;
@@ -51,7 +59,16 @@
             return;
         }
 
+        if (refreshInterval) clearInterval(refreshInterval);
+        if (currentChannel) currentChannel.unsubscribe();
+
         async function loadComments() {
+            // If the container is no longer in the DOM, stop refreshing
+            if (!document.body.contains(messagesContainer)) {
+                if (refreshInterval) clearInterval(refreshInterval);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from('comments')
                 .select('*')
@@ -207,7 +224,7 @@
         };
 
         // Real-time subscription
-        const channel = supabase
+        currentChannel = supabase
             .channel('public:comments')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => {
                 loadComments();
@@ -218,7 +235,7 @@
         loadComments();
         
         // Periodic refresh (fallback if Realtime is disabled)
-        setInterval(loadComments, 30000);
+        refreshInterval = setInterval(loadComments, 30000);
         
         // Expose refresh
         global.Chat.refresh = loadComments;
