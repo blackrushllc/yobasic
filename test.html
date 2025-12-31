@@ -187,7 +187,7 @@ PRINT "Done."</textarea>
         var basic = new BasicInterpreter({
             term: null,
             autoEcho: false,
-            debug: true,
+            debug: false,
             vfs: vfs,
             hostReadFile: (path) => vfs.readData(path),
             hostExtern: (name, args) => { console.log('Extern:', name, args); return ''; },
@@ -208,7 +208,7 @@ PRINT "Done."</textarea>
                 }
             }
         }, {
-            greetings: '🌱YoBASIC Minimal Test IDE\nTRACE is ON (TRON).',
+            greetings: '🌱YoBASIC Minimal Test IDE\nTRACE is OFF (TROFF).',
             name: 'yobasic_test',
             prompt: "OK\n"
         });

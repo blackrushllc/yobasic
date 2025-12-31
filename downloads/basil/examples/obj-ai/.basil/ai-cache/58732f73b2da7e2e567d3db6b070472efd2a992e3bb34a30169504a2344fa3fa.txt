@@ -1,0 +1,9 @@
+LET outputFile$ = "examples\\generated\\generated.basil"
+LET h% = FOPEN(outputFile$, "w")
+IF h% <> -1 BEGIN
+    FWRITELN(h%, "PRINTLN ""Hello, World!"";")
+    FWRITELN(h%, "PRINTLN ""Here's a Dad Joke for you:"";")
+    FWRITELN(h%, "PRINTLN ""Why did the scarecrow win an award?"";")
+    FWRITELN(h%, "PRINTLN ""Because he was outstanding in his field!"";")
+    FCLOSE(h%)
+END IF

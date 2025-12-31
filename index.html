@@ -195,6 +195,7 @@
                         <li><a class="dropdown-item" href="#" data-action="help-1" data-key="1">Help 1</a></li>
                         <li><a class="dropdown-item" href="#" data-action="help-2" data-key="2">Help 2</a></li>
                         <li><a class="dropdown-item" href="#" data-action="help-3" data-key="3">Help 3</a></li>
+                        <li><a class="dropdown-item text-danger" href="#" data-action="help-reset" data-key="r"><span class="qb-underline">R</span>eset Defaults</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" data-action="about" data-key="a">About</a></li>
                     </ul>
@@ -550,7 +551,7 @@
     const EDITOR_CARET_COLOR = '#FFD400'; // Yellow by default
     try { document.documentElement.style.setProperty('--editor-caret-color', EDITOR_CARET_COLOR); } catch(_) {}
     let term, basic;
-    let debugOn = true;
+    let debugOn = false;
     let currentMenu = null; // bootstrap.Dropdown instance
 
     // --- Tabbed editor state ---
@@ -1070,6 +1071,24 @@
         try { return JSON.parse(localStorage.getItem('basic_settings') || '{}'); } catch(e) { return {}; }
     }
 
+    function resetToDefaults() {
+        const msg = 'Are you sure you want to reset all settings to defaults?\n\n' +
+                    'This will clear your editor settings, window positions, and local storage files. ' +
+                    'Your shared files and login session will be retained.';
+        if (confirm(msg)) {
+            const toRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && !key.startsWith('sb-')) {
+                    toRemove.push(key);
+                }
+            }
+            toRemove.forEach(key => localStorage.removeItem(key));
+            alert('Settings have been reset. The page will now reload.');
+            window.location.reload();
+        }
+    }
+
     function applySettings(s) {
         if (s.editor) {
             // Apply editor typography/colors
@@ -1266,6 +1285,9 @@
                 break;
             case 'help-3':
                 alert('Menu item Help 3 goes here');
+                break;
+            case 'help-reset':
+                resetToDefaults();
                 break;
             case 'about':
                 const about = new bootstrap.Modal(document.getElementById('modalAbout'));
@@ -1534,7 +1556,7 @@
         }
 
         // Initialize terminal in dedicated div
-        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: true, vfs, hostReadFile, hostExtern, hostCallModule });
+        basic = new BasicInterpreter({ term: null, autoEcho: false, debug: false, vfs, hostReadFile, hostExtern, hostCallModule });
         term = $('#terminal').terminal(function(command) {
             if (command !== '') {
                 try {
@@ -1548,7 +1570,7 @@
                 }
             }
         }, {
-            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is ON (TRON).',
+            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is OFF (TROFF).',
             name: 'js_demo',
             prompt: "\nOK\n\n"
         });
@@ -2190,10 +2212,19 @@
         // Direct save if current file exists and is writable
         if (currentFileName && !currentFileReadOnly){
             const content = getActiveCode();
+            const isBas = /\.bas$/i.test(currentFileName);
             if (/^shared\//i.test(currentFileName)){
-                await vfs.writeProgramAsync(currentFileName, content);
+                if (isBas) {
+                    await vfs.writeProgramAsync(currentFileName, content);
+                } else {
+                    await vfs.writeFileAsync(currentFileName, content, 'data');
+                }
             } else {
-                vfs.writeProgram(currentFileName, content);
+                if (isBas) {
+                    vfs.writeProgram(currentFileName, content);
+                } else {
+                    vfs.writeFile(currentFileName, content, 'data');
+                }
                 vfs.saveToLocalStorage();
             }
             // keep tab title consistent

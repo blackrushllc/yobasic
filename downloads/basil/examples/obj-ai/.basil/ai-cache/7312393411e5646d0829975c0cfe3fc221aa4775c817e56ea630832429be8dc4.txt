@@ -1,0 +1,5 @@
+- **Basic Concept**: Bubble sort is a simple sorting algorithm that repeatedly steps through a list, compares adjacent elements, and swaps them if they are in the wrong order. This process is repeated until no swaps are needed, indicating that the list is sorted.
+
+- **Time Complexity**: The average and worst-case time complexity of bubble sort is O(n²), where n is the number of elements in the list. This makes it inefficient for large datasets compared to more advanced sorting algorithms.
+
+- **Stability**: Bubble sort is a stable sorting algorithm, meaning that it maintains the relative order of records with equal keys. This property can be beneficial when sorting complex data structures where the order of equivalent elements matters.

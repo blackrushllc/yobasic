@@ -107,6 +107,15 @@ body.desktop-mode {
     border-bottom: 1px solid var(--win-border-light);
 }
 
+/* Utilities */
+.d-flex { display: flex !important; }
+.flex-column { flex-direction: column !important; }
+.flex-grow-1 { flex-grow: 1 !important; }
+.h-100 { height: 100% !important; }
+.overflow-auto { overflow: auto !important; }
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
 /* Desktop Area */
 #desktop-area {
     position: absolute;
@@ -160,11 +169,14 @@ body.desktop-mode {
 
 .desktop-icon span {
     font-size: 12px;
-    word-break: break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-align: center;
+    max-width: 80px;
 }
 
 /* Taskbar */
@@ -227,6 +239,17 @@ body.desktop-mode {
 }
 
 /* Windows */
+.window-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 19999;
+    display: none;
+}
+
 .window {
     position: absolute;
     background: var(--win-bg);
@@ -320,16 +343,52 @@ body.desktop-mode {
 }
 
 /* Explorer & Dialogs */
-.explorer-item {
-    color: #000;
+.explorer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 80px);
+    grid-template-rows: repeat(auto-fill, 90px);
+    gap: 10px;
+    padding: 10px;
 }
 
-.explorer-item i {
+.explorer-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 5px;
+    border: 1px solid transparent;
+    width: 80px;
     color: #000;
+    box-sizing: border-box;
 }
 
 .explorer-item:hover {
     background-color: rgba(0, 0, 128, 0.1);
+    border: 1px solid rgba(0, 0, 128, 0.2);
+}
+
+.explorer-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.explorer-item i {
+    font-size: 32px;
+    margin-bottom: 4px;
+    color: #000;
+}
+
+.explorer-item span {
+    font-size: 11px;
+    word-break: break-all;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.2;
 }
 
 .explorer-toolbar {
@@ -351,6 +410,35 @@ body.desktop-mode {
     z-index: 20000;
     min-width: 150px;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+}
+
+.dropdown-item.has-submenu {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dropdown-item.has-submenu::after {
+    content: '▶';
+    font-size: 10px;
+    margin-left: 10px;
+}
+
+.context-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -2px;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+    min-width: 150px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+}
+
+.dropdown-item.has-submenu:hover > .context-submenu {
+    display: block;
 }
 
 /* Window Menubar */
