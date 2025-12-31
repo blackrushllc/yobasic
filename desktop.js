@@ -479,6 +479,14 @@ $(function() {
                     $marquee.hide();
                 });
             });
+        },
+
+        resetDesktop() {
+            if (confirm('Are you sure you want to reset the desktop to default settings? All custom icons will be removed and positions will be reset.')) {
+                localStorage.removeItem('desktop.iconPositions');
+                this.loadIcons();
+                this.renderIcons();
+            }
         }
     };
 
@@ -1049,6 +1057,8 @@ $(function() {
     $('#btn-identity').click(() => AppLauncher.identity());
 
     $('#btn-settings').click(() => AppLauncher.settings());
+
+    $('#btn-reset-desktop').click(() => DesktopManager.resetDesktop());
 
     $('#btn-exit').click(() => window.location.href = 'index.html');
     $('#btn-new-project').click(() => alert('New Project dialog coming soon.'));
