@@ -276,7 +276,7 @@
     _inferKind(name){
       const n = String(name).toLowerCase();
       if (n.startsWith('data/')) return 'data';
-      if (n.endsWith('.bas')) return 'program';
+      if (n.endsWith('.bas') || n.endsWith('.basil')) return 'program';
       return 'program';
     }
 

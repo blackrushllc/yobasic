@@ -47,7 +47,7 @@ $(function() {
 
     function getIconForExt(ext) {
         ext = (ext || '').toLowerCase();
-        if (ext === 'bas') return IconMap['file-bas'];
+        if (ext === 'bas' || ext === 'basil') return IconMap['file-bas'];
         if (ext === 'js') return IconMap['file-js'];
         if (ext === 'html') return IconMap['file-html'];
         if (ext === 'css') return IconMap['file-css'];
@@ -428,9 +428,10 @@ $(function() {
                     e.preventDefault();
                     e.stopPropagation();
                     const $ctx = $('.context-menu');
+                    const isEditable = (icon.path || icon.id || '').toLowerCase().match(/\.(bas|basil)$/);
                     $ctx.empty().append(`
                         <button class="dropdown-item" id="ctx-open">Open</button>
-                        ${icon.id.endsWith('.bas') ? '<button class="dropdown-item" id="ctx-edit">Edit</button>' : ''}
+                        ${isEditable ? '<button class="dropdown-item" id="ctx-edit">Edit</button>' : ''}
                         <button class="dropdown-item" id="ctx-rename">Rename</button>
                         <button class="dropdown-item" id="ctx-delete">Delete</button>
                         <hr>
@@ -438,7 +439,7 @@ $(function() {
                     `).css({ display: 'block', left: e.clientX, top: e.clientY });
 
                     $('#ctx-open').click(() => this.launchIcon(icon));
-                    $('#ctx-edit').click(() => AppLauncher.notepad(icon.id));
+                    $('#ctx-edit').click(() => AppLauncher.notepad(icon.path || icon.id));
                     $('#ctx-rename').click(() => this.renameDesktopIcon(icon));
                     $('#ctx-delete').click(() => this.deleteDesktopIcon(icon));
                 });
@@ -596,7 +597,7 @@ $(function() {
                     try {
                         const data = JSON.parse(dataStr);
                         if (data.type === 'vfs-file') {
-                            const isBas = data.path.endsWith('.bas');
+                            const isBas = data.path.toLowerCase().match(/\.(bas|basil)$/);
                             this.icons.push({
                                 id: 'custom-' + Date.now(),
                                 type: 'system',
@@ -1060,7 +1061,7 @@ $(function() {
                         WindowManager.closeWindow(win.id);
                         return;
                     }
-                    if (ext === 'bas') this.terminal(f.name);
+                    if (ext === 'bas' || ext === 'basil') this.terminal(f.name);
                     else this.notepad(f.name);
                 }, false, '', f.name);
             });
@@ -1111,14 +1112,14 @@ $(function() {
                         } else {
                             $ctx.append(`
                                 <button class="dropdown-item" id="ctx-vfs-open">Open</button>
-                                ${ext === 'bas' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
+                                ${ext === 'bas' || ext === 'basil' ? '<button class="dropdown-item" id="ctx-vfs-edit">Edit</button>' : ''}
                                 <hr>
                                 <button class="dropdown-item" id="ctx-vfs-rename">Rename</button>
                                 <button class="dropdown-item" id="ctx-vfs-duplicate">Duplicate</button>
                                 <button class="dropdown-item" id="ctx-vfs-delete">Delete</button>
                             `);
                             $('#ctx-vfs-open').click(() => {
-                                if (ext === 'bas') this.terminal(fullPath);
+                                if (ext === 'bas' || ext === 'basil') this.terminal(fullPath);
                                 else this.notepad(fullPath);
                             });
                             $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
@@ -1173,7 +1174,7 @@ $(function() {
                                 if (content !== null) {
                                     currentPath = path;
                                     editor.setValue(content);
-                                    if (path.endsWith('.bas')) editor.setOption('mode', 'simplemode');
+                                    if (path.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
                                     else editor.setOption('mode', 'text/plain');
                                     updateTitle();
                                 }
@@ -1217,7 +1218,7 @@ $(function() {
                         const content = await vfs.readProgramAsync(path);
                         if (content !== null) {
                             editor.setValue(content);
-                            if (path.endsWith('.bas')) editor.setOption('mode', 'simplemode');
+                            if (path.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
                         }
                     }
                     win.options.onResize = () => editor.refresh();
