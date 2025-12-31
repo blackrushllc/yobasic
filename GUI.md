@@ -242,8 +242,11 @@ Create `docs/ui.md` containing:
 * Use event delegation inside each dialog root: attach one listener per event type per dialog, and dispatch by `event.target.closest(selector)`.
 * Maintain a `dialogs` map: `{ id -> { rootEl, listeners[], bindings[] } }`.
 * Implement a per-interpreter `runQueue`:
-
     * If `running`, enqueue event
     * Else set `running = true`, run handler, then drain queue
 * Treat handler as SUB first; if not found, try FUNCTION (or detect type if your symbol table supports it).
+* Disable all event handlers if the BASIC program is cleared
+* Allow the user to reset their in-browser pseudo-file system to default contents in both desktop.html file explorer and in the "Reset Defaults" option in index.html
+* Generate default system view files (if any) on first load or if the user directs a reset of the file system.
+* Store any newly generated system view files in a pseudo sub folder in the user's default file system
 
