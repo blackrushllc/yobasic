@@ -82,8 +82,36 @@ $(function() {
             const saved = this.loadWindowGeometry(persistenceId);
             const width = saved ? saved.width : (options.width || 600);
             const height = saved ? saved.height : (options.height || 400);
-            const left = saved ? saved.x : (options.x || 100);
-            const top = saved ? saved.y : (options.y || 100);
+            let left = saved ? saved.x : (options.x || 100);
+            let top = saved ? saved.y : (options.y || 100);
+
+            // Offset if overlapping with any existing window
+            const staggerOffset = 30;
+            let overlapping = true;
+            let attempts = 0;
+            while (overlapping && attempts < 10) {
+                overlapping = false;
+                for (const winId in this.windows) {
+                    const win = this.windows[winId];
+                    if (win.isMinimized) continue;
+                    const winLeft = parseInt(win.$el.css('left'));
+                    const winTop = parseInt(win.$el.css('top'));
+                    if (Math.abs(winLeft - left) < 5 && Math.abs(winTop - top) < 5) {
+                        left += staggerOffset;
+                        top += staggerOffset;
+
+                        // If it goes too far right or down, wrap back
+                        if (left + width > $(window).width() - 40 || top + height > $(window).height() - 40) {
+                            left = 40;
+                            top = 40;
+                        }
+
+                        overlapping = true;
+                        attempts++;
+                        break;
+                    }
+                }
+            }
 
             const $win = $(`
                 <div class="window ${options.className || ''} ${options.modal ? 'modal-window' : ''}" id="${id}" style="width: ${width}px; height: ${height}px; left: ${left}px; top: ${top}px;">
