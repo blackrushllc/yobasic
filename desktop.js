@@ -3,6 +3,28 @@
  */
 
 $(function() {
+    // Define BASIC mode for CodeMirror
+    if (window.CodeMirror && CodeMirror.defineSimpleMode) {
+        const BASIC_KEYWORDS = (window.YoBasic && YoBasic.getKeywords) ? YoBasic.getKeywords() : [
+            'PRINT', 'INPUT', 'LET', 'IF', 'THEN', 'ELSE', 'END', 'FOR', 'TO', 'STEP', 'NEXT', 'WHILE', 'WEND', 'DO', 'LOOP'
+        ];
+        CodeMirror.defineSimpleMode('yobasic', {
+            start: [
+                { regex: /\/\/.*$/, token: 'comment' },
+                { regex: /\bREM\b.*$/i, token: 'comment' },
+                { regex: /"([^"\\]|\\.)*"?/, token: 'string' },
+                { regex: /'([^'\\]|\\.)*'?/, token: 'string' },
+                { regex: /\b(\d+\.\d*|\.\d+|\d+)\b/, token: 'number' },
+                { regex: new RegExp("\\b(" + BASIC_KEYWORDS.join("|") + ")\\b", "i"), token: 'keyword' },
+                { regex: /\b(AND|OR|NOT|MOD)\b/i, token: 'operator' },
+                { regex: /[+\-*/=<>()]/, token: 'operator' },
+                { regex: /[A-Z][A-Z0-9_]*\$/i, token: 'variable-2' },
+                { regex: /[A-Z][A-Z0-9_]*/i, token: 'variable' }
+            ],
+            meta: { lineComment: "//" }
+        });
+    }
+
     const $desktop = $('#desktop-area');
     const $windowContainer = $('#window-container');
     const $taskbarItems = $('#taskbar-items');
@@ -1360,8 +1382,10 @@ $(function() {
                         const $toolbar = win.$el.find('.window-toolbar');
                         if (isBas) {
                             $toolbar.show();
+                            editor.setOption('mode', 'yobasic');
                         } else {
                             $toolbar.hide();
+                            editor.setOption('mode', 'text/plain');
                         }
                         refreshMenuBar();
                     };
@@ -1434,12 +1458,10 @@ $(function() {
                             modal: true,
                             title: 'Select a file to open',
                             onSelect: async (path) => {
-                                const content = await vfs.readProgramAsync(path);
+                                const content = await vfs.readDataAsync(path);
                                 if (content !== null) {
                                     currentPath = path;
                                     editor.setValue(content);
-                                    if (path.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
-                                    else editor.setOption('mode', 'text/plain');
                                     updateUI();
                                 }
                             }
@@ -1451,7 +1473,7 @@ $(function() {
                             onSaveAs();
                             return;
                         }
-                        await vfs.writeProgramAsync(currentPath, editor.getValue());
+                        await vfs.writeFileAsync(currentPath, editor.getValue());
                         alert('Saved to ' + currentPath);
                         updateUI();
                     };
@@ -1460,10 +1482,8 @@ $(function() {
                         const newPath = prompt('Save as path (e.g. projects/myprog.bas):', currentPath || '');
                         if (newPath) {
                             currentPath = newPath;
-                            await vfs.writeProgramAsync(currentPath, editor.getValue());
+                            await vfs.writeFileAsync(currentPath, editor.getValue());
                             alert('Saved to ' + currentPath);
-                            if (currentPath.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
-                            else editor.setOption('mode', 'text/plain');
                             updateUI();
                         }
                     };
@@ -1471,10 +1491,9 @@ $(function() {
                     refreshMenuBar();
 
                     if (path) {
-                        const content = await vfs.readProgramAsync(path);
+                        const content = await vfs.readDataAsync(path);
                         if (content !== null) {
                             editor.setValue(content);
-                            if (path.toLowerCase().match(/\.(bas|basil)$/)) editor.setOption('mode', 'simplemode');
                         }
                         updateUI();
                     }
@@ -1510,7 +1529,7 @@ $(function() {
                     
                     const editor = CodeMirror.fromTextArea($body.find('textarea')[0], {
                         lineNumbers: true,
-                        mode: 'simplemode',
+                        mode: 'yobasic',
                         theme: 'default'
                     });
                     win.editor = editor;
@@ -1535,6 +1554,12 @@ $(function() {
                         win.$el.find('.btn-run').toggle(!!isBas);
                         win.$el.find('.btn-run-selection').toggle(!!(isBas && editor.getSelection()));
                         
+                        if (isBas) {
+                            editor.setOption('mode', 'yobasic');
+                        } else {
+                            editor.setOption('mode', 'text/plain');
+                        }
+
                         refreshMenuBar();
                     };
 
@@ -1550,7 +1575,7 @@ $(function() {
                                         modal: true,
                                         title: 'Select a file to open',
                                         onSelect: async (path) => {
-                                            const content = await vfs.readProgramAsync(path);
+                                            const content = await vfs.readDataAsync(path);
                                             if (content !== null) {
                                                 currentPath = path;
                                                 editor.setValue(content);
@@ -1588,7 +1613,7 @@ $(function() {
 
                     const onSave = async () => {
                         if (!currentPath) return onSaveAs();
-                        await vfs.writeProgramAsync(currentPath, editor.getValue());
+                        await vfs.writeFileAsync(currentPath, editor.getValue());
                         alert('Saved to ' + currentPath);
                         updateUI();
                     };
@@ -1785,6 +1810,11 @@ $(function() {
 
     $(document).on('keydown', (e) => {
         if (e.key === 'Delete') {
+            // If the user is typing in a form field or editor, don't intercept Delete
+            if ($(e.target).is('input, textarea') || e.target.isContentEditable || $(e.target).closest('.CodeMirror, .terminal').length > 0) {
+                return;
+            }
+
             // Check for selected desktop icons
             const $selectedIcons = $('.desktop-icon.selected');
             if ($selectedIcons.length > 0) {
