@@ -913,9 +913,22 @@ $(function() {
     }
 
     function hostCallModule(moduleName, memberName, args) {
+        const mod = String(moduleName || '').toUpperCase();
+        const mem = String(memberName || '').toUpperCase();
+
+        // System modules (UI)
+        if (mod === 'UI' && window.YoBasicUI) {
+            if (typeof YoBasicUI[mem] === 'function') {
+                if (mem === 'SHOW' || mem === 'ON') {
+                    return YoBasicUI[mem](basic, ...args);
+                }
+                return YoBasicUI[mem](...args);
+            }
+        }
+
         try {
             if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) {
-                return ProjectManager.callModule(moduleName, memberName, args || []);
+                return ProjectManager.callModule(moduleName, memberName, args || [], basic);
             }
         } catch (e) { throw e; }
         throw new Error('Unknown module: ' + moduleName);

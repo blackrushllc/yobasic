@@ -1,0 +1,119 @@
+.yobasic-ui, #yobasic-ui-root {
+  font-family: "Segoe UI", "Tahoma", sans-serif;
+}
+
+#yobasic-ui-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 10000;
+  overflow: visible;
+}
+
+.yobasic-dialog {
+  position: absolute;
+  background: #c0c0c0;
+  border: 1px solid #dfdfdf;
+  border-right-color: #000;
+  border-bottom-color: #000;
+  box-shadow: inset 1px 1px #fff, inset -1px -1px #808080;
+  padding: 2px;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  color: #000;
+  top: 100px;
+  left: 100px;
+}
+
+.yobasic-dialog-titlebar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: white;
+  padding: 3px 5px 3px 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: default;
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.yobasic-dialog-titlebar .title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 2px;
+}
+
+.yobasic-dialog-titlebar .close-btn {
+  background: #c0c0c0;
+  border: 1px solid #dfdfdf;
+  border-right-color: #000;
+  border-bottom-color: #000;
+  box-shadow: inset 1px 1px #fff, inset -1px -1px #808080;
+  color: black;
+  width: 16px;
+  height: 14px;
+  line-height: 12px;
+  font-size: 14px;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: sans-serif;
+}
+
+.yobasic-dialog-titlebar .close-btn:active {
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #fff;
+  border-right-color: #dfdfdf;
+  border-bottom-color: #dfdfdf;
+  padding: 1px 0 0 1px;
+}
+
+.yobasic-dialog-content {
+  padding: 12px;
+  background: #c0c0c0;
+  color: black;
+  font-size: 13px;
+  flex-grow: 1;
+}
+
+/* Win95 Button style for content */
+.yobasic-dialog-content button {
+  background: #c0c0c0;
+  border: 1px solid #dfdfdf;
+  border-right-color: #000;
+  border-bottom-color: #000;
+  box-shadow: inset 1px 1px #fff, inset -1px -1px #808080;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  margin: 4px;
+}
+
+.yobasic-dialog-content button:active {
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #fff;
+  border-right-color: #dfdfdf;
+  border-bottom-color: #dfdfdf;
+  padding: 5px 11px 3px 13px;
+}
+
+.yobasic-dialog-content input[type="text"], 
+.yobasic-dialog-content input[type="password"],
+.yobasic-dialog-content textarea,
+.yobasic-dialog-content select {
+  background: #fff;
+  border: 1px solid #808080;
+  border-right-color: #dfdfdf;
+  border-bottom-color: #dfdfdf;
+  box-shadow: inset 1px 1px #000, inset -1px -1px #fff;
+  padding: 3px;
+  font-family: inherit;
+  font-size: 13px;
+  margin-bottom: 8px;
+}

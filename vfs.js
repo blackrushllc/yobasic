@@ -84,6 +84,57 @@
         '  PRINT "D/F"',
         'END SELECT'
       ].join('\n')
+    },
+    {
+      name: 'examples/UI_CLICK.BAS', kind: 'program', readOnly: true, content: [
+        'count% = 0',
+        'dlg% = UI.SHOW%("views/counter.html", {"title": "Counter Demo"})',
+        'UI.ON%(dlg%, "click", "#incBtn", "Inc_Click")',
+        '',
+        'SUB Inc_Click(evt@)',
+        '  count% = count% + 1',
+        '  UI.SET_TEXT%(evt@["DIALOGID%"], "#countLabel", "Count: " + STR$(count%))',
+        'END SUB'
+      ].join('\n')
+    },
+    {
+      name: 'views/counter.html', kind: 'data', readOnly: true, content: [
+        '<h3>Counter Demo</h3>',
+        '<p id="countLabel">Count: 0</p>',
+        '<button id="incBtn">Increment</button>'
+      ].join('\n')
+    },
+    {
+      name: 'examples/UI_FORM.BAS', kind: 'program', readOnly: true, content: [
+        'dlg% = UI.SHOW%("views/login.html", {"title": "Login Demo"})',
+        'UI.ON%(dlg%, "submit", "form", "Login_Submit")',
+        '',
+        'SUB Login_Submit(evt@)',
+        '  evt@["PREVENTDEFAULT%"] = 1',
+        '  user$ = UI.GET_VALUE$(evt@["DIALOGID%"], "#user")',
+        '  pass$ = UI.GET_VALUE$(evt@["DIALOGID%"], "#pass")',
+        '  IF user$ = "admin" AND pass$ = "1234" THEN',
+        '    PRINTLN "Login successful!"',
+        '    UI.CLOSE%(evt@["DIALOGID%"])',
+        '  ELSE',
+        '    UI.SET_TEXT%(evt@["DIALOGID%"], "#err", "Invalid username or password")',
+        '  END IF',
+        'END SUB'
+      ].join('\n')
+    },
+    {
+      name: 'views/login.html', kind: 'data', readOnly: true, content: [
+        '<form>',
+        '  <div style="margin-bottom:10px">',
+        '    <label>Username: <input type="text" id="user"></label>',
+        '  </div>',
+        '  <div style="margin-bottom:10px">',
+        '    <label>Password: <input type="password" id="pass"></label>',
+        '  </div>',
+        '  <div id="err" style="color:red; margin-bottom:10px"></div>',
+        '  <button type="submit">Login</button>',
+        '</form>'
+      ].join('\n')
     }
   ];
 

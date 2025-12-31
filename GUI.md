@@ -249,4 +249,4 @@ Create `docs/ui.md` containing:
 * Allow the user to reset their in-browser pseudo-file system to default contents in both desktop.html file explorer and in the "Reset Defaults" option in index.html
 * Generate default system view files (if any) on first load or if the user directs a reset of the file system.
 * Store any newly generated system view files in a pseudo sub folder in the user's default file system
-
+* Remember to treat all physical assets (HTML, CSS, etc) as relative paths, as this project may launched from a different directory than the root of the repo.

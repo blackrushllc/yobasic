@@ -23,6 +23,7 @@
     <script src="provider-examples.js"></script>
     <script src="provider-shared.js"></script>
     <script src="basic.js"></script>
+    <script src="src/modules/ui.js"></script>
     <script src="projectManager.js"></script>
     <script src="chat.js"></script>
     <!-- CodeMirror 5 (free, MIT) -->
@@ -37,6 +38,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <link rel="stylesheet" href="ui/yobasic-ui.css">
     <style>
         :root {
             --nav-height: 56px;
@@ -1546,10 +1548,23 @@
             }catch(e){ console.warn('[YoBASIC] hostExtern error', e); return ''; }
         }
         function hostCallModule(moduleName, memberName, args){
+            const mod = String(moduleName||'').toUpperCase();
+            const mem = String(memberName||'').toUpperCase();
+
+            // System modules (UI)
+            if (mod === 'UI' && window.YoBasicUI) {
+                if (typeof YoBasicUI[mem] === 'function') {
+                    if (mem === 'SHOW' || mem === 'ON') {
+                        return YoBasicUI[mem](basic, ...args);
+                    }
+                    return YoBasicUI[mem](...args);
+                }
+            }
+
             // Delegate dotted calls to the current project's modules when available
             try{
                 if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()){
-                    return ProjectManager.callModule(moduleName, memberName, args || []);
+                    return ProjectManager.callModule(moduleName, memberName, args || [], basic);
                 }
             }catch(e){ throw e; }
             throw new Error('Unknown module: ' + moduleName);
