@@ -77,11 +77,6 @@ The chat transcript in index.html is overruning the chat window.
 The expected behavior is that the chat transcript should scroll down automatically as new messages are received.
 
 
-Todo Next:
-
-
-
-
 
 In index.html, in the "Explorer" section, if I drill down into the "examples" folder and click on any file in that listing it will open in the tabbed editor, except for the 2 new examples UI_CLICK.BAS and UI_FORM.BAS.
 
@@ -164,6 +159,10 @@ In desktop.html, add 3 new options to the "Help" dropdown:
 = "Minimal IDE" - opens the test.html page in a new tab.
 = "Reference and Guide" - opens https://blackrushbasic.com/ in a new tab.
 Add a single separator between the 3 new "Help" dropdown items and "About".
+
+
+Todo Next:
+
 
 
 Todo Later:
