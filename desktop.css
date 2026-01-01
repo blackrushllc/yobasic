@@ -85,6 +85,7 @@ body.desktop-mode {
 }
 
 .dropdown-item {
+    display: block;
     width: 100%;
     text-align: left;
     background: transparent;
@@ -93,14 +94,17 @@ body.desktop-mode {
     font-size: 13px;
     color: #000;
     cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
 }
 
 .dropdown-item:hover {
     background: var(--win-title-bg);
     color: #fff;
+    text-decoration: none;
 }
 
-.dropdown-item hr {
+.dropdown-menu hr {
     margin: 4px 0;
     border: 0;
     border-top: 1px solid var(--win-border-dark);

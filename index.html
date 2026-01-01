@@ -194,9 +194,9 @@
                 <li class="nav-item dropdown">
                     <a id="menu-help" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Help</a>
                     <ul class="dropdown-menu" aria-labelledby="menu-help">
-                        <li><a class="dropdown-item" href="#" data-action="help-1" data-key="1">Help 1</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="help-2" data-key="2">Help 2</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="help-3" data-key="3">Help 3</a></li>
+                        <li><a class="dropdown-item" href="desktop.html" target="_blank" data-key="d"><span class="qb-underline">D</span>esktop</a></li>
+                        <li><a class="dropdown-item" href="test.html" target="_blank" data-key="m"><span class="qb-underline">M</span>inimal IDE</a></li>
+                        <li><a class="dropdown-item" href="https://blackrushbasic.com/" target="_blank" data-key="g">Reference and <span class="qb-underline">G</span>uide</a></li>
                         <li><a class="dropdown-item text-danger" href="#" data-action="help-reset" data-key="r"><span class="qb-underline">R</span>eset Defaults</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" data-action="about" data-key="a">About</a></li>
@@ -1281,15 +1281,6 @@
             case 'tool-3':
                 alert('Menu item Tool 3 goes here');
                 break;
-            case 'help-1':
-                alert('Menu item Help 1 goes here');
-                break;
-            case 'help-2':
-                alert('Menu item Help 2 goes here');
-                break;
-            case 'help-3':
-                alert('Menu item Help 3 goes here');
-                break;
             case 'help-reset':
                 resetToDefaults();
                 break;
@@ -1738,7 +1729,17 @@
         $('#editor').on('input', function(){ saveCode(this.value); });
 
         // Menu item clicks
-        $('.dropdown-item').on('click', function(e){ e.preventDefault(); const action = this.dataset.action; closeCurrentMenu(); menuAction(action); });
+        $('.dropdown-item').on('click', function(e){
+            const action = this.dataset.action;
+            if (action) {
+                e.preventDefault();
+                closeCurrentMenu();
+                menuAction(action);
+            } else {
+                // For links without data-action, let the browser handle it, but close the menu
+                closeCurrentMenu();
+            }
+        });
 
         // Open dialog interactions
         $('#open-folders').on('click', '.list-group-item[data-folder]', function(){
