@@ -20,7 +20,7 @@
 
   const SYSTEM_EXAMPLES = [
     {
-      name: 'examples/HELLO.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/HELLO.BAS', kind: 'program', readOnly: true, content: [
         'PRINTLN "HELLO, WORLD!"',
         'PRINTLN "WELCOME TO 🌱YoBASIC"',
         'PRINTLN "🌱YoBASIC IS A SUBSET OF THE Basil🌿 PROGRAMMING LANGUAGE"',
@@ -29,7 +29,7 @@
       ].join('\n')
     },
     {
-      name: 'examples/WHILE.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/WHILE.BAS', kind: 'program', readOnly: true, content: [
         'LET I = 0',
         'WHILE I < 3',
         '    PRINTLN "I=#{I}"',
@@ -38,21 +38,21 @@
       ].join('\n')
     },
     {
-      name: 'examples/FORNEXT.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/FORNEXT.BAS', kind: 'program', readOnly: true, content: [
         'FOR I% = 1 to 10',
         '    PRINT I%',
         'NEXT'
       ].join('\n')
     },
     {
-      name: 'examples/INPUTNAME.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/INPUTNAME.BAS', kind: 'program', readOnly: true, content: [
         'INPUT "What is your name? ", N$',
         'PRINTLN "Hello, #{N$}"'
       ].join('\n')
     },
     {
       // Demonstrates file I/O into data/ folder
-      name: 'examples/DATADEMO.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/DATADEMO.BAS', kind: 'program', readOnly: true, content: [
         'PRINT "Writing sample data file..."',
         'OPEN "data/demo.dat" FOR OUTPUT AS #1',
         'PRINT #1, "Alice,100"',
@@ -71,7 +71,7 @@
       ].join('\n')
     },
     {
-      name: 'examples/SELECTCASE.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/SELECTCASE.BAS', kind: 'program', readOnly: true, content: [
         'INPUT "Score? ", S%',
         'SELECT CASE S%',
         'CASE IS >= 90',
@@ -86,14 +86,14 @@
       ].join('\n')
     },
     {
-      name: 'examples/UI_CLICK.BAS', kind: 'program', readOnly: true, content: [
+      name: 'demo/UI_CLICK.BAS', kind: 'program', readOnly: true, content: [
         'count% = 0',
-        'dlg% = UI.SHOW%("views/counter.html", {"title": "Counter Demo"})',
+        'dlg% = UI.SHOW%("views/counter.html", {}, {"title": "Counter Demo"})',
         'UI.ON%(dlg%, "click", "#incBtn", "Inc_Click")',
         '',
         'SUB Inc_Click(evt@)',
         '  count% = count% + 1',
-        '  UI.SET_TEXT%(evt@["DIALOGID%"], "#countLabel", "Count: " + STR$(count%))',
+        '  UI.SET_TEXT%(evt@["DIALOGID%"], "#countLabel", "Count: " + STR(count%))',
         'END SUB'
       ].join('\n')
     },
@@ -105,8 +105,8 @@
       ].join('\n')
     },
     {
-      name: 'examples/UI_FORM.BAS', kind: 'program', readOnly: true, content: [
-        'dlg% = UI.SHOW%("views/login.html", {"title": "Login Demo"})',
+      name: 'demo/UI_FORM.BAS', kind: 'program', readOnly: true, content: [
+        'dlg% = UI.SHOW%("views/login.html", {}, {"title": "Login Demo"})',
         'UI.ON%(dlg%, "submit", "form", "Login_Submit")',
         '',
         'SUB Login_Submit(evt@)',
@@ -217,6 +217,8 @@
         }
         // fallback to local seeded entry
         return this.getFile(n);
+      } else if (n.toLowerCase().startsWith('demo/')){
+        return this.getFile(n);
       } else if (n.toLowerCase().startsWith('shared/')){
         if (this.providers.shared && this.providers.shared.getFile){
           return await this.providers.shared.getFile(n);
@@ -235,7 +237,7 @@
         }
         throw new Error('Shared provider not available.');
       }
-      // examples are read-only; route to local if user tries to save with a non-examples name
+      // demo and examples are read-only; route to local if user tries to save with a non-reserved name
       return this.writeFile(n, content, kind);
     }
 
@@ -246,6 +248,9 @@
           return await this.providers.examples.listFiles();
         }
         return this.listByFolder('examples');
+      }
+      if (f === 'demo'){
+        return this.listByFolder('demo');
       }
       if (f === 'shared'){
         if (this.providers.shared){
@@ -337,7 +342,7 @@
       const out = [];
       if (!folder || folder === 'Root'){
         // Root contains any files that are not in reserved namespaces
-        // (projects/, examples/, shared/, data/). These may include
+        // (projects/, examples/, shared/, data/, demo/). These may include
         // nested paths like "chapter1/hello.bas".
         for (const f of all){
           const n = String(f.name).toLowerCase();
@@ -345,7 +350,8 @@
             !n.startsWith('projects/') &&
             !n.startsWith('examples/') &&
             !n.startsWith('shared/') &&
-            !n.startsWith('data/')
+            !n.startsWith('data/') &&
+            !n.startsWith('demo/')
           ){
             out.push(f);
           }

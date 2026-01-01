@@ -66,13 +66,13 @@ When an event fires, your handler is called with a single dictionary argument `e
 
 ### 2. Write the BASIC code
 ```vb
-' Show the dialog
-dlg% = UI.SHOW%("views/hello.html", {"title": "My First App"})
+// Show the dialog
+dlg% = UI.SHOW%("views/hello.html", {}, {"title": "My First App"})
 
-' Bind the click event
+// Bind the click event
 UI.ON%(dlg%, "click", "#btn", "SayHello")
 
-' The handler
+// The handler
 SUB SayHello(evt@)
   UI.SET_TEXT%(evt@["DIALOGID%"], "#msg", "YoBASIC Rules!")
 END SUB

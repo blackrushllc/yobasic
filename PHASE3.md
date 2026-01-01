@@ -265,4 +265,4 @@ PRINTLN STR(123) + "!"      ' 123!
 - Phase plan: yore/web/basic/LOOPS-SELECTCASE-PLAN.md
 - Virtual file system and examples: yore/web/basic/vfs.js
 
-If you want these examples as built‑in sample programs, we can add them to vfs.js (examples/PHASE3_*.BAS) in a follow‑up.
+If you want these examples as built‑in sample programs, we can add them to vfs.js (demo/PHASE3_*.BAS) in a follow‑up.

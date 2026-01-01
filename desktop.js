@@ -84,6 +84,16 @@ $(function() {
         return IconMap['file-text'];
     }
 
+    function normalizePath(path) {
+        let n = String(path || '').trim();
+        if (n.length === 0) return null;
+        // Replace \ with /
+        n = n.replace(/\\/g, '/');
+        // Add .BAS only if no extension is present
+        if (!/\.[a-zA-Z0-9]+$/i.test(n)) n += '.BAS';
+        return n;
+    }
+
     /**
      * Window Manager
      */
@@ -885,7 +895,7 @@ $(function() {
      */
     function hostReadFile(path) {
         const p = String(path || '');
-        const absPrefixes = ['projects/', 'shared/', 'examples/', 'data/', '/'];
+        const absPrefixes = ['projects/', 'shared/', 'examples/', 'data/', 'demo/', '/'];
         let full = p;
         if (!absPrefixes.some(pre => p.toLowerCase().startsWith(pre))) {
             const proj = (window.ProjectManager && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) || null;
@@ -912,15 +922,17 @@ $(function() {
         } catch (e) { return ''; }
     }
 
-    function hostCallModule(moduleName, memberName, args) {
+    function hostCallModule(moduleName, memberName, args, interpreter) {
         const mod = String(moduleName || '').toUpperCase();
-        const mem = String(memberName || '').toUpperCase();
+        let mem = String(memberName || '').toUpperCase();
+        // Strip BASIC type suffixes for module member lookup
+        mem = mem.replace(/[\$%]$/, '');
 
         // System modules (UI)
         if (mod === 'UI' && window.YoBasicUI) {
             if (typeof YoBasicUI[mem] === 'function') {
                 if (mem === 'SHOW' || mem === 'ON') {
-                    return YoBasicUI[mem](basic, ...args);
+                    return YoBasicUI[mem](interpreter, ...args);
                 }
                 return YoBasicUI[mem](...args);
             }
@@ -928,7 +940,7 @@ $(function() {
 
         try {
             if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) {
-                return ProjectManager.callModule(moduleName, memberName, args || [], basic);
+                return ProjectManager.callModule(moduleName, memberName, args || [], interpreter);
             }
         } catch (e) { throw e; }
         throw new Error('Unknown module: ' + moduleName);
@@ -1146,7 +1158,7 @@ $(function() {
                     interpreter.setTerm(term);
                     
                     if (initialFile) {
-                        const content = await vfs.readProgramAsync(initialFile);
+                        const content = await vfs.getFileAsync(initialFile).then(f => f ? f.content : null);
                         if (content) {
                             term.echo(`Running ${initialFile}...`);
                             interpreter.runProgram(content);
@@ -1231,6 +1243,8 @@ $(function() {
                     allFiles = await vfs.listByFolderAsync('shared');
                 } else if (currentPath.startsWith('examples')) {
                     allFiles = await vfs.listByFolderAsync('examples');
+                } else if (currentPath.startsWith('demo')) {
+                    allFiles = await vfs.listByFolderAsync('demo');
                 } else {
                     allFiles = vfs.listFiles();
                 }
@@ -1245,6 +1259,7 @@ $(function() {
             // Standard folders at root
             if (!currentPath) {
                 folders.add('projects');
+                folders.add('demo');
                 folders.add('examples');
                 folders.add('data');
                 folders.add('shared');
@@ -1492,7 +1507,8 @@ $(function() {
                     };
 
                     const onSaveAs = async () => {
-                        const newPath = prompt('Save as path (e.g. projects/myprog.bas):', currentPath || '');
+                        const newPathRaw = prompt('Save as path (e.g. projects/myprog.bas):', currentPath || '');
+                        const newPath = normalizePath(newPathRaw);
                         if (newPath) {
                             currentPath = newPath;
                             await vfs.writeFileAsync(currentPath, editor.getValue());
@@ -1632,7 +1648,8 @@ $(function() {
                     };
 
                     const onSaveAs = async () => {
-                        const p = prompt('Save As (path):', currentPath || 'projects/untitled.bas');
+                        const pRaw = prompt('Save As (path):', currentPath || 'projects/untitled.bas');
+                        const p = normalizePath(pRaw);
                         if (p) { currentPath = p; await onSave(); }
                     };
 

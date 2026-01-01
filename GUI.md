@@ -181,7 +181,7 @@ In Node:
 
 ### Example 1: Button Click
 
-**BASIC:** `examples/ui_click.bas`
+**BASIC:** `demo/ui_click.bas`
 
 * Shows dialog from `/views/counter.html`
 * Binds `click` on `#incBtn` to `Inc_Click`
@@ -193,7 +193,7 @@ In Node:
 
 ### Example 2: Form Submit
 
-**BASIC:** `examples/ui_form.bas`
+**BASIC:** `demo/ui_form.bas`
 
 * Shows dialog from `/views/login.html`
 * Binds `submit` on `form` to `Login_Submit`

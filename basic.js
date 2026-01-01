@@ -17,7 +17,7 @@
       // Host bridge callbacks (Phase 3 - optional)
       this.hostReadFile = options.hostReadFile || null;        // (path: string) => string
       this.hostExtern = options.hostExtern || null;            // (name: string, args: string[]) => string
-      this.hostCallModule = options.hostCallModule || null;    // (moduleName: string, memberName: string, args: any[]) => any
+      this.hostCallModule = options.hostCallModule || null;    // (moduleName: string, memberName: string, args: any[], interpreter: BasicInterpreter) => any
       this.openFiles = {}; // BASIC open file handles: { [handle:number]: {handle, filename, mode, position, bufferIn, bufferOut} }
       // REPL multiline block buffer (for WHILE/WEND, SELECT CASE, etc.)
       this._replBlock = null; // { lines: string[], stack: string[] }
@@ -55,9 +55,9 @@
      * Implements an execution gate/queue to prevent re-entry.
      * @param {string} name 
      * @param {any[]} argsArray 
-     * @returns {Promise<any>}
+     * @returns {any | Promise<any>}
      */
-    async invokeCallable(name, argsArray) {
+    invokeCallable(name, argsArray) {
       const nameUpper = String(name).toUpperCase();
       if (!this.funcs[nameUpper]) {
         throw new Error(`Undefined function/sub: ${name}`);
@@ -1096,6 +1096,7 @@
           return val != null ? String(val).length : 0;
         }
         case 'INT': return (args && args.length) ? (parseInt(args[0],10)|0) : 0;
+        case 'STR$':
         case 'STR': return (args && args.length) ? String(args[0]) : '';
         case 'CHR$':
         case 'CHR': return String.fromCharCode(Number(args && args[0] != null ? args[0] : 0));
@@ -1383,8 +1384,15 @@
         }
       };
       if (this.callStack && this.callStack.length){
-        // Within function/sub: assignment goes to local scope
-        assignTo(this.callStack[this.callStack.length - 1].locals);
+        // Within function/sub: assignment prefers local scope, but updates global if it exists there first
+        const frame = this.callStack[this.callStack.length - 1];
+        if (Object.prototype.hasOwnProperty.call(frame.locals, upper)) {
+          assignTo(frame.locals);
+        } else if (Object.prototype.hasOwnProperty.call(this.vars, upper)) {
+          assignTo(this.vars);
+        } else {
+          assignTo(frame.locals);
+        }
       } else {
         assignTo(this.vars);
       }
@@ -1756,7 +1764,7 @@
       // Preprocess: replace BASIC-style #<digits> in function args (e.g., EOF(#1)) with just the number
       s = s.replace(/#\s*(\d+)/g, '$1');
       const isIdentStart = c => /[A-Za-z_]/.test(c);
-      const isIdent = c => /[A-Za-z0-9_\$%]/.test(c);
+      const isIdent = c => /[A-Za-z0-9_\$%@]/.test(c);
       const isSpace = c => /\s/.test(c);
       while (i < s.length){
         const c = s[i];
@@ -1962,7 +1970,7 @@
     _callFuncDot(moduleName, memberName, args){
       // Dotted call dispatch: moduleName.memberName(args)
       if (typeof this.hostCallModule === 'function'){
-        return this.hostCallModule(String(moduleName), String(memberName), args || []);
+        return this.hostCallModule(String(moduleName), String(memberName), args || [], this);
       }
       throw new Error(`Unknown module: ${moduleName}`);
     }
@@ -2660,6 +2668,10 @@
       if (!Array.isArray(this._lastProgramLines)) throw new Error('No program loaded for function execution');
       const body = f.body;
       const locals = Object.create(null);
+      // Pre-declare parameters in locals so _assignVariable knows they are local
+      for (const p of f.params) {
+        locals[p.toUpperCase()] = null;
+      }
       this.callStack.push({ name: f.name, locals });
       // Bind parameters in local scope
       for (let i=0;i<arity;i++){

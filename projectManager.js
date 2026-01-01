@@ -138,7 +138,7 @@
       const bi = new global.BasicInterpreter({ debug: false, autoEcho: true, vfs: this.vfs,
         hostReadFile: (p)=>PM._hostReadFileRelative(p),
         hostExtern: (name, args)=>PM._hostExtern(name, args),
-        hostCallModule: (m, mem, args)=>PM.callModule(m, mem, args, bi)
+        hostCallModule: (m, mem, args, interpreter)=>PM.callModule(m, mem, args, interpreter)
       });
       // Run once to register functions/subs
       try{ bi.runProgram(src); }catch(e){ console.warn('[ProjectModule] load error', f.name, e); }
@@ -174,7 +174,9 @@
 
   callModule(moduleName, memberName, args, callerInterpreter){
     const mod = String(moduleName||'').toUpperCase();
-    const mem = String(memberName||'').toUpperCase();
+    let mem = String(memberName||'').toUpperCase();
+    // Strip BASIC type suffixes for module member lookup
+    mem = mem.replace(/[\$%]$/, '');
 
     // System modules (UI)
     if (mod === 'UI' && global.YoBasicUI) {
@@ -272,7 +274,7 @@
         const bi = new global.BasicInterpreter({ term, autoEcho: true, debug: false, vfs: this.vfs,
           hostReadFile: (p)=>PM._hostReadFileRelative(p),
           hostExtern: (name, args)=>PM._hostExtern(name, args),
-          hostCallModule: (m, mem, args)=>PM.callModule(m, mem, args, bi)
+          hostCallModule: (m, mem, args, interpreter)=>PM.callModule(m, mem, args, interpreter)
         });
         bi.setTerm(term);
         const out = bi.runProgram(code);
@@ -283,7 +285,7 @@
     // --- Host helpers ---
     _hostReadFileRelative(path){
       const p = String(path||'');
-      const absPrefixes = ['projects/','shared/','examples/','data/','/'];
+      const absPrefixes = ['projects/','shared/','examples/','data/','demo/','/'];
       const isAbs = absPrefixes.some(pre=>p.toLowerCase().startsWith(pre));
       if (isAbs){
         const f = this.vfs.getFile(p);

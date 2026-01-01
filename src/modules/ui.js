@@ -99,7 +99,7 @@
       return 0;
     },
 
-    ON(dialogId, event, selector, handlerName) {
+    ON(interpreter, dialogId, event, selector, handlerName) {
       if (!isBrowser) return 0;
       const d = this.dialogs.get(dialogId);
       if (!d) return 0;
@@ -113,6 +113,12 @@
         }
         
         if (target && d.root.contains(target)) {
+          // Synchronously prevent default for submit events to avoid page refresh
+          // if we are handling it in BASIC.
+          if (e.type === 'submit') {
+            e.preventDefault();
+          }
+
           const evtArg = {
             "DIALOGID%": dialogId,
             "TYPE$": e.type,
@@ -121,16 +127,24 @@
             "VALUE$": target.value || "",
             "KEY$": e.key || "",
             "KEYCODE%": e.keyCode || 0,
-            "PREVENTDEFAULT%": 0
+            "PREVENTDEFAULT%": (e.type === 'submit') ? 1 : 0
           };
           
-          d.interpreter.invokeCallable(handlerName, [evtArg]).then(res => {
-            if (res === 1 || evtArg["PREVENTDEFAULT%"] === 1) {
+          const res = interpreter.invokeCallable(handlerName, [evtArg]);
+          
+          const handleResult = (val) => {
+            if (val === 1 || evtArg["PREVENTDEFAULT%"] === 1) {
               e.preventDefault();
             }
-          }).catch(err => {
-            console.error("UI Event Handler Error:", err);
-          });
+          };
+
+          if (res instanceof Promise) {
+            res.then(handleResult).catch(err => {
+              console.error("UI Event Handler Error:", err);
+            });
+          } else {
+            handleResult(res);
+          }
         }
       };
       
