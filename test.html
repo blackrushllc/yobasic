@@ -191,7 +191,7 @@ PRINT "Done."</textarea>
             vfs: vfs,
             hostReadFile: (path) => vfs.readData(path),
             hostExtern: (name, args) => { console.log('Extern:', name, args); return ''; },
-            hostCallModule: (m, f, a) => { throw new Error('Unknown module: ' + m); }
+            hostCallModule: (m, f, a, i) => { throw new Error('Unknown module: ' + m); }
         });
 
         // 6. Initialize Terminal

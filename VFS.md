@@ -22,12 +22,13 @@ Please follow the spec below.
 1. Add a **virtual file system** that lives entirely in the browser for now:
 
     * Has an implicit **Root** directory.
-    * Has an `examples/` folder with static read-only programs.
+    * Has a `demo/` folder with static read-only programs (hardcoded).
+    * Has an `examples/` folder for remote system examples (Supabase).
     * Has a `data/` folder for BASIC file I/O.
     * Has a stub `shared/` folder for future cloud/shared storage.
 2. Implement **File → Open**, **File → Save**, and **File → Save As…** with **80’s-style modal dialogs**:
 
-    * Open dialog shows a tree/list view of Root / examples / data / shared.
+    * Open dialog shows a tree/list view of Root / demo / examples / data / shared.
     * Save/Save As dialog lets the user save the current editor contents as `.bas` in Root.
 3. Integrate the VFS with the **BASIC interpreter’s file I/O**:
 
@@ -109,14 +110,14 @@ Implementation details:
     * Merge user files from localStorage, overwriting any conflicting names where `readOnly === false`.
 * Do **not** persist system example files to localStorage.
 
-#### 2.3. System Example Files
+#### 2.3. System Example Files (Demo)
 
-Seed at least 3–5 example BASIC programs under the `examples/` namespace. For example:
+Seed at least 3–5 example BASIC programs under the `demo/` namespace. For example:
 
-* `examples/HELLO.BAS`
-* `examples/FORLOOP.BAS`
-* `examples/INPUTNAME.BAS`
-* `examples/DATADEMO.BAS` (demonstrates file I/O with the `data/` directory)
+* `demo/HELLO.BAS`
+* `demo/FORLOOP.BAS`
+* `demo/INPUTNAME.BAS`
+* `demo/DATADEMO.BAS` (demonstrates file I/O with the `data/` directory)
 * etc.
 
 The content for each example should be defined as static strings in the VFS module (or a separate `examples.js` module) and loaded into the VFS constructor.
@@ -126,7 +127,7 @@ Example shape:
 ```js
 const SYSTEM_EXAMPLES = [
   {
-    name: 'examples/HELLO.BAS',
+    name: 'demo/HELLO.BAS',
     kind: 'program',
     readOnly: true,
     content: `
@@ -168,16 +169,16 @@ Both Open and Save As dialogs should show a simple **file browser**:
 * Left pane: a tree of folders:
 
     * `Root`
-
-        * `examples`
-        * `data`
-        * `shared` (future placeholder)
+    * `demo` (hardcoded)
+    * `examples` (remote)
+    * `data`
+    * `shared` (future placeholder)
 * Right pane: files in the currently selected folder.
 
 Implementation detail: Since the VFS is flat, build the tree dynamically:
 
 * Split each file's `name` on `'/'` into segments.
-* Segment[0] decides which folder (e.g., `examples`, `data`).
+* Segment[0] decides which folder (e.g., `demo`, `examples`, `data`).
 * If there is no slash, treat it as belonging to `Root`.
 * `shared/` exists as an empty folder for now (no files). Clicking it can show a message like “Shared storage coming soon” in the file list.
 
@@ -190,6 +191,7 @@ Implementation detail: Since the VFS is flat, build the tree dynamically:
 * Right pane shows files from the selected “folder”:
 
     * For `Root`: files with no `/` in the name (user programs).
+    * For `demo`: files whose names start with `demo/`.
     * For `examples`: files whose names start with `examples/`.
     * For `data`: files whose names start with `data/` and `kind === 'data'`.
 * For each file, show:
@@ -416,7 +418,7 @@ By convention:
 
 ### 6. Testing & Sample Programs
 
-Create at least one example BASIC program under `examples/` that demonstrates the file I/O:
+Create at least one example BASIC program under `demo/` that demonstrates the file I/O:
 
 Example idea (you can tweak syntax to match the existing Basil/BASIC doc):
 
@@ -439,7 +441,7 @@ Example idea (you can tweak syntax to match the existing Basil/BASIC doc):
 Steps to test after implementation:
 
 1. Load page.
-2. `File → Open → examples → DEMO.BAS` (or similar).
+2. `File → Open → demo → DATADEMO.BAS` (or similar).
 3. Run it.
 4. Use `File → Open → data` and verify that `demo.dat` appears.
 5. Confirm that closing and reopening the browser preserves user files and data files created by BASIC programs.
@@ -471,7 +473,7 @@ Structure the VFS so that in a future phase we can plug in a server/cloud backen
 * Add clear comments explaining:
 
     * Which parts are temporary (localStorage only).
-    * How the `examples/`, `data/`, and `shared/` folders are represented.
+    * How the `demo/`, `examples/`, `data/`, and `shared/` folders are represented.
 * Ensure there are no breaking changes to the existing terminal/CLI and menu behavior.
 
 ---
@@ -483,14 +485,14 @@ Please implement all of the above:
     * The editor (for program load/save).
     * The BASIC interpreter file I/O (OPEN/PRINT#/INPUT#/LINE INPUT#/CLOSE/EOF).
 2. Implement the **File → Open / Save / Save As** dialogs and integrate them into the existing QuickBASIC-style menu and toolbar.
-3. Seed a handful of example `.BAS` programs in the `examples/` folder.
+3. Seed a handful of example `.BAS` programs in the `demo/` folder.
 4. Persist user files to localStorage.
 5. Add at least one example that demonstrates BASIC file I/O with the `data/` directory.
 
 When you’re done, I should be able to:
 
 * New → type a BASIC program → Save As… → get a `.bas` in Root that persists.
-* Open → browse examples or Root programs (with an 80’s-style file dialog).
+* Open → browse demo or Root programs (with an 80’s-style file dialog).
 * Run an example that writes and reads a file under `data/`.
 * See that the data file appears under `data` in the Open dialog.
 * Refresh the page and still see my saved files.

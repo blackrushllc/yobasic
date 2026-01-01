@@ -23,6 +23,7 @@
     <script src="provider-examples.js"></script>
     <script src="provider-shared.js"></script>
     <script src="basic.js"></script>
+    <script src="src/modules/ui.js"></script>
     <script src="projectManager.js"></script>
     <script src="chat.js"></script>
     <!-- CodeMirror 5 (free, MIT) -->
@@ -37,6 +38,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <link rel="stylesheet" href="ui/yobasic-ui.css">
     <style>
         :root {
             --nav-height: 56px;
@@ -192,9 +194,9 @@
                 <li class="nav-item dropdown">
                     <a id="menu-help" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Help</a>
                     <ul class="dropdown-menu" aria-labelledby="menu-help">
-                        <li><a class="dropdown-item" href="#" data-action="help-1" data-key="1">Help 1</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="help-2" data-key="2">Help 2</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="help-3" data-key="3">Help 3</a></li>
+                        <li><a class="dropdown-item" href="desktop.html" target="_blank" data-key="d"><span class="qb-underline">D</span>esktop</a></li>
+                        <li><a class="dropdown-item" href="test.html" target="_blank" data-key="m"><span class="qb-underline">M</span>inimal IDE</a></li>
+                        <li><a class="dropdown-item" href="https://blackrushbasic.com/" target="_blank" data-key="g">Reference and <span class="qb-underline">G</span>uide</a></li>
                         <li><a class="dropdown-item text-danger" href="#" data-action="help-reset" data-key="r"><span class="qb-underline">R</span>eset Defaults</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" data-action="about" data-key="a">About</a></li>
@@ -484,6 +486,7 @@
             <div class="list-group" id="open-folders">
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark active" data-folder="Root">Root</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="projects">projects</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="demo">demo</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="examples">examples</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="data">data</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="shared">shared</button>
@@ -519,6 +522,7 @@
             <div class="list-group" id="save-folders">
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark active" data-folder="Root">Root</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="projects">projects</button>
+              <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="demo" disabled>demo</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="examples" disabled>examples</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="data" disabled>data</button>
               <button type="button" class="list-group-item list-group-item-action list-group-item-dark" data-folder="shared">shared</button>
@@ -1277,15 +1281,6 @@
             case 'tool-3':
                 alert('Menu item Tool 3 goes here');
                 break;
-            case 'help-1':
-                alert('Menu item Help 1 goes here');
-                break;
-            case 'help-2':
-                alert('Menu item Help 2 goes here');
-                break;
-            case 'help-3':
-                alert('Menu item Help 3 goes here');
-                break;
             case 'help-reset':
                 resetToDefaults();
                 break;
@@ -1512,7 +1507,7 @@
         };
         function hostReadFile(path){
             const p = String(path||'');
-            const absPrefixes = ['projects/','shared/','examples/','data/','/'];
+            const absPrefixes = ['projects/','shared/','examples/','data/','demo/','/'];
             let full = p;
             if (!absPrefixes.some(pre=>p.toLowerCase().startsWith(pre))){
                 // Resolve relative to current project if available
@@ -1545,11 +1540,26 @@
                 return '';
             }catch(e){ console.warn('[YoBASIC] hostExtern error', e); return ''; }
         }
-        function hostCallModule(moduleName, memberName, args){
+        function hostCallModule(moduleName, memberName, args, interpreter){
+            const mod = String(moduleName||'').toUpperCase();
+            let mem = String(memberName||'').toUpperCase();
+            // Strip BASIC type suffixes for module member lookup
+            mem = mem.replace(/[\$%]$/, '');
+
+            // System modules (UI)
+            if (mod === 'UI' && window.YoBasicUI) {
+                if (typeof YoBasicUI[mem] === 'function') {
+                    if (mem === 'SHOW' || mem === 'ON') {
+                        return YoBasicUI[mem](interpreter, ...args);
+                    }
+                    return YoBasicUI[mem](...args);
+                }
+            }
+
             // Delegate dotted calls to the current project's modules when available
             try{
                 if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()){
-                    return ProjectManager.callModule(moduleName, memberName, args || []);
+                    return ProjectManager.callModule(moduleName, memberName, args || [], interpreter);
                 }
             }catch(e){ throw e; }
             throw new Error('Unknown module: ' + moduleName);
@@ -1719,7 +1729,17 @@
         $('#editor').on('input', function(){ saveCode(this.value); });
 
         // Menu item clicks
-        $('.dropdown-item').on('click', function(e){ e.preventDefault(); const action = this.dataset.action; closeCurrentMenu(); menuAction(action); });
+        $('.dropdown-item').on('click', function(e){
+            const action = this.dataset.action;
+            if (action) {
+                e.preventDefault();
+                closeCurrentMenu();
+                menuAction(action);
+            } else {
+                // For links without data-action, let the browser handle it, but close the menu
+                closeCurrentMenu();
+            }
+        });
 
         // Open dialog interactions
         $('#open-folders').on('click', '.list-group-item[data-folder]', function(){
@@ -1738,7 +1758,7 @@
             if ($sel.length === 0) return;
             if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return; }
             const fullName = $sel.data('fullname');
-            const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
+            const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName) || /^demo\//i.test(fullName);
             const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
             if (!file) return;
             // If already open (same full path), just activate that tab
@@ -2041,6 +2061,9 @@
         if (lower.startsWith('examples/')){
             return name.slice('examples/'.length) + ro;
         }
+        if (lower.startsWith('demo/')){
+            return name.slice('demo/'.length) + ro;
+        }
         if (lower.startsWith('data/')){
             return name.slice('data/'.length) + ro;
         }
@@ -2070,7 +2093,7 @@
         // clear side panels when not browsing shared/projects
         if (folder !== 'shared'){ $('#open-shared-owners').empty(); }
         if (folder !== 'projects'){ $('#open-projects').empty(); }
-        const isRemote = (folder === 'examples');
+        const isRemote = (folder === 'examples' || folder === 'demo');
         const files = isRemote ? (await vfs.listByFolderAsync(folder)) : vfs.listByFolder(folder);
         list.empty();
         files.forEach(f => {
@@ -2192,7 +2215,10 @@
     function normalizeBasName(name){
         let n = String(name||'').trim();
         if (n.length === 0) return null;
-        if (!/\.bas$/i.test(n)) n += '.BAS';
+        // Replace \ with /
+        n = n.replace(/\\/g, '/');
+        // Add .BAS only if no extension is present
+        if (!/\.[a-zA-Z0-9]+$/i.test(n)) n += '.BAS';
         return n;
     }
     function onFileCloseTab(){
@@ -2453,6 +2479,37 @@
             projCaret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
         });
         rootChildren.appendChild(projContainer);
+        // Demo folder
+        const demoLi = document.createElement('li'); demoLi.className='vfs-node folder';
+        const demoHead = document.createElement('div'); demoHead.className='vfs-row';
+        const demoCaret = document.createElement('i'); demoCaret.className='bi bi-chevron-right vfs-caret';
+        const demoLabel = document.createElement('span'); demoLabel.className='vfs-label'; demoLabel.textContent='demo';
+        demoHead.appendChild(demoCaret); demoHead.appendChild(demoLabel); demoLi.appendChild(demoHead);
+        const demoChildren = document.createElement('ul'); demoChildren.className='vfs-children'; demoChildren.style.display='none';
+        try{
+            const demoFiles = await vfs.listByFolderAsync('demo');
+            const demoNest = nestFiles(demoFiles, 'demo/');
+            Object.keys(demoNest.dirs).sort().forEach(dn=>{
+                const li = renderTreeNode(dn, demoNest.dirs[dn], 'demo/' + dn + '/');
+                demoChildren.appendChild(li);
+            });
+            demoNest.files.forEach(it=>{
+                const fli = document.createElement('li'); fli.className='vfs-node file';
+                const row = document.createElement('div'); row.className='vfs-row';
+                const icon = document.createElement('i'); icon.className='bi bi-file-earmark-text';
+                const lab = document.createElement('span'); lab.className='vfs-label'; lab.textContent = it.label;
+                row.appendChild(icon); row.appendChild(lab); fli.appendChild(row);
+                fli.dataset.fullname = it.file.name;
+                demoChildren.appendChild(fli);
+            });
+        }catch(_){ /* ignore */ }
+        demoLi.appendChild(demoChildren);
+        demoHead.addEventListener('click', function(){
+            const open = demoChildren.style.display !== 'none';
+            demoChildren.style.display = open ? 'none' : '';
+            demoCaret.className = open ? 'bi bi-chevron-right vfs-caret' : 'bi bi-chevron-down vfs-caret';
+        });
+        rootChildren.appendChild(demoLi);
         // Examples folder
         const exLi = document.createElement('li'); exLi.className='vfs-node folder';
         const exHead = document.createElement('div'); exHead.className='vfs-row';
@@ -2555,7 +2612,7 @@
                 if (!fullName) return;
                 // Reuse open logic from Open dialog
                 if (tabs.length >= MAX_TABS){ alert(`You have reached the tab limit (${MAX_TABS}). Close a tab to open another.`); return; }
-                const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName);
+                const isRemote = /^examples\//i.test(fullName) || /^shared\//i.test(fullName) || /^demo\//i.test(fullName);
                 const file = isRemote ? (await vfs.getFileAsync(fullName)) : vfs.getFile(fullName);
                 if (!file) return;
                 // avoid duplicate open: if already open by full path, activate

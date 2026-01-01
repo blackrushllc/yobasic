@@ -17,7 +17,7 @@
       // Host bridge callbacks (Phase 3 - optional)
       this.hostReadFile = options.hostReadFile || null;        // (path: string) => string
       this.hostExtern = options.hostExtern || null;            // (name: string, args: string[]) => string
-      this.hostCallModule = options.hostCallModule || null;    // (moduleName: string, memberName: string, args: any[]) => any
+      this.hostCallModule = options.hostCallModule || null;    // (moduleName: string, memberName: string, args: any[], interpreter: BasicInterpreter) => any
       this.openFiles = {}; // BASIC open file handles: { [handle:number]: {handle, filename, mode, position, bufferIn, bufferOut} }
       // REPL multiline block buffer (for WHILE/WEND, SELECT CASE, etc.)
       this._replBlock = null; // { lines: string[], stack: string[] }
@@ -46,6 +46,55 @@
       this.funcs = Object.create(null);
       this.callStack = [];
       this.labels = Object.create(null);
+      this._uiQueue = [];
+      this._inProgram = false;
+    }
+
+    /**
+     * Public method to execute a BASIC SUB or FUNCTION by name.
+     * Implements an execution gate/queue to prevent re-entry.
+     * @param {string} name 
+     * @param {any[]} argsArray 
+     * @returns {any | Promise<any>}
+     */
+    invokeCallable(name, argsArray) {
+      const nameUpper = String(name).toUpperCase();
+      if (!this.funcs[nameUpper]) {
+        throw new Error(`Undefined function/sub: ${name}`);
+      }
+
+      if (this._inProgram) {
+        return new Promise((resolve, reject) => {
+          this._uiQueue.push({ nameUpper, argsArray, resolve, reject });
+        });
+      }
+
+      this._inProgram = true;
+      try {
+        const res = this._callUserFunction(nameUpper, argsArray || []);
+        this._inProgram = false; // Release lock before processing queue
+        this._drainUiQueue();
+        return res;
+      } catch (e) {
+        this._inProgram = false;
+        this._drainUiQueue();
+        throw e;
+      }
+    }
+
+    _drainUiQueue() {
+      if (this._uiQueue.length > 0) {
+        const next = this._uiQueue.shift();
+        // Use a microtask to avoid deep recursion and yield to event loop
+        Promise.resolve().then(async () => {
+          try {
+            const res = await this.invokeCallable(next.nameUpper, next.argsArray);
+            next.resolve(res);
+          } catch (e) {
+            next.reject(e);
+          }
+        });
+      }
     }
 
     // Public API
@@ -1034,6 +1083,12 @@
           }
           return true;
         }
+        case 'RENDER$':
+        case 'RENDER': {
+          const tpl = String(args && args[0] != null ? args[0] : '');
+          const ctx = args && args[1] != null ? args[1] : {};
+          return this._render(tpl, ctx);
+        }
         // --- Core string functions ---
         case 'LEN': {
           const val = (args && args.length) ? args[0] : null;
@@ -1041,6 +1096,7 @@
           return val != null ? String(val).length : 0;
         }
         case 'INT': return (args && args.length) ? (parseInt(args[0],10)|0) : 0;
+        case 'STR$':
         case 'STR': return (args && args.length) ? String(args[0]) : '';
         case 'CHR$':
         case 'CHR': return String.fromCharCode(Number(args && args[0] != null ? args[0] : 0));
@@ -1328,8 +1384,15 @@
         }
       };
       if (this.callStack && this.callStack.length){
-        // Within function/sub: assignment goes to local scope
-        assignTo(this.callStack[this.callStack.length - 1].locals);
+        // Within function/sub: assignment prefers local scope, but updates global if it exists there first
+        const frame = this.callStack[this.callStack.length - 1];
+        if (Object.prototype.hasOwnProperty.call(frame.locals, upper)) {
+          assignTo(frame.locals);
+        } else if (Object.prototype.hasOwnProperty.call(this.vars, upper)) {
+          assignTo(this.vars);
+        } else {
+          assignTo(frame.locals);
+        }
       } else {
         assignTo(this.vars);
       }
@@ -1507,6 +1570,111 @@
       }
     }
 
+    _render(tpl, context = {}) {
+      const locals = Object.create(null);
+      if (context && typeof context === 'object' && !Array.isArray(context)) {
+        for (let [k, v] of Object.entries(context)) {
+          locals[k.toUpperCase()] = v;
+        }
+      }
+      this.callStack.push({ name: 'RENDER$', locals });
+      try {
+        return this._renderInternal(tpl, 0).out;
+      } finally {
+        this.callStack.pop();
+      }
+    }
+
+    _renderInternal(tpl, pos) {
+      let out = '';
+      const n = tpl.length;
+      while (pos < n) {
+        const nextBrace = tpl.indexOf('{{', pos);
+        const nextAt = tpl.indexOf('@', pos);
+        let next = -1;
+        if (nextBrace !== -1 && nextAt !== -1) next = Math.min(nextBrace, nextAt);
+        else if (nextBrace !== -1) next = nextBrace;
+        else if (nextAt !== -1) next = nextAt;
+        if (next === -1) {
+          out += tpl.substring(pos);
+          pos = n;
+          break;
+        }
+        out += tpl.substring(pos, next);
+        pos = next;
+        if (tpl.startsWith('{{', pos)) {
+          let end = tpl.indexOf('}}', pos + 2);
+          if (end === -1) throw new Error('Unclosed {{ in template');
+          const expr = tpl.substring(pos + 2, end).trim();
+          out += this._toString(this._evalExpression(expr));
+          pos = end + 2;
+        } else if (tpl.startsWith('@', pos)) {
+          const match = tpl.substring(pos).match(/^@([A-Z]+)(?:\s*\((.*?)\))?/i);
+          if (!match) {
+            out += '@';
+            pos++;
+            continue;
+          }
+          const dir = match[1].toUpperCase();
+          const args = match[2] || '';
+          const fullLen = match[0].length;
+          pos += fullLen;
+          if (dir === 'IF') {
+            const cond = this._truthy(this._evalExpression(args));
+            const thenBlock = this._renderInternal(tpl, pos);
+            if (cond) {
+              out += thenBlock.out;
+              if (thenBlock.stoppedAt === 'ELSE') {
+                const skip = this._renderInternal(tpl, thenBlock.pos);
+                pos = skip.pos;
+              } else {
+                pos = thenBlock.pos;
+              }
+            } else {
+              if (thenBlock.stoppedAt === 'ELSE') {
+                const elseBlock = this._renderInternal(tpl, thenBlock.pos);
+                out += elseBlock.out;
+                pos = elseBlock.pos;
+              } else {
+                pos = thenBlock.pos;
+              }
+            }
+          } else if (dir === 'ELSE') {
+            return { out: out, pos: pos, stoppedAt: 'ELSE' };
+          } else if (dir === 'ENDIF') {
+            return { out: out, pos: pos, stoppedAt: 'ENDIF' };
+          } else if (dir === 'FOREACH') {
+            const parts = args.split(/\s+IN\s+/i);
+            if (parts.length !== 2) throw new Error('Invalid @FOREACH syntax: expected @FOREACH(VAR IN EXPR)');
+            const varName = parts[0].trim().toUpperCase();
+            const list = this._evalExpression(parts[1]);
+            let items = [];
+            if (Array.isArray(list)) items = list;
+            else if (list && typeof list === 'object' && list.__dim) items = list.data;
+            const startPos = pos;
+            let lastPos = pos;
+            if (items.length > 0) {
+              for (const item of items) {
+                this.callStack[this.callStack.length - 1].locals[varName] = item;
+                const res = this._renderInternal(tpl, startPos);
+                out += res.out;
+                lastPos = res.pos;
+              }
+            } else {
+              const res = this._renderInternal(tpl, startPos);
+              lastPos = res.pos;
+            }
+            pos = lastPos;
+          } else if (dir === 'ENDFOREACH' || dir === 'NEXT') {
+            return { out: out, pos: pos, stoppedAt: 'ENDFOREACH' };
+          } else {
+            out += match[0];
+          }
+        }
+      }
+      return { out: out, pos: pos };
+    }
+
     _rewriteInterpolatedStrings(s){
       // Convert "Hello #{name} and #{1+2}" to "Hello " + (name) + " and " + (1+2)
       // Important: do NOT call _rewriteToJs here; the whole result will be
@@ -1596,7 +1764,7 @@
       // Preprocess: replace BASIC-style #<digits> in function args (e.g., EOF(#1)) with just the number
       s = s.replace(/#\s*(\d+)/g, '$1');
       const isIdentStart = c => /[A-Za-z_]/.test(c);
-      const isIdent = c => /[A-Za-z0-9_\$%]/.test(c);
+      const isIdent = c => /[A-Za-z0-9_\$%@]/.test(c);
       const isSpace = c => /\s/.test(c);
       while (i < s.length){
         const c = s[i];
@@ -1802,7 +1970,7 @@
     _callFuncDot(moduleName, memberName, args){
       // Dotted call dispatch: moduleName.memberName(args)
       if (typeof this.hostCallModule === 'function'){
-        return this.hostCallModule(String(moduleName), String(memberName), args || []);
+        return this.hostCallModule(String(moduleName), String(memberName), args || [], this);
       }
       throw new Error(`Unknown module: ${moduleName}`);
     }
@@ -2500,6 +2668,10 @@
       if (!Array.isArray(this._lastProgramLines)) throw new Error('No program loaded for function execution');
       const body = f.body;
       const locals = Object.create(null);
+      // Pre-declare parameters in locals so _assignVariable knows they are local
+      for (const p of f.params) {
+        locals[p.toUpperCase()] = null;
+      }
       this.callStack.push({ name: f.name, locals });
       // Bind parameters in local scope
       for (let i=0;i<arity;i++){
@@ -2677,4 +2849,7 @@
     };
   }catch(_){ /* ignore tooling export errors */ }
 
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { BasicInterpreter };
+  }
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

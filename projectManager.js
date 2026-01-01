@@ -129,59 +129,73 @@
       if (global.term && global.term.echo){ global.term.echo(`[Project opened] ${name}`); }
     },
 
-    async _loadModules(){
-      this.currentProjectModules = Object.create(null);
-      const prefix = `projects/${this.currentProjectName}/Modules/`;
-      const files = this.vfs.listFiles().filter(f=>f.name.toLowerCase().startsWith(prefix.toLowerCase()) && f.name.toLowerCase().endsWith('.bas'));
-      for (const f of files){
-        const src = f.content || '';
-        const bi = new global.BasicInterpreter({ debug: false, autoEcho: true, vfs: this.vfs,
-          hostReadFile: (p)=>PM._hostReadFileRelative(p),
-          hostExtern: (name, args)=>PM._hostExtern(name, args),
-          hostCallModule: (m, mem, args)=>PM.callModule(m, mem, args)
-        });
-        // Run once to register functions/subs
-        try{ bi.runProgram(src); }catch(e){ console.warn('[ProjectModule] load error', f.name, e); }
-        const moduleName = PM._toModuleName(f.name);
-        this.currentProjectModules[moduleName] = bi;
+  async _loadModules(){
+    this.currentProjectModules = Object.create(null);
+    const prefix = `projects/${this.currentProjectName}/Modules/`;
+    const files = this.vfs.listFiles().filter(f=>f.name.toLowerCase().startsWith(prefix.toLowerCase()) && f.name.toLowerCase().endsWith('.bas'));
+    for (const f of files){
+      const src = f.content || '';
+      const bi = new global.BasicInterpreter({ debug: false, autoEcho: true, vfs: this.vfs,
+        hostReadFile: (p)=>PM._hostReadFileRelative(p),
+        hostExtern: (name, args)=>PM._hostExtern(name, args),
+        hostCallModule: (m, mem, args, interpreter)=>PM.callModule(m, mem, args, interpreter)
+      });
+      // Run once to register functions/subs
+      try{ bi.runProgram(src); }catch(e){ console.warn('[ProjectModule] load error', f.name, e); }
+      const moduleName = PM._toModuleName(f.name);
+      this.currentProjectModules[moduleName] = bi;
+    }
+  },
+
+  _toModuleName(full){
+    const base = full.split('/').pop() || '';
+    return base.replace(/\.bas$/i, '').toLowerCase();
+  },
+
+  // Convert a filename like "PRINT_NOW.BAS" (or a relative path) to a nice label "Print Now"
+  _fileToLabel(fileOrName){
+    const s = String(fileOrName||'');
+    // take last path segment if a path was provided
+    const base = s.split('/').pop() || s;
+    // strip extension
+    const noExt = base.replace(/\.[A-Za-z0-9]+$/,'');
+    // underscores/hyphens to spaces
+    const spaced = noExt.replace(/[_-]+/g, ' ').trim();
+    return PM._titleCase(spaced || noExt);
+  },
+
+  // Simple Title Case helper: first letter of each word uppercased, others lowercased
+  _titleCase(str){
+    const s = String(str||'').toLowerCase();
+    return s.replace(/\b([a-z])/g, (m, c) => c.toUpperCase())
+            .replace(/\s+/g,' ')
+            .trim();
+  },
+
+  callModule(moduleName, memberName, args, callerInterpreter){
+    const mod = String(moduleName||'').toUpperCase();
+    let mem = String(memberName||'').toUpperCase();
+    // Strip BASIC type suffixes for module member lookup
+    mem = mem.replace(/[\$%]$/, '');
+
+    // System modules (UI)
+    if (mod === 'UI' && global.YoBasicUI) {
+      if (typeof global.YoBasicUI[mem] === 'function') {
+        if (mem === 'SHOW' || mem === 'ON') {
+          return global.YoBasicUI[mem](callerInterpreter, ...args);
+        }
+        return global.YoBasicUI[mem](...args);
       }
-    },
+    }
 
-    _toModuleName(full){
-      const base = full.split('/').pop() || '';
-      return base.replace(/\.bas$/i, '').toLowerCase();
-    },
-
-    // Convert a filename like "PRINT_NOW.BAS" (or a relative path) to a nice label "Print Now"
-    _fileToLabel(fileOrName){
-      const s = String(fileOrName||'');
-      // take last path segment if a path was provided
-      const base = s.split('/').pop() || s;
-      // strip extension
-      const noExt = base.replace(/\.[A-Za-z0-9]+$/,'');
-      // underscores/hyphens to spaces
-      const spaced = noExt.replace(/[_-]+/g, ' ').trim();
-      return PM._titleCase(spaced || noExt);
-    },
-
-    // Simple Title Case helper: first letter of each word uppercased, others lowercased
-    _titleCase(str){
-      const s = String(str||'').toLowerCase();
-      return s.replace(/\b([a-z])/g, (m, c) => c.toUpperCase())
-              .replace(/\s+/g,' ')
-              .trim();
-    },
-
-    callModule(moduleName, memberName, args){
-      const mod = String(moduleName||'').toLowerCase();
-      const mem = String(memberName||'').toUpperCase();
-      const bi = this.currentProjectModules[mod];
-      if (!bi) throw new Error('Unknown module: ' + moduleName);
-      // function/sub lookup is case-insensitive; funcs keys are uppercased
-      if (!bi.funcs || !bi.funcs[mem]) throw new Error(`Unknown member ${memberName} on module ${moduleName}`);
-      try{ return bi._callUserFunction(mem, args || []); }
-      catch(e){ throw e; }
-    },
+    const modKey = mod.toLowerCase();
+    const bi = this.currentProjectModules[modKey];
+    if (!bi) throw new Error('Unknown module: ' + moduleName);
+    // function/sub lookup is case-insensitive; funcs keys are uppercased
+    if (!bi.funcs || !bi.funcs[mem]) throw new Error(`Unknown member ${memberName} on module ${moduleName}`);
+    try{ return bi._callUserFunction(mem, args || []); }
+    catch(e){ throw e; }
+  },
 
     // Call any SUB/FUNC by name (search all modules), return first found result
     callAny(memberName, args){
@@ -260,7 +274,7 @@
         const bi = new global.BasicInterpreter({ term, autoEcho: true, debug: false, vfs: this.vfs,
           hostReadFile: (p)=>PM._hostReadFileRelative(p),
           hostExtern: (name, args)=>PM._hostExtern(name, args),
-          hostCallModule: (m, mem, args)=>PM.callModule(m, mem, args)
+          hostCallModule: (m, mem, args, interpreter)=>PM.callModule(m, mem, args, interpreter)
         });
         bi.setTerm(term);
         const out = bi.runProgram(code);
@@ -271,7 +285,7 @@
     // --- Host helpers ---
     _hostReadFileRelative(path){
       const p = String(path||'');
-      const absPrefixes = ['projects/','shared/','examples/','data/','/'];
+      const absPrefixes = ['projects/','shared/','examples/','data/','demo/','/'];
       const isAbs = absPrefixes.some(pre=>p.toLowerCase().startsWith(pre));
       if (isAbs){
         const f = this.vfs.getFile(p);
