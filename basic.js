@@ -1816,6 +1816,7 @@
           if (upper === 'AND'){ out += '&&'; i=j; continue; }
           if (upper === 'OR'){ out += '||'; i=j; continue; }
           if (upper === 'NOT'){ out += '!'; i=j; continue; }
+          if (upper === 'MOD'){ out += '%'; i=j; continue; }
 
           // Function call or variable or dotted call?
           // Lookahead for optional whitespace then '(' or dotted member
@@ -1847,7 +1848,7 @@
             while (k2<s.length && /\s/.test(s[k2])) k2++;
             // read member identifier
             let mStart = k2;
-            while (k2 < s.length && /[A-Za-z0-9_\$%]/.test(s[k2])) k2++;
+            while (k2 < s.length && /[A-Za-z0-9_\$%.]/.test(s[k2])) k2++;
             const memberRaw = s.slice(mStart, k2);
             const memberUpper = memberRaw.toUpperCase();
             // skip whitespace before '('

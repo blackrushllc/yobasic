@@ -135,6 +135,36 @@
         '  <button type="submit">Login</button>',
         '</form>'
       ].join('\n')
+    },
+    {
+      name: 'demo/G_MOVE_SPRITE.BAS', kind: 'program', readOnly: true, content: [
+        'G.WINDOW 640, 480, "Move Sprite Demo"',
+        'G.ASSETS.LOADTEXTURE "PLAYER", "assets/player.png"',
+        '',
+        'px# = 320 : py# = 240',
+        'speed# = 200',
+        '',
+        'G.RUN "Init", "Update", "Draw"',
+        '',
+        'SUB Init',
+        '  PRINTLN "Game Started!"',
+        'END SUB',
+        '',
+        'SUB Update(dt#)',
+        '  IF G.INPUT.KEYDOWN("LEFT") THEN px# = px# - speed# * dt#',
+        '  IF G.INPUT.KEYDOWN("RIGHT") THEN px# = px# + speed# * dt#',
+        '  IF G.INPUT.KEYDOWN("UP") THEN py# = py# - speed# * dt#',
+        '  IF G.INPUT.KEYDOWN("DOWN") THEN py# = py# + speed# * dt#',
+        'END SUB',
+        '',
+        'SUB Draw',
+        '  G.DRAW.CLEAR "#003366"',
+        '  G.DRAW.SPRITE "PLAYER", px#, py#',
+        'END SUB'
+      ].join('\n')
+    },
+    {
+      name: 'assets/player.png', kind: 'data', readOnly: true, content: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALUlEQVRYR+3QQREAAAzCQEq6f9Mj+DABvYmAmS6m6mKqLqaLqbqYqoupupj6mS58SgFv7scv9wAAAABJRU5ErkJggg=='
     }
   ];
 

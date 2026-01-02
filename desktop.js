@@ -938,6 +938,27 @@ $(function() {
             }
         }
 
+        // System modules (G)
+        if (mod === 'G' && window.YoBasicG) {
+            const parts = mem.split('.');
+            let target = window.YoBasicG;
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (target[parts[i]]) {
+                    target = target[parts[i]];
+                } else if (target[parts[i].charAt(0).toUpperCase() + parts[i].slice(1).toLowerCase()]) {
+                    // Try PascalCase for sub-modules if UPPERCASE fails
+                    target = target[parts[i].charAt(0).toUpperCase() + parts[i].slice(1).toLowerCase()];
+                } else {
+                    target = null;
+                    break;
+                }
+            }
+            const finalMem = parts[parts.length - 1];
+            if (target && typeof target[finalMem] === 'function') {
+                return target[finalMem](interpreter, ...args);
+            }
+        }
+
         try {
             if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) {
                 return ProjectManager.callModule(moduleName, memberName, args || [], interpreter);
