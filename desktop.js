@@ -48,6 +48,7 @@ $(function() {
         'folder-fill': 'bi-folder-fill',
         'folder-symlink': 'bi-folder-symlink',
         'file-text': 'bi-file-earmark-text',
+        'file-richtext': 'bi-file-earmark-richtext',
         'file-code': 'bi-file-earmark-code',
         'file-js': 'bi-filetype-js',
         'file-html': 'bi-filetype-html',
@@ -76,9 +77,10 @@ $(function() {
         if (ext === 'html') return IconMap['file-html'];
         if (ext === 'css') return IconMap['file-css'];
         if (ext === 'txt') return IconMap['file-text'];
+        if (ext === 'md') return IconMap['file-richtext'];
         if (ext === 'pdf') return IconMap['file-pdf'];
         if (ext === 'zip') return IconMap['file-zip'];
-        if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) return IconMap['file-img'];
+        if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) return IconMap['file-img'];
         if (['mp3', 'wav', 'ogg'].includes(ext)) return IconMap['file-music'];
         if (['mp4', 'webm', 'avi'].includes(ext)) return IconMap['file-play'];
         return IconMap['file-text'];
@@ -543,7 +545,10 @@ $(function() {
                     e.preventDefault();
                     e.stopPropagation();
                     const $ctx = $('.context-menu');
-                    const isEditable = (icon.path || icon.id || '').toLowerCase().match(/\.(bas|basil)$/);
+                    const itemPath = (icon.path || icon.id || '').toLowerCase();
+                    const isBas = itemPath.match(/\.(bas|basil)$/);
+                    const isText = itemPath.match(/\.(txt|md|html|css|js|json|xml)$/);
+                    const isEditable = isBas || isText;
                     $ctx.empty().append(`
                         <button class="dropdown-item" id="ctx-open">Open</button>
                         ${isEditable ? '<button class="dropdown-item" id="ctx-edit">Edit</button>' : ''}
@@ -805,13 +810,18 @@ $(function() {
                     try {
                         const data = JSON.parse(dataStr);
                         if (data.type === 'vfs-file') {
-                            const isBas = data.path.toLowerCase().match(/\.(bas|basil)$/);
+                            const ext = data.path.split('.').pop().toLowerCase();
+                            const viewerExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'md', 'pdf', 'mp4', 'webm', 'ogg', 'mp3', 'wav'];
+                            let launch = 'notepad';
+                            if (ext === 'bas' || ext === 'basil') launch = 'terminal';
+                            else if (viewerExts.includes(ext)) launch = 'viewer';
+
                             this.icons.push({
                                 id: 'custom-' + Date.now(),
                                 type: 'system',
                                 title: data.name,
                                 icon: data.icon,
-                                launch: isBas ? 'terminal' : 'notepad',
+                                launch: launch,
                                 path: data.path // Store the path to launch it correctly
                             });
 
@@ -1133,6 +1143,91 @@ $(function() {
             });
         },
 
+        viewer(path, persistenceId = null) {
+            const id = 'viewer-' + Math.random().toString(36).substr(2, 9);
+            WindowManager.createWindow({
+                id,
+                singleton: false,
+                persistenceId: persistenceId || (path ? 'viewer-' + path : 'viewer'),
+                title: path ? `Viewer - ${path}` : 'File Viewer',
+                icon: getIconForExt(path ? path.split('.').pop() : ''),
+                onOpen: async (win) => {
+                    const file = await vfs.getFileAsync(path);
+                    if (!file) {
+                        win.$el.find('.window-body').html('<div class="p-3 text-danger">File not found.</div>');
+                        return;
+                    }
+                    const ext = (path.split('.').pop() || '').toLowerCase();
+                    const $body = win.$el.find('.window-body');
+                    
+                    $body.html(`
+                        <div class="d-flex flex-column h-100">
+                            <div class="window-toolbar p-1 border-bottom d-flex gap-2" style="background: rgba(0,0,0,0.05);">
+                                <button class="btn btn-sm btn-outline-secondary btn-download" title="Download"><i class="bi bi-download"></i> Download</button>
+                                <button class="btn btn-sm btn-outline-secondary btn-new-tab" title="Open in new tab"><i class="bi bi-box-arrow-up-right"></i> Open in New Tab</button>
+                            </div>
+                            <div class="viewer-content flex-grow-1 overflow-auto p-2 d-flex justify-content-center align-items-center" style="background: #f8f9fa;">
+                                <div class="spinner-border text-secondary" role="status"><span class="visually-hidden">Loading...</span></div>
+                            </div>
+                        </div>
+                    `);
+
+                    const $content = $body.find('.viewer-content');
+                    
+                    const renderContent = () => {
+                        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
+                            $content.html(`<img src="${file.content}" style="max-width:100%; max-height:100%; object-fit: contain; box-shadow: 0 0 10px rgba(0,0,0,0.1);">`);
+                        } else if (ext === 'pdf') {
+                            $content.removeClass('align-items-center justify-content-center').html(`<iframe src="${file.content}" width="100%" height="100%" frameborder="0"></iframe>`);
+                        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                            $content.html(`<video src="${file.content}" controls style="max-width:100%; max-height:100%;"></video>`);
+                        } else if (['mp3', 'wav'].includes(ext)) {
+                             $content.html(`<audio src="${file.content}" controls></audio>`);
+                        } else if (ext === 'md') {
+                            $content.removeClass('align-items-center justify-content-center').addClass('d-block p-4 bg-white').css('cursor', 'text');
+                            if (window.marked && window.DOMPurify) {
+                                try {
+                                    const rawHtml = marked.parse(file.content);
+                                    const cleanHtml = DOMPurify.sanitize(rawHtml);
+                                    $content.html(`<div class="markdown-body">${cleanHtml}</div>`);
+                                } catch (e) {
+                                    console.error('Markdown error', e);
+                                    $content.html(`<pre style="white-space: pre-wrap;">${file.content}</pre>`);
+                                }
+                            } else {
+                                $content.html(`<pre style="white-space: pre-wrap;">${file.content}</pre>`);
+                            }
+                        } else {
+                            $content.html(`<div class="text-muted">No viewer available for this file type.</div>`);
+                        }
+                    };
+
+                    renderContent();
+
+                    $body.find('.btn-download').click(() => {
+                        const link = document.createElement('a');
+                        link.href = file.content;
+                        link.download = path.split('/').pop();
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    });
+
+                    $body.find('.btn-new-tab').click(() => {
+                        const newWin = window.open();
+                        if (newWin) {
+                            if (file.content.startsWith('data:')) {
+                                newWin.document.write(`<html><head><title>${path}</title></head><body style="margin:0; padding:0; overflow:hidden;"><iframe src="${file.content}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe></body></html>`);
+                                newWin.document.close();
+                            } else {
+                                newWin.location.href = file.content;
+                            }
+                        }
+                    });
+                }
+            });
+        },
+
         terminal(options = null, persistenceId = null) {
             let initialFile = null;
             let initialCode = null;
@@ -1322,7 +1417,9 @@ $(function() {
                         WindowManager.closeWindow(win.id);
                         return;
                     }
+                    const viewerExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'md', 'pdf', 'mp4', 'webm', 'ogg', 'mp3', 'wav'];
                     if (ext === 'bas' || ext === 'basil') this.terminal(f.name);
+                    else if (viewerExts.includes(ext)) this.viewer(f.name);
                     else this.notepad(f.name);
                 }, false, '', f.name);
             });
@@ -1380,7 +1477,9 @@ $(function() {
                                 <button class="dropdown-item" id="ctx-vfs-delete">Delete</button>
                             `);
                             $('#ctx-vfs-open').click(() => {
+                                const viewerExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'md', 'pdf', 'mp4', 'webm', 'ogg', 'mp3', 'wav'];
                                 if (ext === 'bas' || ext === 'basil') this.terminal(fullPath);
+                                else if (viewerExts.includes(ext)) this.viewer(fullPath);
                                 else this.notepad(fullPath);
                             });
                             $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
