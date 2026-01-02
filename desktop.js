@@ -33,7 +33,12 @@ $(function() {
 
     // Initialize VFS
     const vfs = new VirtualFileSystem({ localStorageKey: 'yobasic.vfs' });
-    vfs.loadFromLocalStorage();
+    vfs.init().then(() => {
+        // Optional: refresh any open explorers if init finishes late
+        if (AppLauncher && AppLauncher.refreshAllExplorers) {
+            AppLauncher.refreshAllExplorers();
+        }
+    });
     window.vfs = vfs; 
     window.__vfsInstance__ = vfs;
 
@@ -981,6 +986,38 @@ $(function() {
      * App Launcher
      */
     const AppLauncher = {
+        bindDragDrop(element, onDropCallback) {
+            const $el = $(element);
+            $el.on('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                $el.addClass('drag-over');
+            });
+            $el.on('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                $el.removeClass('drag-over');
+            });
+            $el.on('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                $el.removeClass('drag-over');
+                const files = e.originalEvent.dataTransfer.files;
+                if (files.length > 0) {
+                    onDropCallback(files[0]);
+                }
+            });
+        },
+
+        refreshAllExplorers() {
+            Object.values(WindowManager.windows).forEach(win => {
+                // VFS explorer
+                if (win.currentPath !== undefined && win.$el.find('.explorer-grid').length > 0) {
+                     this.renderVfsExplorer(win, win.currentPath);
+                }
+            });
+        },
+
         identity() {
             WindowManager.createWindow({
                 id: 'identity',
@@ -1325,6 +1362,30 @@ $(function() {
             `);
 
             const $grid = $body.find('.explorer-grid');
+
+            // Bind Drag & Drop for VFS
+            this.bindDragDrop($grid, async (file) => {
+                const targetPath = (currentPath ? currentPath + '/' : '') + file.name;
+                
+                // Read file
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        await vfs.writeFileAsync(targetPath, reader.result);
+                        this.renderVfsExplorer(win, currentPath);
+                    } catch (e) {
+                        alert('Upload failed: ' + e.message);
+                    }
+                };
+
+                const type = file.type;
+                if (type.startsWith('image/') || type.startsWith('audio/') || type.startsWith('video/') || 
+                    ['application/pdf', 'application/zip'].includes(type)) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
             
             $body.find('.btn-up').click(() => {
                 if (!currentPath) return;
@@ -1845,6 +1906,33 @@ $(function() {
                 `);
 
                 const $grid = $body.find('.explorer-grid');
+
+                // Bind Drag & Drop for uploads
+                this.bindDragDrop($grid, (file) => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('path', path);
+                    
+                    $grid.html('<div class="p-2">Uploading...</div>');
+                    fetch('upload.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            this.loadDownloads(win, path);
+                        } else {
+                            alert('Upload failed: ' + (res.error || 'Unknown error'));
+                            this.loadDownloads(win, path);
+                        }
+                    })
+                    .catch(err => {
+                        alert('Upload error: ' + err.message);
+                        this.loadDownloads(win, path);
+                    });
+                });
+
                 data.items.forEach(item => {
                     const icon = item.type === 'dir' ? IconMap['folder'] : getIconForExt(item.ext);
                     const $item = $(`

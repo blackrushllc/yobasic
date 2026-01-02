@@ -12,7 +12,7 @@
     rafId: null,
 
     Assets: {
-      LOADTEXTURE(interpreter, key, path) {
+      async LOADTEXTURE(interpreter, key, path) {
         G.pendingTextures++;
         const img = new Image();
         img.onload = () => {
@@ -27,7 +27,7 @@
         // Try VFS first
         let src = path;
         if (interpreter && interpreter.vfs) {
-          const file = interpreter.vfs.getFile(path);
+          const file = await interpreter.vfs.getFileAsync(path);
           if (file && file.content) {
             src = file.content;
           }

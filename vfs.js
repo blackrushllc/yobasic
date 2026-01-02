@@ -175,6 +175,8 @@
       this.localStorageKey = options && options.localStorageKey || LOCAL_KEY_DEFAULT;
       /** @type {{[name:string]: VfsFile}} */
       this.files = Object.create(null);
+      // OPFS root
+      this.opfsRoot = null;
       // Providers for remote sources (Phase 2)
       this.providers = { examples: null, shared: null };
       // Seed with system examples (Phase 1). In Phase 2, UI fetches examples from Supabase.
@@ -184,6 +186,61 @@
       }
       // No physical creation for data/ required; files appear when written.
       this._saveScheduled = null;
+    }
+
+    async init() {
+      if (!global.navigator || !global.navigator.storage || !global.navigator.storage.getDirectory) {
+        console.warn('OPFS not supported in this browser.');
+        this.loadFromLocalStorage();
+        return;
+      }
+      try {
+        this.opfsRoot = await navigator.storage.getDirectory();
+        // Load legacy files first (Legacy Layer)
+        this.loadFromLocalStorage();
+        // Then overlay with OPFS files (User Layer)
+        await this._loadFromOpfs();
+      } catch (e) {
+        console.error('Failed to initialize OPFS', e);
+        this.loadFromLocalStorage();
+      }
+    }
+
+    async _loadFromOpfs() {
+      if (!this.opfsRoot) return;
+      await this._scanDir(this.opfsRoot, '');
+    }
+
+    async _scanDir(dirHandle, path) {
+      for await (const [name, handle] of dirHandle.entries()) {
+        const fullPath = path ? `${path}/${name}` : name;
+        if (handle.kind === 'directory') {
+          await this._scanDir(handle, fullPath);
+        } else {
+          const file = await handle.getFile();
+          const content = await this._readFileContent(file);
+          this.files[fullPath] = {
+            name: fullPath,
+            kind: this._inferKind(fullPath),
+            readOnly: false,
+            content: content
+          };
+        }
+      }
+    }
+
+    async _readFileContent(file) {
+      const type = file.type;
+      if (type.startsWith('image/') || type.startsWith('audio/') || type.startsWith('video/') || 
+          ['application/pdf', 'application/zip'].includes(type)) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+      } else {
+        return await file.text();
+      }
     }
 
     // Configure providers
@@ -202,15 +259,18 @@
 
     writeFile(name, content, kind){
       const key = String(name);
-      const exists = this.files[key];
-      // Enforce readOnly protection for examples (seeded) or any readOnly file
-      if (exists && exists.readOnly){
-        throw new Error('This file is read-only. Use a different name.');
-      }
+      // We allow overwriting even if it's readOnly in memory, 
+      // because we're creating a user-level override.
       const k = kind || this._inferKind(key);
       const file = { name: key, kind: k, readOnly: false, content: String(content ?? '') };
       this.files[key] = file;
       this.saveToLocalStorage();
+      
+      // Background save to OPFS
+      if (this.opfsRoot) {
+        this._writeToOpfs(key, content).catch(console.error);
+      }
+
       return clone(file);
     }
 
@@ -218,8 +278,20 @@
       const key = String(name);
       const f = this.files[key];
       if (!f) return;
-      if (f.readOnly) throw new Error('Cannot delete read-only system file');
-      delete this.files[key];
+      
+      // Background delete from OPFS
+      if (this.opfsRoot) {
+        this._deleteFromOpfs(key).catch(console.error);
+      }
+
+      // Restore system version if it exists, otherwise delete
+      const systemOriginal = SYSTEM_EXAMPLES.find(e => e.name === key);
+      if (systemOriginal) {
+        this.files[key] = clone(systemOriginal);
+      } else {
+        delete this.files[key];
+      }
+      
       this.saveToLocalStorage();
     }
 
@@ -228,14 +300,30 @@
       const newKey = String(newName);
       const f = this.files[oldKey];
       if (!f) throw new Error('File not found');
-      if (f.readOnly) throw new Error('Cannot rename read-only system file');
+      // Cannot rename a system file unless it's an override
+      const systemOriginal = SYSTEM_EXAMPLES.find(e => e.name === oldKey);
+      if (f.readOnly && systemOriginal) throw new Error('Cannot rename read-only system file');
+      
       if (this.files[newKey]) throw new Error('Target file already exists');
 
       const newFile = clone(f);
       newFile.name = newKey;
+      newFile.readOnly = false; // Renamed file is always user-owned
       this.files[newKey] = newFile;
-      delete this.files[oldKey];
+      
+      // Restore system version if it was one
+      if (systemOriginal) {
+        this.files[oldKey] = clone(systemOriginal);
+      } else {
+        delete this.files[oldKey];
+      }
+
       this.saveToLocalStorage();
+
+      // Background rename in OPFS
+      if (this.opfsRoot) {
+        this._renameInOpfs(oldKey, newKey).catch(console.error);
+      }
     }
 
     // Async routed operations (Phase 2)
@@ -243,7 +331,8 @@
       const n = String(name);
       if (n.toLowerCase().startsWith('examples/')){
         if (this.providers.examples && this.providers.examples.getFile){
-          return await this.providers.examples.getFile(n);
+          const f = await this.providers.examples.getFile(n);
+          if (f) return f;
         }
         // fallback to local seeded entry
         return this.getFile(n);
@@ -267,8 +356,58 @@
         }
         throw new Error('Shared provider not available.');
       }
-      // demo and examples are read-only; route to local if user tries to save with a non-reserved name
-      return this.writeFile(n, content, kind);
+      
+      // Write to memory and LocalStorage
+      const file = this.writeFile(n, content, kind);
+      
+      // Wait for OPFS write
+      if (this.opfsRoot) {
+        await this._writeToOpfs(n, content);
+      }
+      
+      return file;
+    }
+
+    async _writeToOpfs(path, content) {
+      if (!this.opfsRoot) return;
+      const parts = path.split('/');
+      const fileName = parts.pop();
+      let currentDir = this.opfsRoot;
+      for (const part of parts) {
+        currentDir = await currentDir.getDirectoryHandle(part, { create: true });
+      }
+      const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      if (typeof content === 'string' && content.startsWith('data:')) {
+        const res = await fetch(content);
+        const blob = await res.blob();
+        await writable.write(blob);
+      } else {
+        await writable.write(content);
+      }
+      await writable.close();
+    }
+
+    async _deleteFromOpfs(path) {
+      if (!this.opfsRoot) return;
+      const parts = path.split('/');
+      const fileName = parts.pop();
+      let currentDir = this.opfsRoot;
+      for (const part of parts) {
+        try { currentDir = await currentDir.getDirectoryHandle(part); }
+        catch (e) { return; }
+      }
+      await currentDir.removeEntry(fileName);
+    }
+
+    async _renameInOpfs(oldPath, newPath) {
+      if (!this.opfsRoot) return;
+      // Copy and delete
+      const f = this.files[newPath];
+      if (f) {
+        await this._writeToOpfs(newPath, f.content);
+        await this._deleteFromOpfs(oldPath);
+      }
     }
 
     async listByFolderAsync(folder){
@@ -351,8 +490,20 @@
       try{
         // persist only user files (readOnly === false)
         const user = {};
+        const MAX_TOTAL_SIZE = 4 * 1024 * 1024; // 4MB safe limit for LocalStorage
+        let currentTotal = 0;
+
         for (const [name, f] of Object.entries(this.files)){
-          if (!f.readOnly){ user[name] = { name, kind: f.kind, readOnly: false, content: f.content }; }
+          if (!f.readOnly){
+            // Only save files smaller than 1MB to LocalStorage (Legacy Layer)
+            // AND only if they don't exceed the total limit.
+            // Larger files will live in OPFS only.
+            const size = (f.content || '').length;
+            if (size < 1024 * 1024 && (currentTotal + size) < MAX_TOTAL_SIZE) {
+              user[name] = { name, kind: f.kind, readOnly: false, content: f.content };
+              currentTotal += size;
+            }
+          }
         }
         global.localStorage && global.localStorage.setItem(this.localStorageKey, JSON.stringify(user));
       }catch(e){ /* ignore quota / private mode */ }
