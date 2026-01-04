@@ -102,10 +102,15 @@ NEXT i
 ###  Recap Video (Todo: Kala)
 - In this lesson we learned the basics of programming with YoBASIC.
 - We wrote our first program, the "Hello World" program, which prints text to the screen.
-- We also learned about variables and input, decision making with IF statements, and loops with FOR/NEXT.
+- We also learned about variables and input, decision making with "if" statements, and loops with "For" and "Next".
 - These are the fundamental concepts of programming that you will use in every programming language.
 - In the next lesson, we will dive deeper into variables and functions. See you there!
 
+- I den här lektionen lärde vi oss grunderna i programmering med YoBASIC.
+- Vi skrev vårt första program, programmet "Hello World", som skriver ut text på skärmen.
+- Vi lärde oss också om variabler och indata, beslutsfattande med "if"-satser och loopar med "For" och "Next".
+- Det här är de grundläggande programmeringsbegreppen som du kommer att använda i alla programmeringsspråk.
+- I nästa lektion kommer vi att fördjupa oss i variabler och funktioner. Vi ses där!
 ---
 
 ## TUTORIAL PAGE 002 - Variables and Functions
