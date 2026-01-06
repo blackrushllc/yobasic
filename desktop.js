@@ -689,12 +689,33 @@ $(function() {
 
         updateIdentity() {
             const user = Identity.getCurrentUser();
-            const $btn = $('#btn-identity');
-            if (user) {
-                $btn.html(`<i class="bi bi-person-check-fill"></i> ${user.username}`);
+            const currentTeam = Identity.getCurrentTeam ? Identity.getCurrentTeam() : 'Self';
+            const history = Identity.getTeamHistory ? Identity.getTeamHistory() : [];
+            
+            // Update label
+            let label = user ? user.username : 'Login';
+            if (currentTeam && currentTeam !== 'Self') label += ` (${currentTeam})`;
+            $('#identity-label').text(label);
+
+            // Populate Navbar dropdown
+            const $historyContainer = $('#team-history-items');
+            $historyContainer.empty();
+            if (history.length === 0) {
+                $historyContainer.append('<li><span class="dropdown-item-text text-secondary small">No history</span></li>');
             } else {
-                $btn.html(`<i class="bi bi-person-circle"></i> Login`);
+                history.forEach(t => {
+                    const $a = $(`<a class="dropdown-item" href="#">${t}</a>`);
+                    if (t === currentTeam) $a.addClass('active');
+                    $a.click((e) => {
+                        e.preventDefault();
+                        Identity.setTeam(t);
+                        this.updateIdentity();
+                        this.refreshAllExplorers();
+                    });
+                    $historyContainer.append($('<li>').append($a));
+                });
             }
+            
             this.renderIcons();
         },
 
@@ -1025,7 +1046,7 @@ $(function() {
                 title: 'Identity',
                 icon: 'bi-person-circle',
                 width: 400,
-                height: 350,
+                height: 450,
                 onOpen: (win) => {
                     const $body = win.$el.find('.window-body');
                     $body.html(`
@@ -1045,6 +1066,11 @@ $(function() {
                                         <div class="mb-2">
                                             <label class="d-block small">Password</label>
                                             <input id="win-login-password" type="password" style="width:100%" />
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="d-block small">Team (Optional)</label>
+                                            <input id="win-login-team" type="text" style="width:100%" placeholder="team name or 'Self'" list="win-team-history-list" value="Self" />
+                                            <datalist id="win-team-history-list"></datalist>
                                         </div>
                                         <button id="win-btn-login" class="win-btn-action">Log In</button>
                                     </div>
@@ -1067,18 +1093,40 @@ $(function() {
                             </div>
                             <div id="win-identity-loggedin" class="d-none">
                                 <p>You are logged in as <b id="win-whoami"></b>.</p>
-                                <button id="win-btn-logout" class="win-btn-action">Log Out</button>
+                                <div class="mb-3">
+                                    <label class="d-block small">Current Team: <b id="win-current-team">Self</b></label>
+                                    <div class="d-flex gap-1 mt-1">
+                                        <input id="win-switch-team-input" type="text" style="flex-grow:1" placeholder="Join another team..." list="win-team-history-list-2">
+                                        <datalist id="win-team-history-list-2"></datalist>
+                                        <button id="win-btn-switch-team" class="win-btn-action" style="margin:0; padding:2px 8px;">Join</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button id="win-btn-exit-team" class="win-btn-action" style="background:#850">Exit Team</button>
+                                    <button id="win-btn-logout" class="win-btn-action">Log Out</button>
+                                </div>
                             </div>
                         </div>
                     `);
 
                     const updateUI = () => {
                         const user = Identity.getCurrentUser();
+                        const currentTeam = Identity.getCurrentTeam();
+                        const history = Identity.getTeamHistory();
+
+                        // Populate datalists
+                        ['win-team-history-list', 'win-team-history-list-2'].forEach(id => {
+                            const dl = $body.find('#' + id);
+                            dl.empty();
+                            history.forEach(t => dl.append(`<option value="${t}">`));
+                        });
+
                         if (user) {
                             $('#win-identity-status').text('You are logged in.');
                             $('#win-identity-forms').addClass('d-none');
                             $('#win-identity-loggedin').removeClass('d-none');
                             $('#win-whoami').text(user.username);
+                            $('#win-current-team').text(currentTeam);
                         } else {
                             $('#win-identity-status').text('You are not logged in.');
                             $('#win-identity-forms').removeClass('d-none');
@@ -1092,15 +1140,43 @@ $(function() {
                         $body.find('.nav-tab').removeClass('active');
                         $(this).addClass('active');
                         $body.find('.tab-pane').addClass('d-none');
-                        $('#' + $(this).data('tab')).removeClass('d-none');
+                        $body.find('#' + $(this).data('tab')).removeClass('d-none');
                     });
 
                     $('#win-btn-login').click(async () => {
+                        let team = $('#win-login-team').val().trim();
+                        if (!team) team = 'Self';
                         try {
+                            if (!(await Identity.checkTeamExists(team))) {
+                                alert('Team (user) "' + team + '" does not exist.');
+                                return;
+                            }
+                            Identity.setTeam(team);
                             await Identity.login($('#win-login-username').val(), $('#win-login-password').val());
                             updateUI();
                             DesktopManager.updateIdentity();
                         } catch (e) { alert(e.message || e); }
+                    });
+
+                    $('#win-btn-switch-team').click(async () => {
+                        const team = $('#win-switch-team-input').val().trim();
+                        if (!team) return;
+                        try {
+                            if (await Identity.checkTeamExists(team)) {
+                                Identity.setTeam(team);
+                                updateUI();
+                                DesktopManager.updateIdentity();
+                                $('#win-switch-team-input').val('');
+                            } else {
+                                alert('Team does not exist.');
+                            }
+                        } catch (e) { alert(e.message || e); }
+                    });
+
+                    $('#win-btn-exit-team').click(() => {
+                        Identity.setTeam('Self');
+                        updateUI();
+                        DesktopManager.updateIdentity();
                     });
 
                     $('#win-btn-signup').click(async () => {
@@ -2125,6 +2201,12 @@ $(function() {
     $(document).click(() => $('.dropdown-menu').removeClass('show'));
     
     $('#btn-identity').click(() => AppLauncher.identity());
+    $('#btn-navbar-exit-team').click((e) => {
+        e.preventDefault();
+        Identity.setTeam('Self');
+        DesktopManager.updateIdentity();
+        DesktopManager.refreshAllExplorers();
+    });
 
     $('#btn-settings').click(() => AppLauncher.settings());
 

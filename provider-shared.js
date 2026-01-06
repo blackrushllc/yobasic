@@ -22,13 +22,38 @@
     async listOwners(){
       const supabase = await global.getSupabase();
       if (!supabase) return [];
-      const { data, error } = await supabase.from('shared_files')
-        .select('owner_name')
-        .order('owner_name');
-      if (error){ console.warn('[YoBASIC] listOwners error', error); return []; }
-      const set = new Set();
-      (data||[]).forEach(r=>{ if (r.owner_name) set.add(r.owner_name); });
-      return Array.from(set.values());
+      
+      const currentTeam = this.identity.getCurrentTeam ? this.identity.getCurrentTeam() : 'Self';
+      if (!currentTeam || currentTeam === 'Self') {
+        const { data, error } = await supabase.from('shared_files')
+          .select('owner_name')
+          .order('owner_name');
+        if (error){ console.warn('[YoBASIC] listOwners error', error); return []; }
+        const set = new Set();
+        (data||[]).forEach(r=>{ if (r.owner_name) set.add(r.owner_name); });
+        return Array.from(set.values());
+      } else {
+        // Team Mode
+        const me = this.identity.getCurrentUser ? this.identity.getCurrentUser() : null;
+        const myname = me ? me.username : null;
+        const isOwner = (myname && myname === currentTeam);
+
+        if (isOwner) {
+          // Team owner sees all members who joined the team + themselves
+          const { data, error } = await supabase.from('profiles')
+            .select('username')
+            .or(`team_name.eq.${currentTeam},username.eq.${currentTeam}`)
+            .order('username');
+          if (error){ console.warn('[YoBASIC] listOwners Team error', error); return []; }
+          return (data||[]).map(r => r.username);
+        } else {
+          // Team members (and guests) only see themselves and the team owner
+          const owners = [currentTeam];
+          if (myname) owners.push(myname);
+          // Deduplicate and sort
+          return Array.from(new Set(owners)).sort();
+        }
+      }
     }
 
     async listFilesForOwner(owner){
@@ -76,13 +101,39 @@
       if (!parts) throw new Error('Invalid shared file path.');
       const { owner, path } = parts;
       const me = this.identity && this.identity.getCurrentUser ? this.identity.getCurrentUser() : null;
-      if (!me) throw new Error(`You can’t save to this shared folder. Log in as ${owner} or use File → Save As… to save to Root.`);
-      if (me.username !== owner) throw new Error(`You can’t save to shared/${owner}. Log in as ${owner} or save to Root.`);
+      if (!me) throw new Error(`You can’t save to this shared folder. Log in.`);
+      
       const supabase = await global.getSupabase();
       if (!supabase) throw new Error('Supabase not configured.');
+
+      const team = this.identity.getCurrentTeam ? this.identity.getCurrentTeam() : 'Self';
+      const isTeamOwner = (team !== 'Self' && team === me.username);
+      
+      let targetOwnerId = me.id;
+      let targetOwnerName = me.username;
+
+      if (me.username !== owner) {
+        if (isTeamOwner) {
+          // Check if 'owner' is in the team
+          const { data: profile } = await supabase.from('profiles').select('id, team_name').eq('username', owner).maybeSingle();
+          if (!profile || profile.team_name !== team) {
+            throw new Error(`User ${owner} is not in your team (${team}).`);
+          }
+          // "but not edit or delete" -> check if file exists
+          const { data: existing } = await supabase.from('shared_files').select('id').eq('owner_name', owner).eq('path', path).maybeSingle();
+          if (existing) {
+            throw new Error(`You cannot overwrite or edit ${owner}'s existing files. Save with a different name (e.g., feedback_${path}).`);
+          }
+          targetOwnerId = profile.id;
+          targetOwnerName = owner;
+        } else {
+          throw new Error(`You can’t save to shared/${owner}. Log in as ${owner} or use File → Save As… to save to Root.`);
+        }
+      }
+
       const row = {
-        owner_id: me.id,
-        owner_name: me.username,
+        owner_id: targetOwnerId,
+        owner_name: targetOwnerName,
         path: path,
         kind: kind === 'data' ? 'data' : 'program',
         content: String(content ?? '')
@@ -90,9 +141,9 @@
       const { error } = await supabase.from('shared_files').upsert(row, { onConflict: 'owner_id,path' });
       if (error) throw error;
       return {
-        name: `shared/${owner}/${path}`,
+        name: `shared/${targetOwnerName}/${path}`,
         kind: row.kind,
-        readOnly: false,
+        readOnly: targetOwnerName !== me.username,
         content: row.content
       };
     }

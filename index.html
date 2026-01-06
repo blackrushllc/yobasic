@@ -211,7 +211,19 @@
                 <button id="btn-bug" class="btn btn-outline-warning btn-sm" title="Toggle Tron/Troff (Debug Mode)"><i class="bi bi-bug-fill me-1"></i>Tron/Troff</button>
                 <button id="btn-build" class="btn btn-outline-info btn-sm" title="Build"><i class="bi bi-hammer me-1"></i>Build</button>
                 <button id="btn-settings" class="btn btn-outline-light btn-sm" title="Settings"><i class="bi bi-gear-fill me-1"></i>Settings</button>
-                <button id="btn-identity" class="btn btn-outline-primary btn-sm ms-2" title="Identity"><i class="bi bi-person-badge me-1"></i><span id="identity-label">Login</span></button>
+                <div class="dropdown d-inline-block ms-2">
+                    <button id="btn-identity-toggle" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Identity and Team">
+                        <i class="bi bi-person-badge me-1"></i><span id="identity-label">Login</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary" id="team-context-menu" style="z-index: 2000;">
+                        <li><a class="dropdown-item text-light" href="#" id="btn-identity">Manage Identity / Login</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><h6 class="dropdown-header text-secondary">Switch Team</h6></li>
+                        <div id="team-history-items"></div>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-warning" href="#" id="btn-navbar-exit-team">Exit to Self</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -292,7 +304,12 @@
                 <label class="form-label">Password</label>
                 <input id="login-password" type="password" class="form-control form-control-sm" />
               </div>
-              <button id="btn-login" type="button" class="btn btn-primary">Log In</button>
+              <div class="mb-3">
+                <label class="form-label">Team (Optional)</label>
+                <input id="login-team" type="text" class="form-control form-control-sm" placeholder="team name or 'Self'" list="team-history-list" value="Self" />
+                <datalist id="team-history-list"></datalist>
+              </div>
+              <button id="btn-login" type="button" class="btn btn-primary w-100">Log In</button>
             </div>
             <div class="tab-pane fade" id="tab-signup" role="tabpanel" aria-labelledby="tab-signup-tab">
               <div class="mb-2">
@@ -313,8 +330,19 @@
           </div>
         </div>
         <div id="identity-loggedin" class="d-none">
-          <p>You are <span id="whoami"></span>.</p>
-          <button id="btn-logout" type="button" class="btn btn-warning">Log Out</button>
+          <p>You are <span id="whoami" class="fw-bold"></span>.</p>
+          <div class="mb-3">
+            <label class="form-label small">Current Team: <span id="current-team-display" class="text-info fw-bold">Self</span></label>
+            <div class="input-group input-group-sm">
+               <input id="switch-team-input" type="text" class="form-control" placeholder="Join another team..." list="team-history-list-2">
+               <datalist id="team-history-list-2"></datalist>
+               <button id="btn-switch-team" class="btn btn-outline-info">Join/Switch</button>
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button id="btn-exit-team" type="button" class="btn btn-sm btn-outline-warning">Exit Team (Self)</button>
+            <button id="btn-logout" type="button" class="btn btn-sm btn-danger">Log Out</button>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -1942,12 +1970,51 @@
         $('#btn-login').on('click', async function(){
             const u = $('#login-username').val().trim();
             const p = $('#login-password').val();
+            let team = $('#login-team').val().trim();
+            if (!team) team = 'Self';
             try{
+                const exists = await Identity.checkTeamExists(team);
+                if (!exists) {
+                    alert('Team (user) "' + team + '" does not exist.');
+                    return;
+                }
+                Identity.setTeam(team);
                 await Identity.login(u, p);
                 updateIdentityUi();
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalIdentity')).hide();
                 term && term.echo && term.echo('[Logged in] ' + Identity.getCurrentUser().username);
             }catch(e){ alert(String(e.message || e)); }
+        });
+
+        $('#btn-switch-team').on('click', async function(){
+            const team = $('#switch-team-input').val().trim();
+            if (!team) return;
+            if (await Identity.checkTeamExists(team)) {
+                Identity.setTeam(team);
+                updateIdentityUi();
+                $('#switch-team-input').val('');
+                if (term && term.echo) term.echo('[Team joined] ' + team);
+                if (window.Chat && Chat.refresh) Chat.refresh();
+            } else {
+                alert('Team (user) "' + team + '" does not exist.');
+            }
+        });
+
+        $('#btn-exit-team, #btn-navbar-exit-team').on('click', function(e){
+            e.preventDefault();
+            Identity.setTeam('Self');
+            updateIdentityUi();
+            if (term && term.echo) term.echo('[Team exited] Switched to Self context');
+            if (window.Chat && Chat.refresh) Chat.refresh();
+        });
+
+        $(document).on('click', '#team-history-items .dropdown-item', function(e){
+            e.preventDefault();
+            const team = $(this).data('team');
+            Identity.setTeam(team);
+            updateIdentityUi();
+            if (term && term.echo) term.echo('[Team switched] ' + team);
+            if (window.Chat && Chat.refresh) Chat.refresh();
         });
         $('#btn-signup').on('click', async function(){
             const u = $('#signup-username').val().trim();
@@ -2013,22 +2080,66 @@
 
     function updateIdentityUi(){
         const me = Identity.getCurrentUser && Identity.getCurrentUser();
+        const currentTeam = Identity.getCurrentTeam ? Identity.getCurrentTeam() : 'Self';
+        
+        // Populate datalists
+        const history = Identity.getTeamHistory ? Identity.getTeamHistory() : [];
+        ['team-history-list', 'team-history-list-2'].forEach(id => {
+            const dl = document.getElementById(id);
+            if (dl) {
+                dl.innerHTML = '';
+                history.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t;
+                    dl.appendChild(opt);
+                });
+            }
+        });
+        
+        // Populate Navbar dropdown
+        const historyContainer = document.getElementById('team-history-items');
+        if (historyContainer) {
+            historyContainer.innerHTML = '';
+            if (history.length === 0) {
+                historyContainer.innerHTML = '<li><span class="dropdown-item-text text-secondary small">No history</span></li>';
+            } else {
+                history.forEach(t => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.className = 'dropdown-item text-light' + (t === currentTeam ? ' active' : '');
+                    a.href = '#';
+                    a.dataset.team = t;
+                    a.textContent = t;
+                    li.appendChild(a);
+                    historyContainer.appendChild(li);
+                });
+            }
+        }
+
         if (window.Chat && Chat.refresh) Chat.refresh();
+        try { buildVfsTree(); } catch(e) {}
         if (me){
             $('#identity-status').text(`You are logged in as ${me.username}.`);
             $('#identity-forms').addClass('d-none');
             $('#identity-loggedin').removeClass('d-none');
             $('#whoami').text(me.username);
-            $('#identity-label').text(me.username);
+            $('#current-team-display').text(currentTeam);
+            
+            const label = currentTeam && currentTeam !== 'Self' ? `${me.username} (${currentTeam})` : me.username;
+            $('#identity-label').text(label);
+
             // Enable Shared in Save As
             $('#save-folders [data-folder="shared"]').prop('disabled', false);
         } else {
             $('#identity-status').text('You are not logged in.');
             $('#identity-forms').removeClass('d-none');
             $('#identity-loggedin').addClass('d-none');
-            $('#identity-label').text('Login');
-            // Disable Shared in Save As (still visible for info)
-            $('#save-folders [data-folder="shared"]').prop('disabled', false); // allow viewing guidance
+            
+            const label = currentTeam && currentTeam !== 'Self' ? `Login (${currentTeam})` : 'Login';
+            $('#identity-label').text(label);
+
+            // Disable Shared in Save As
+            $('#save-folders [data-folder="shared"]').prop('disabled', false);
         }
     }
 

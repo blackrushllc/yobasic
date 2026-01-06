@@ -84,6 +84,11 @@ body.desktop-mode {
     display: block;
 }
 
+.dropdown-menu-end {
+    left: auto;
+    right: 0;
+}
+
 .dropdown-item {
     display: block;
     width: 100%;
@@ -98,10 +103,20 @@ body.desktop-mode {
     box-sizing: border-box;
 }
 
-.dropdown-item:hover {
+.dropdown-item:hover, .dropdown-item.active {
     background: var(--win-title-bg);
     color: #fff;
     text-decoration: none;
+}
+
+.dropdown-header {
+    display: block;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--win-border-dark);
+    cursor: default;
+    user-select: none;
 }
 
 .dropdown-menu hr {

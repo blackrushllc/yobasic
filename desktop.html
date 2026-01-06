@@ -81,7 +81,19 @@
         </div>
         <div class="nav-right">
             <button class="nav-link" id="btn-settings" title="Settings"><i class="bi bi-gear"></i></button>
-            <button class="nav-link" id="btn-identity"><i class="bi bi-person-circle"></i> Login</button>
+            <div class="dropdown d-inline-block">
+                <button class="nav-link dropdown-toggle" id="btn-identity-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle"></i> <span id="identity-label">Login</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" id="team-context-menu">
+                    <li><a class="dropdown-item" href="#" id="btn-identity">Identity / Login</a></li>
+                    <li><hr></li>
+                    <li class="dropdown-header">Switch Team</li>
+                    <div id="team-history-items"></div>
+                    <li><hr></li>
+                    <li><a class="dropdown-item" href="#" id="btn-navbar-exit-team">Exit to Self</a></li>
+                </ul>
+            </div>
         </div>
     </nav>
 
