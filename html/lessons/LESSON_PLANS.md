@@ -46,17 +46,17 @@ print A$ + B$
 - Let's talk about variables. A variable is a place in memory where you can store data.
 - In YoBASIC, a variable that ends with a dollar sign ($) is a string variable, which means it can store text.
 - Variables can be any name you want, but it is conventional to use all-caps letters and underscores to separate words in variable names.
-- In this example, we are creating 2 variables: we call them A$ and B$. We say "String" when we see the dollar signe, 
+- In this example, we are creating 2 variables: we call them A\$ and B\$. We say "String" when we see the dollar signe, 
   - which helps to let us know that these variables are intended to hold strings of text and not something else like numbers or lists
 - Notice the first and last couple of lines that start with "//". These are comments. 
 - Comments are lines that you can add to your program to explain what the code is doing. They are not executed by YoBASIC.
 - Slash-Slash is a common watershed comment symbol in most programming languages. YoBASIC also gives you other ways to add comments.
 - The first line of actual code assigns the value "Hello" to the variable A$.
 - The second line assigns the value " from YoBASIC" to the variable B$.
-- The third line prints the value of A$ plus B$.  When you plus together strings, it means to join them together.
+- The third line prints the value of A\$ plus B\$.  When you plus together strings, it means to join them together.
 - The fourth line of actual code prompts the user to enter their name in a pop up box and assigns the user's input to the 
   - variable B$, no matter what they typed.
-- The fifth line prints the text A$ plus B$ again, this time using the value of B$ instead of the literal string " from YoBASIC".
+- The fifth line prints the text A\$ plus B\$ again, this time using the value of B$ instead of the literal string " from YoBASIC".
 - Now here's an extra assignment. Use you mouse to only select the last line of the program and run it with F8. Hit F8 again and again to see what happens.
 ### Example 3 – Decision Making with IF
 ```
@@ -554,77 +554,78 @@ print "Hello from YoBASIC"
 - Php
 - Java
 
+SIDIFY music converter:
 
-Strip Tease Symphony
-https://open.spotify.com/track/4gWeQcvByJuzXSs4KkghBI?si=315c736cc01d4ae4
-
-Anyway
+Strip Tease Symphony - DONE 
+https://open.spotify.com/track/4gWeQcvByJuzXSs4KkghBI?si=0cab20d6ff8643aa
+Anyway - DONE
 https://open.spotify.com/track/7Hsc7e9eU7s3GwmgUVFBrC?si=0877fd2ea20a4b54
 
-Hello
+Hello - DONE
 https://open.spotify.com/track/47nze8Xq8QyvhTqir4aoM6?si=eecf41e03a5d4979
 
-Mystical Adventures
+Mystical Adventures - DONE
 https://open.spotify.com/track/0zu0m5KevlDNU3Uk7HdU7g?si=e92be1a3599d4205
 
-As
+As - DONE
 https://open.spotify.com/track/2TN3KmfLKlnUPDpIQPUNrp?si=5fe5cd00865b4a31
 
-Jig
+Jig - DONE
 https://open.spotify.com/track/3m2k89eVZpA4GOogDNXHKx?si=cdda79031f80405f
 
-Flight over Rio
+Flight over Rio - DONE
 https://open.spotify.com/track/2BiueR07VGUbxGTjp9q9fA?si=0f8d16b3bb994fc0
 
-Midnight Tango
+Midnight Tango - DONE
 https://open.spotify.com/track/2ZjGc10SrEJsghK8iTOqK6?si=632aa2f6262145d9
 
-Mediterranean Sundance
+Mediterranean Sundance - DONE
 https://open.spotify.com/track/7lflARLzeb71KjdYPU7CFt?si=df8e4764ccc647e2
 
-Race With Devil On Spanish Highway
+Race With Devil On Spanish Highway - DONE
 https://open.spotify.com/track/1qPSxRyMfES52PbpxCzWcd?si=4952244d5d13471b
 
-Lady of Rome, Sister of Brazil
+Lady of Rome, Sister of Brazil - DONE
 https://open.spotify.com/track/3JIUGcYAFgwtjWy0DClmx3?si=ef8bed4969fe43d8
 
-Elegant Gypsy Suite
+Elegant Gypsy Suite - DONE
 https://open.spotify.com/track/5d1bISuOdjVc5ThkmNHOIP?si=4b1ce10fc9af4a96
 
-Carlos Primero
+Carlos Primero - DONE
 https://open.spotify.com/track/0Ktu27rkXVCt07e5kw3Mtp?si=8db9d44f51224314
 
-Rearranging Furniture
+Rearranging Furniture - DONE
 https://open.spotify.com/track/3HRqtrUKxbPgE1dqpZT1vb?si=1f33dd8d22174000
 
-Svyryd - Beduin Rework
+Svyryd - Beduin Rework - DONE
 https://open.spotify.com/track/4MiehqrnVBCtOHU94Id6TT?si=936bb6e648db4610
 
-A Doschyk Nakrapate - Beduin Rework
+A Doschyk Nakrapate - Beduin Rework - DONE
 https://open.spotify.com/track/0RN1tsVNhDyxLhGtLwBVEA?si=6a05e5a373ff4e08
 
-Union Federal
+Union Federal - DONE
 https://open.spotify.com/track/6eejZDTHCw7bBb1ZT8UI0P?si=c7e0043cf7074b76
 
-It's Ice
+It's Ice - DONE
 https://open.spotify.com/track/2EtxqjLs4wSBTNtkm5VqkE?si=b8085c27603d40c1
 
-Metallic Rain
+Metallic Rain - DONE
 https://open.spotify.com/track/04JlHsrYsWIjL6YzJBktHN?si=8431bd9316e945cf
 
-La petite Fille de la mer
+La petite Fille de la mer - DONE
 https://open.spotify.com/track/3uNFRvQVEIEsQgHdZFw6Dk?si=e7e427c8efd24029
 
-Super Hexacordium
+Super Hexacordium - DONE
 https://open.spotify.com/track/0eCVcOv8pHrFjkdSMW5OhW?si=08b96a1786d64d3f
 
-Lunar Pond
+Lunar Pond - DONE
 https://open.spotify.com/track/0xufJ8mQSnhvDyqnAueCUr?si=06bd788b2b0545cf
 
-Union Federal
+Union Federal - DONE
 https://open.spotify.com/track/6eejZDTHCw7bBb1ZT8UI0P?si=d2d1c70df2e6438e
 
 Things to Build
-- Run Forest (Backend script hosting)
+- Run Forest (Backend script hosting) BASRUN.COM (Write this in BASIC)
 - IsHoliday API
+- YoBASIC home page
  
