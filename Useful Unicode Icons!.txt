@@ -1,0 +1,166 @@
+✨ UTF-8 (Unicode) characters / symbols you can use as lightweight icons to categorize your menu items.
+These are all text characters (no images or emoji), so they render in most modern fonts and environments.
+
+General UI/Menu/Iconography
+🍿🐖🐷💻🎉🚀🎨🛠️📦📂📄📊📅📒️
+
+🌐📄🗂️🕊️
+
+🌱🌿 Basil
+
+🐍 Here's a Python!
+Down arrow: ⬇️ (U+2B07 down arrow)
+Up arrow: ⬆️ (U+2B06 up arrow)
+Left arrow: ⬅️ (U+2B05 left arrow)
+Right arrow: ➡️ (U+27A1 right arrow)
+Double arrows: ⏬⏫⏪⏩
+Index/Table actions
+Excel: 📊 (U+1F4CA bar chart)
+CSV: 📑 (U+1F4D1 bookmark tabs)
+Open in a new window: 🆕 (U+1F195 NEW button)
+Refresh/Reload: 🔄 (U+1F504 clockwise arrows)
+Settings/Configuration: ⚙️ (U+2699 gear)
+Help/Support: ❓ (U+2753 question mark)
+Add/Create: ➕ (U+2795 plus sign)
+Remove/Delete: ❌ (U+274C cross mark)
+Edit/Modify: ✏️ (U+270F pencil)
+View/Preview: 👁️ (U+1F441 eye)
+Save/Download: 💾 (U+1F4BE floppy disk)
+Upload/Share: 📤 (U+1F4E4 outbox tray)
+
+🤡 Clown Face
+📂 (open file folder)
+📄 (page facing up)
+✏️ Edit
+📝 (memo)
+🗑️ Delete
+❌ (cross mark)
+📋 (clipboard)
+📑 (bookmark tabs, copy-ish)
+📄📄 (two pages, visual “duplicate”)
+⚙️ Process / Run
+🔄 (arrows counterclockwise, “processing”)
+▶️ (play button, start/run)
+👁️ View
+🔍 (magnifying glass)
+🖨️ Print
+📝 (memo, could also mean print note)
+👓 Print Preview
+🧐 (face with monocle, playful preview)
+📤 Share
+📡 (antenna, broadcast/share)
+🔗 (link)
+⬇️ Download
+📥 (inbox tray)
+💾 (floppy disk, classic “save/download”)
+
+👤 User
+👤 (U+1F464 bust in silhouette)
+🙍 (U+1F64D person frowning)
+⚙️ (U+2699 gear, if for “user settings”)
+
+📁 Files
+📁 (U+1F4C1 file folder)
+🗂️ (U+1F5C2 card index dividers)
+🗄️ (U+1F5C4 file cabinet)
+
+📄 Documents
+📄 (U+1F4C4 page facing up)
+📃 (U+1F4C3 page with curl)
+📝 (U+1F4DD memo)
+
+📊 CSV / Spreadsheets
+📊 (U+1F4CA bar chart)
+📉 (U+1F4C9 decreasing chart)
+📈 (U+1F4C8 increasing chart)
+📑 (U+1F4D1 bookmark tabs, could be “sheets”)
+🧾 (U+1F9FE receipt, works for tabular data too)
+
+📅 Schedule
+📅 (U+1F4C5 calendar)
+🗓️ (U+1F5D3 spiral calendar)
+⏰ (U+23F0 alarm clock, deadlines)
+
+📒 Ledger / Accounting
+📒 (U+1F4D2 ledger / notebook)
+📓 (U+1F4D3 notebook)
+💰 (U+1F4B0 money bag)
+💵 (U+1F4B5 dollar banknote)
+
+📡 Live Stream
+📡 (U+1F4E1 satellite antenna)
+📺 (U+1F4FA television)
+🔴 (U+1F534 red circle, classic “LIVE” indicator)
+🎥 (U+1F3A5 movie camera)
+📹 (U+1F4F9 video camera)
+
+📦 Inventory
+📦 (U+1F4E6 package)
+🏷️ (U+1F3F7 label/tag)
+🗃️ (U+1F5C3 card file box)
+📇 (U+1F4C7 card index)
+
+🏢 Office / Business
+🏢 (U+1F3E2 office building)
+🏛️ (U+1F3DB classical building, institutions)
+📠 (U+1F4E0 fax machine — “old office” flavor)
+📎 (U+1F4CE paperclip, attachments)
+📋 (U+1F4CB clipboard, tasks)
+
+🌐 Website / Admin
+🌐 (U+1F310 globe with meridians)
+🕹️ (U+1F579 joystick, “control panel”)
+⚙️ (U+2699 gear, settings)
+🛠️ (U+1F6E0 hammer and wrench, admin tools)
+🔧 (U+1F527 wrench)
+
+🖥️ IT / System Management
+🖥️ (U+1F5A5 desktop computer)
+💻 (U+1F4BB laptop computer)
+🖱️ (U+1F5B1 computer mouse)
+🗄️ (U+1F5C4 file cabinet, servers/data)
+🖧 (U+1F5A7 three networked computers — “network”)
+🔒 (U+1F512 padlock, security)
+🛡️ (U+1F6E1 shield)
+
+👨‍💻 Software Development
+👨‍💻 / 👩‍💻 (U+1F468/469+200D+1F4BB coder)
+📟 (U+1F4DF pager, “old-school debugging”)
+📜 (U+1F4DC scroll, logs or code snippets)
+📂 (U+1F4C2 open file folder, repos)
+📦 (U+1F4E6 package, builds, npm/composer/etc.)
+🧰 (U+1F9F0 toolbox)
+🧪 (U+1F9EA test tube, “experiments”)
+
+📡 Communication / Collaboration
+📡 (U+1F4E1 satellite antenna)
+📞 (U+1F4DE telephone)
+💬 (U+1F4AC speech balloon, chat)
+📧 (U+1F4E7 email)
+📢 (U+1F4E2 loudspeaker, announcements)
+
+📊 Analytics / Reporting
+📊 (U+1F4CA bar chart)
+📈 (U+1F4C8 line chart up)
+📉 (U+1F4C9 line chart down)
+🧮 (U+1F9EE abacus, “calculations”)
+📑 (U+1F4D1 bookmark tabs, reports)
+
+⚡ Miscellaneous Useful Menu Symbols
+🔍 (U+1F50D magnifying glass, search)
+🏠 (U+1F3E0 house, home dashboard)
+🛒 (U+1F6D2 shopping cart, commerce)
+🗑️ (U+1F5D1 wastebasket, delete)
+⭐ (U+2B50 star, favorites)
+📌 (U+1F4CC pushpin, pinned items)
+
+👉 You can simply paste these into HTML, PHP, or your database, and they’ll render directly if your font supports them.
+For maximum consistency in UI pair with CSS font-family: "Segoe UI Emoji", "Noto Color Emoji", sans-serif; or similar.
+
+
+Bug	🐛
+Todo	☀️
+Thinking	🤔
+Done	🗸
+In Progress	⏰
+
