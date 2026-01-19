@@ -8,6 +8,18 @@
   <title>🌱YoBASIC - Learn Coding Fundamentals (Basil🌿 + Beyond)</title>
   <meta name="description" content="🌱YoBASIC is an education-first coding tool and tutorial IDE. Start instantly with no login, or create an account to collaborate via shared chat and a virtual filesystem." />
 
+  <!-- jQuery & jQuery Terminal -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+
+  <script src="https://unpkg.com/js-polyfills/keyboard.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
+
+  <!-- BASIC JS and dependencies -->
+  <script src="vfs.js"></script>
+  <script src="basic.js"></script>
+
   <style>
     :root{
       --bg: #060905;
@@ -212,15 +224,22 @@
     .terminal{
       font-family: var(--mono);
       font-size: 13px;
-      background: rgba(0,0,0,.30);
+      background: rgba(0,0,0,.30) !important;
       border: 1px solid rgba(231,252,238,.12);
       border-radius: 14px;
       padding: 12px;
       min-height: 150px;
       max-height: 220px;
-      overflow:auto;
-      white-space: pre-wrap;
+      overflow: hidden; /* jquery.terminal handles its own scrolling */
     }
+    /* jquery.terminal internal overrides */
+    #terminal .terminal {
+      --background: transparent;
+      --color: var(--ink);
+      --size: 13px;
+    }
+    #terminal .cmd { background: transparent; }
+    #terminal .cursor { background: var(--ink); color: var(--bg); }
 
     /* Gallery */
     .gallery{
@@ -431,7 +450,7 @@
           <div class="panel pad mini-ide" aria-label="Mini IDE demo">
             <div class="mini-toolbar">
               <div class="pill">Mini Editor + Terminal</div>
-              <button class="btn primary small" id="runBtn">? Run</button>
+              <button class="btn primary small" id="runBtn">🌱Run</button>
             </div>
 
             <label for="editor" class="muted" style="font-size:13px;">Editor</label>
@@ -443,7 +462,7 @@
             </div>
 
             <div class="muted" style="font-size:12.5px;">
-              Hook point: replace <b>runProgram()</b> in the script below to call your real basic.js runtime.
+              Edit the example program above and press Run, or enter direct commands
             </div>
           </div>
         </div>
@@ -591,13 +610,12 @@
   </footer>
 
   <script>
-    // ----------------------------
-    // Demo tutorial programs
-    // Replace/extend these with your real samples
-    // ----------------------------
-    const PROGRAMS = {
-      hello: `REM 🌱YoBASIC Demo: Hello + Variables
-CLS
+    $(function() {
+      // ----------------------------
+      // Demo tutorial programs
+      // ----------------------------
+      const PROGRAMS = {
+        hello: `REM 🌱YoBASIC Demo: Hello + Variables
 name$ = "World"
 score% = 7
 PRINT "Hello, " + name$ + "!"
@@ -605,8 +623,7 @@ PRINT "Your score is: " + STR$(score%)
 PRINT ""
 PRINT "Try changing name$ or score% and run again."`,
 
-      loops: `REM 🌱YoBASIC Demo: Loops + Conditions
-CLS
+        loops: `REM 🌱YoBASIC Demo: Loops + Conditions
 FOR i% = 1 TO 10
   IF (i% MOD 2) = 0 THEN
     PRINT STR$(i%) + " is even"
@@ -617,11 +634,10 @@ NEXT i%
 PRINT ""
 PRINT "Try changing the loop range or the condition."`,
 
-      funcs: `REM 🌱YoBASIC Demo: Functions
-CLS
+        funcs: `REM 🌱YoBASIC Demo: Functions
 
 FUNCTION Add%(a%, b%)
-  Add% = a% + b%
+  RETURN a% + b%
 END FUNCTION
 
 x% = 12
@@ -629,54 +645,79 @@ y% = 30
 PRINT "Add%(12, 30) = " + STR$(Add%(x%, y%))
 PRINT ""
 PRINT "Try writing another FUNCTION (e.g., Multiply%)."`
-    };
+      };
 
-    const editor = document.getElementById('editor');
-    const terminal = document.getElementById('terminal');
-    const runBtn = document.getElementById('runBtn');
+      const editor = document.getElementById('editor');
+      const runBtn = document.getElementById('runBtn');
 
-    function terminalClear(){
-      terminal.textContent = "";
-    }
-    function terminalPrint(text){
-      terminal.textContent += text + "\n";
-      terminal.scrollTop = terminal.scrollHeight;
-    }
+      // 1. Initialize VFS
+      const vfs = new VirtualFileSystem();
 
-    function loadProgram(id){
-      const src = PROGRAMS[id] ?? PROGRAMS.hello;
-      editor.value = src;
-      terminalClear();
-      terminalPrint("Loaded program: " + id);
-      terminalPrint("Press Run to execute (demo stub).");
-    }
+      // 2. Initialize BasicInterpreter
+      const basic = new BasicInterpreter({
+        term: null,
+        autoEcho: false,
+        vfs: vfs,
+        debug:false,
+        hostReadFile: (path) => vfs.readData(path)
+      });
 
-    // TODO: Replace this stub with real basic.js integration
-    // - Compile/interpret editor.value
-    // - Redirect PRINT output to terminalPrint()
-    // - Redirect errors to terminalPrint("Error: ...")
-    function runProgram(source){
-      terminalClear();
-      terminalPrint("? Running (stub)...");
-      terminalPrint("");
-      terminalPrint("Your program source has " + source.split(/\r?\n/).length + " lines.");
-      terminalPrint("Wire this to basic.js to see real execution output.");
-      terminalPrint("");
-      terminalPrint("Tip: In the full IDE, open /basic/index.html");
-    }
+      // 3. Initialize Terminal
+      const term = $('#terminal').terminal(function(command) {
+        if (command !== '') {
+          try {
+            basic.setTerm(term);
+            var out = basic.lineExecute(command);
+            if (out) {
+              String(out).split(/\n/).forEach(line => { this.echo(line); });
+            }
+          } catch(e) {
+            this.error(new String(e));
+          }
+        }
+      }, {
+        greetings: '🌱YoBASIC Interactive Terminal\\nType commands or press "Run" above.',
+        name: 'yobasic_home',
+        prompt: 'Yo> ',
+        height: 220, // Match the CSS max-height
+        checkArity: false
+      });
 
-    // Bind program buttons
-    document.querySelectorAll('[data-program]').forEach(btn => {
-      btn.addEventListener('click', () => loadProgram(btn.getAttribute('data-program')));
+      function loadProgram(id){
+        const src = PROGRAMS[id] ?? PROGRAMS.hello;
+        editor.value = src;
+        term.clear();
+        term.echo("[[b;;]Loaded program: " + id + "]");
+        term.echo("Press Run to execute.");
+      }
+
+      function runProgram(source){
+        term.clear();
+        try {
+          basic.setTerm(term);
+          const outLines = basic.runProgram(source);
+          if (outLines && outLines.length) {
+            outLines.forEach(l => { if (l !== null && l !== undefined) term.echo(String(l)); });
+          }
+        } catch(e) {
+          term.error(new String(e));
+        }
+      }
+
+      // Bind program buttons
+      document.querySelectorAll('[data-program]').forEach(btn => {
+        btn.addEventListener('click', () => loadProgram(btn.getAttribute('data-program')));
+      });
+
+      runBtn?.addEventListener('click', () => runProgram(editor.value));
+
+      // Initialize default program
+      loadProgram('hello');
+
+      // Footer year
+      const yearEl = document.getElementById('year');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
     });
-
-    runBtn?.addEventListener('click', () => runProgram(editor.value));
-
-    // Initialize default program
-    loadProgram('hello');
-
-    // Footer year
-    document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 </body>
 </html>
