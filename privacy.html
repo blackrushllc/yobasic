@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy - YoBASIC</title>
+  <style>
+    :root{
+      --bg: #060905;
+      --panel: #0b140a;
+      --panel2: #101c0e;
+      --ink: #e7fceb;
+      --muted: #a7cfad;
+      --line: rgba(231,252,238,.14);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --radius2: 22px;
+      --max: 800px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    *{ box-sizing: border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: var(--max);
+      margin: 0 auto;
+      background: var(--panel);
+      padding: 40px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2, h3 { color: #fff; margin-top: 1.5em; }
+    h1 { font-size: 2.5rem; margin-top: 0; }
+    h2 { border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-top: 2em; }
+    
+    a { color: #22c55e; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .summary {
+      background: rgba(34,197,94,.1);
+      border: 1px solid rgba(34,197,94,.3);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+    .summary h3 { margin-top: 0; color: #22c55e; }
+    .summary ul { margin-bottom: 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 30px;
+    }
+
+    ul, ol { padding-left: 20px; }
+    li { margin-bottom: 10px; }
+
+    hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="home.html" class="back-link">&larr; Back to YoBASIC</a>
+    
+    <h1>Privacy Policy</h1>
+    
+    <div class="meta">
+        <strong>Effective date:</strong> January 19, 2026<br>
+        <strong>Last updated:</strong> January 19, 2026
+    </div>
+
+    <div class="summary">
+        <h3>Plain English Summary</h3>
+        <ul>
+            <li><strong>Guest Use:</strong> You can use YoBASIC without creating an account. Your code and progress are stored locally in your browser.</li>
+            <li><strong>Accounts & Data:</strong> We use <strong>Supabase</strong> for authentication, database storage, and chat features.</li>
+            <li><strong>Collaboration:</strong> If you use chat, shared files, or Team Mode, that content is stored on our servers so you and your teammates can see it.</li>
+            <li><strong>AI Features:</strong> If you use the AI assistant, your queries and code snippets are processed by AI providers but are not typically used for training.</li>
+            <li><strong>Privacy:</strong> We do not sell your personal information.</li>
+        </ul>
+    </div>
+
+    <p>YoBASIC (“<strong>YoBASIC</strong>,” “<strong>we</strong>,” “<strong>us</strong>,” or “<strong>our</strong>”) is an education-focused coding tutorial and IDE. This Privacy Policy explains what information we collect, how we use it, and the choices you have when you use our website and services (the “<strong>Service</strong>”).</p>
+
+    <h2>1) Summary</h2>
+    <ul>
+        <li>You can use YoBASIC <strong>without creating an account</strong>.</li>
+        <li>If you create an account, we collect basic account information (such as email and username) to provide login, collaboration features, and security.</li>
+        <li>If you use chat or shared files, we store the content you submit so collaboration works.</li>
+        <li>Some data may be stored <strong>locally in your browser</strong> (for example, editor state or recent files) to improve your experience.</li>
+    </ul>
+
+    <h2>2) Information we collect</h2>
+
+    <h3>A. Information you provide</h3>
+    <p><strong>Guest usage (no account):</strong></p>
+    <ul>
+        <li>Code you type, settings you choose, and lesson progress may be stored <strong>in your browser</strong> (local storage or similar) to keep your session convenient.</li>
+        <li>If you contact us (email/support), we collect the information you send (such as your name, email address, and message).</li>
+    </ul>
+
+    <p><strong>Accounts (optional):</strong></p>
+    <p>If you create an account (managed via <strong>Supabase</strong>), we may collect:</p>
+    <ul>
+        <li>Email address</li>
+        <li>Username / display name</li>
+        <li>Password (stored in hashed form by our authentication provider)</li>
+        <li>Profile details you choose to provide (optional)</li>
+    </ul>
+
+    <p><strong>Chat and collaboration:</strong></p>
+    <p>If you use shared chat (powered by <strong>Supabase</strong>), we collect and store:</p>
+    <ul>
+        <li>Messages you post</li>
+        <li>Your display name and identifiers needed to show who posted what</li>
+        <li>Basic metadata like timestamps and room/channel identifiers</li>
+    </ul>
+
+    <p><strong>Virtual/shared filesystem:</strong></p>
+    <p>If you save files to a shared or cloud-based workspace, we may collect and store:</p>
+    <ul>
+        <li>File contents (your code, text, project files)</li>
+        <li>File names, folders, and version information</li>
+        <li>Sharing/collaboration metadata (who has access, timestamps, etc.)</li>
+    </ul>
+
+    <h3>B. Information collected automatically</h3>
+    <p>When you use the Service, we may automatically collect:</p>
+    <ul>
+        <li><strong>Device and usage data</strong> (e.g., browser type, pages viewed, approximate location inferred from IP, date/time, referral URLs)</li>
+        <li><strong>Log data</strong> for security and reliability (e.g., IP address, request/response metadata, error logs)</li>
+        <li><strong>Cookies or similar technologies</strong> for session management, preferences, and security</li>
+    </ul>
+    <blockquote>If you use YoBASIC without an account, we still collect limited technical/log data to keep the site secure and working.</blockquote>
+
+    <h2>3) How we use information</h2>
+    <p>We use information to:</p>
+    <ul>
+        <li>Provide and operate the Service (run tutorials, compile/execute code, show results)</li>
+        <li>Create and manage accounts (authentication, account recovery, fraud prevention)</li>
+        <li>Enable collaboration features (chat, shared workspaces, shared files)</li>
+        <li>Save preferences and improve user experience (including local browser storage)</li>
+        <li>Maintain safety and security, prevent abuse, and debug issues</li>
+        <li>Communicate with you (support replies, service announcements)</li>
+        <li>Comply with legal obligations</li>
+    </ul>
+
+    <h2>4) Local browser storage (guest mode)</h2>
+    <p>YoBASIC may store some information <strong>on your device</strong> (for example, in localStorage or IndexedDB) such as:</p>
+    <ul>
+        <li>Editor contents and session state</li>
+        <li>UI preferences (theme, font size)</li>
+        <li>Recent files or lesson progress</li>
+    </ul>
+    <p>You can clear this data by clearing your browser storage/site data. If you clear it, you may lose local progress and drafts.</p>
+
+    <h2>5) Chat content and community expectations</h2>
+    <p>If chat is enabled:</p>
+    <ul>
+        <li>Messages may be visible to other users, depending on the chat room or community setting.</li>
+        <li>Do not share sensitive personal information in public chats.</li>
+        <li>We may remove content or suspend accounts to enforce safety and community rules.</li>
+    </ul>
+
+    <h2>6) AI Features (Planned/Optional)</h2>
+    <p>If you use AI-assisted coding or chat features in YoBASIC:</p>
+    <ul>
+        <li>Text and code snippets you submit to the AI assistant are sent to third-party providers (such as OpenAI or Anthropic) to generate a response.</li>
+        <li>We use enterprise-grade API integrations where providers typically do not use your data to train their foundation models.</li>
+        <li>You can choose not to use these features if you prefer your data not be processed by AI providers.</li>
+    </ul>
+
+    <h2>7) Sharing and disclosure</h2>
+    <p>We do <strong>not</strong> sell your personal information.</p>
+    <p>We may share information:</p>
+    <ul>
+        <li><strong>With service providers</strong> (specifically <strong>Supabase</strong>) who help us operate the Service (hosting, databases, authentication, chat). They are authorized to use information only as needed to provide services to us.</li>
+        <li><strong>For legal and safety reasons</strong> (e.g., comply with law, respond to lawful requests, protect rights, investigate abuse, or prevent harm).</li>
+        <li><strong>In business transfers</strong> (e.g., merger, acquisition, asset sale), where your information may be transferred as part of that transaction.</li>
+    </ul>
+
+    <h2>8) Data retention</h2>
+    <p>We retain information only as long as necessary to provide the Service and for legitimate business purposes.</p>
+    <p>Typical examples:</p>
+    <ul>
+        <li><strong>Account information</strong> is retained while your account is active.</li>
+        <li><strong>Chat messages</strong> and <strong>shared files</strong> may be retained to preserve collaboration history, unless you delete them or we remove them under moderation policies.</li>
+        <li><strong>Logs</strong> are retained for a limited period for security, debugging, and reliability.</li>
+    </ul>
+    <p>You may request deletion of your account (see “Your choices” below). Some data may remain in backups for a limited time or as required by law.</p>
+
+    <h2>9) Security</h2>
+    <p>We use reasonable administrative, technical, and organizational measures to protect information. No method of transmission or storage is 100% secure, and we cannot guarantee absolute security.</p>
+
+    <h2>10) Children’s privacy</h2>
+    <p>YoBASIC is designed for learning. If you allow minors to use YoBASIC, you are responsible for appropriate supervision and compliance with applicable laws.</p>
+    <p>If we learn that we collected personal information from a child without appropriate consent where required, we will take steps to delete it.</p>
+
+    <h2>11) International users</h2>
+    <p>If you access the Service from outside the United States, you understand that your information may be processed and stored in the United States or other locations where our providers operate.</p>
+
+    <h2>12) Your choices and rights</h2>
+    <p>Depending on your location, you may have rights to:</p>
+    <ul>
+        <li>Access, correct, or delete personal information</li>
+        <li>Object to or restrict certain processing</li>
+        <li>Receive a copy of your information (data portability)</li>
+    </ul>
+    <p><strong>Account deletion:</strong> You can request account deletion by contacting us at: <a href="mailto:privacy@yobasic.com">privacy@yobasic.com</a>.</p>
+    <p><strong>Browser storage:</strong> You can clear local site data in your browser settings.</p>
+
+    <h2>13) Cookies</h2>
+    <p>We may use cookies or similar technologies for:</p>
+    <ul>
+        <li>Keeping you signed in (session cookies)</li>
+        <li>Remembering preferences</li>
+        <li>Security protections</li>
+    </ul>
+    <p>You can control cookies through your browser settings. Some features may not work without cookies.</p>
+
+    <h2>14) Third-party links and services</h2>
+    <p>The Service may link to third-party sites (for example, Basil at basilbasic.com). We are not responsible for the privacy practices of third parties. Review their policies before providing information.</p>
+
+    <h2>15) Changes to this policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will update the “Last updated” date and, if changes are material, provide additional notice as required by law.</p>
+
+    <h2>16) Contact us</h2>
+    <p>If you have questions or requests about this Privacy Policy, contact:</p>
+    <p>
+        <strong>Blackrush LLC</strong><br>
+        <strong>Email:</strong> <a href="mailto:privacy@yobasic.com">privacy@yobasic.com</a>
+    </p>
+
+</div>
+
+</body>
+</html>
