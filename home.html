@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- favicon.png -->
+  <link rel="icon" type="image/png" href="/basic/favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🌱YoBASIC - Learn Coding Fundamentals (Basil + Beyond)</title>
+  <meta name="description" content="🌱YoBASIC is an education-first coding tool and tutorial IDE. Start instantly with no login, or create an account to collaborate via shared chat and a virtual filesystem." />
+
+  <style>
+    :root{
+      --bg: #060905;
+      --panel: #0b140a;
+      --panel2: #101c0e;
+      --ink: #e7fceb;
+      --muted: #a7cfad;
+      --line: rgba(231,252,238,.14);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --radius2: 22px;
+      --max: 1120px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    *{ box-sizing: border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(34,197,94,.25), transparent 60%),
+        radial-gradient(900px 600px at 90% 0%, rgba(20,184,166,.20), transparent 55%),
+        radial-gradient(900px 700px at 30% 90%, rgba(34,197,94,.18), transparent 55%),
+        var(--bg);
+      line-height: 1.55;
+    }
+
+    a{ color: inherit; text-decoration: none; }
+    a:hover{ text-decoration: underline; }
+    .wrap{ max-width: var(--max); margin: 0 auto; padding: 0 20px; }
+
+    /* Nav */
+    .nav{
+      position: sticky; top:0; z-index: 50;
+      backdrop-filter: blur(10px);
+      background: rgba(6,9,5,.72);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-inner{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 14px 0;
+      gap: 14px;
+    }
+    .brand{ display:flex; align-items:center; gap: 10px; min-width: 200px; }
+    .logo{
+      width: 34px; height: 34px; border-radius: 10px;
+      display:grid; place-items:center;
+      background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(20,184,166,.9));
+      box-shadow: var(--shadow);
+      font-weight: 800;
+    }
+    .brand span{ font-weight: 800; letter-spacing:.2px; }
+    .nav-links{
+      display:flex; align-items:center; gap: 16px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .nav-links a{ padding: 8px 10px; border-radius: 10px; }
+    .nav-links a:hover{ background: rgba(231,252,238,.06); text-decoration:none; color: var(--ink); }
+    .nav-actions{ display:flex; gap: 10px; align-items:center; }
+    .btn{
+      border: 1px solid var(--line);
+      background: rgba(231,252,238,.06);
+      color: var(--ink);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor:pointer;
+      display:inline-flex; align-items:center; gap:10px;
+      text-decoration:none;
+    }
+    .btn:hover{ background: rgba(231,252,238,.10); text-decoration:none; }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(34,197,94,.92), rgba(20,184,166,.85));
+      border: none;
+      box-shadow: var(--shadow);
+    }
+    .btn.primary:hover{ filter: brightness(1.05); }
+    .btn.small{ padding: 8px 12px; border-radius: 11px; }
+
+    /* Mobile nav */
+    .hamburger{ display:none; }
+    .mobile-menu{ display:none; border-top: 1px solid var(--line); padding: 10px 0 16px; }
+    .mobile-menu a{ display:block; padding: 10px 10px; color: var(--muted); border-radius: 10px; font-weight: 700; }
+    .mobile-menu a:hover{ background: rgba(231,252,238,.06); color: var(--ink); text-decoration:none; }
+
+    /* Sections */
+    section{ padding: 56px 0; }
+    .hero{ padding: 64px 0 34px; }
+    .hero-grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 28px;
+      align-items: start;
+    }
+    h1{
+      margin:0 0 10px;
+      font-size: clamp(32px, 4vw, 46px);
+      line-height: 1.12;
+      letter-spacing: -0.6px;
+    }
+    .lead{
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 16.5px;
+      max-width: 60ch;
+    }
+    .cta-row{ display:flex; flex-wrap:wrap; gap: 10px; align-items:center; }
+    .note{
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+
+    .panel{
+      background: linear-gradient(180deg, rgba(16,28,14,.85), rgba(11,20,10,.85));
+      border: 1px solid var(--line);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+    }
+    .panel.pad{ padding: 18px; }
+    .kpi{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .kpi .card{
+      background: rgba(231,252,238,.05);
+      border: 1px solid rgba(231,252,238,.10);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .kpi .card b{ display:block; margin-bottom: 4px; }
+    .kpi .card p{ margin:0; color: var(--muted); font-size: 13.5px; }
+
+    .section-title{
+      margin:0 0 14px;
+      font-size: 22px;
+      letter-spacing:-.2px;
+    }
+    .muted{ color: var(--muted); }
+
+    .cards3{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .card{
+      background: rgba(231,252,238,.04);
+      border: 1px solid rgba(231,252,238,.10);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .card h3{ margin: 0 0 6px; font-size: 16px; }
+    .card p{ margin:0; color: var(--muted); font-size: 14px; }
+
+    /* Demo */
+    .demo-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .teacher .btn{ width:100%; justify-content:center; }
+    .teacher .btn + .btn{ margin-top: 10px; }
+    .teacher ul{ margin: 10px 0 0 18px; color: var(--muted); }
+
+    .mini-ide{
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+    }
+    .mini-toolbar{
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(231,252,238,.04);
+      border: 1px solid rgba(231,252,238,.10);
+    }
+    .mini-toolbar .pill{
+      font-size: 12.5px;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(231,252,238,.12);
+      background: rgba(231,252,238,.03);
+    }
+    textarea.editor{
+      width: 100%;
+      min-height: 320px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--ink);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(231,252,238,.12);
+      border-radius: 14px;
+      padding: 12px;
+      outline: none;
+    }
+    textarea.editor:focus{ border-color: rgba(34,197,94,.55); }
+
+    .terminal{
+      font-family: var(--mono);
+      font-size: 13px;
+      background: rgba(0,0,0,.30);
+      border: 1px solid rgba(231,252,238,.12);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 150px;
+      max-height: 220px;
+      overflow:auto;
+      white-space: pre-wrap;
+    }
+
+    /* Gallery */
+    .gallery{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    figure{ margin:0; }
+    .shot{
+      border-radius: var(--radius2);
+      overflow:hidden;
+      border: 1px solid rgba(231,252,238,.12);
+      background: rgba(231,252,238,.03);
+    }
+    .shot img{
+      width:100%;
+      height:auto;
+      display:block;
+    }
+    figcaption{
+      padding: 12px 12px 14px;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+    figcaption b{ color: var(--ink); }
+
+    /* Two-col compare */
+    .compare{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .badge{
+      display:inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(231,252,238,.14);
+      background: rgba(231,252,238,.04);
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    /* Footer */
+    footer{
+      padding: 30px 0 46px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .foot{
+      display:flex;
+      justify-content:space-between;
+      gap: 16px;
+      flex-wrap:wrap;
+      align-items:flex-start;
+    }
+    .foot a{ color: var(--muted); font-weight: 650; }
+    .foot a:hover{ color: var(--ink); text-decoration:none; }
+    .foot small{ display:block; margin-top: 8px; }
+
+    /* Responsive */
+    @media (max-width: 920px){
+      .hero-grid{ grid-template-columns: 1fr; }
+      .kpi{ grid-template-columns: 1fr 1fr; }
+      .demo-grid{ grid-template-columns: 1fr; }
+      textarea.editor{ min-height: 280px; }
+    }
+    @media (max-width: 720px){
+      .nav-links{ display:none; }
+      .hamburger{ display:inline-flex; }
+      .gallery{ grid-template-columns: 1fr; }
+      .compare{ grid-template-columns: 1fr; }
+      .cards3{ grid-template-columns: 1fr; }
+      .kpi{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- NAV -->
+  <header class="nav" role="banner">
+    <div class="wrap">
+      <div class="nav-inner">
+        <a class="brand" href="#top" aria-label="YoBASIC home">
+          <div class="logo" aria-hidden="true">🌱</div>
+          <span>🌱YoBASIC</span>
+        </a>
+
+        <nav class="nav-links" aria-label="Primary">
+          <a href="/basic/index.html">Tutorial &amp; IDE</a>
+          <a href="/basic/desktop.html">Desktop Simulator</a>
+          <a href="/basic/test.html">Minimal/Test IDE</a>
+          <a href="https://basilbasic.com" rel="noopener">Basil</a>
+        </nav>
+
+        <div class="nav-actions">
+          <button class="btn small hamburger" id="hamburger" aria-expanded="false" aria-controls="mobileMenu">
+            ? Menu
+          </button>
+          <a class="btn" href="#login">Create Login</a>
+          <a class="btn primary" href="/basic/index.html">Launch IDE</a>
+        </div>
+      </div>
+
+      <div class="mobile-menu" id="mobileMenu" hidden>
+        <a href="/basic/index.html">Tutorial &amp; IDE</a>
+        <a href="/basic/desktop.html">Desktop Simulator</a>
+        <a href="/basic/test.html">Minimal/Test IDE</a>
+        <a href="https://basilbasic.com" rel="noopener">Basil</a>
+        <a href="#login">Create Login</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div>
+            <h1>Learn programming fundamentals that transfer anywhere.</h1>
+            <p class="lead">
+              YoBASIC is an education-first tutorial IDE that helps you learn core concepts that apply to
+              C++, Java, Python, and beyond - and it's also the fastest on-ramp to our modern language, <b>Basil</b>.
+            </p>
+
+            <div class="cta-row">
+              <a class="btn primary" href="/basic/index.html">Start Tutorial &amp; IDE</a>
+              <a class="btn" href="/basic/desktop.html">Try Desktop Simulator</a>
+              <a class="btn" href="https://basilbasic.com" rel="noopener">Explore Basil</a>
+            </div>
+            <div class="note">No login required to start. Create an account only if you want chat + shared files.</div>
+          </div>
+
+          <aside class="panel pad" aria-label="Highlights">
+            <div class="kpi">
+              <div class="card">
+                <b>Start instantly</b>
+                <p>Run tutorials and sample programs right away - no installs.</p>
+              </div>
+              <div class="card">
+                <b>Learn the universal basics</b>
+                <p>Variables, functions, flow control, data types, and reusable libraries.</p>
+              </div>
+              <div class="card">
+                <b>Grow with your skills</b>
+                <p>Begin BASIC-like, then adopt more C-like style as you progress.</p>
+              </div>
+              <div class="card">
+                <b>Bridge to Basil</b>
+                <p>When ready, move into Basil: modern BASIC for students and engineers.</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section>
+      <div class="wrap">
+        <h2 class="section-title">How learning works</h2>
+        <div class="muted">A simple loop: choose, load, run, understand - repeat.</div>
+
+        <div class="cards3" role="list">
+          <div class="card" role="listitem">
+            <h3>1) Pick a lesson</h3>
+            <p>Tutorials are designed to teach one clear idea at a time.</p>
+          </div>
+          <div class="card" role="listitem">
+            <h3>2) Load a sample program</h3>
+            <p>Choose from examples that match your current skill level.</p>
+          </div>
+          <div class="card" role="listitem">
+            <h3>3) Run and see output</h3>
+            <p>Use the built-in terminal to see exactly what your code does.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMO TUTORIAL -->
+    <section id="demo">
+      <div class="wrap">
+        <h2 class="section-title">Demo tutorial (try it right here)</h2>
+        <div class="muted">Click a sample program, then press <b>Run</b>. This is a scaled-down preview of the main IDE.</div>
+
+        <div class="demo-grid" style="margin-top:14px;">
+          <!-- Teacher panel -->
+          <div class="panel pad teacher">
+            <span class="badge">Teacher voice</span>
+            <h3 style="margin:10px 0 8px;">Pick one program to load into the editor</h3>
+            <p class="muted" style="margin:0 0 12px;">
+              Start with the first one, then work your way down. After you run it, read the output and try changing a line.
+            </p>
+
+            <button class="btn" data-program="hello">Load: Hello + Variables</button>
+            <button class="btn" data-program="loops">Load: Loops + Conditions</button>
+            <button class="btn" data-program="funcs">Load: Functions</button>
+
+            <div style="margin-top:14px;">
+              <b>What you'll learn</b>
+              <ul>
+                <li>How variables store values</li>
+                <li>How loops and conditions control flow</li>
+                <li>How functions organize reusable logic</li>
+              </ul>
+            </div>
+
+            <div style="margin-top:14px;">
+              <a class="btn primary" style="width:100%; justify-content:center;" href="/basic/index.html">
+                Continue in the full Tutorial &amp; IDE
+              </a>
+            </div>
+          </div>
+
+          <!-- Mini IDE -->
+          <div class="panel pad mini-ide" aria-label="Mini IDE demo">
+            <div class="mini-toolbar">
+              <div class="pill">Mini Editor + Terminal</div>
+              <button class="btn primary small" id="runBtn">? Run</button>
+            </div>
+
+            <label for="editor" class="muted" style="font-size:13px;">Editor</label>
+            <textarea id="editor" class="editor" spellcheck="false"></textarea>
+
+            <div>
+              <div class="muted" style="font-size:13px; margin-bottom:6px;">Terminal</div>
+              <div id="terminal" class="terminal" aria-live="polite"></div>
+            </div>
+
+            <div class="muted" style="font-size:12.5px;">
+              Hook point: replace <b>runProgram()</b> in the script below to call your real basic.js runtime.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREENSHOTS -->
+    <section>
+      <div class="wrap">
+        <h2 class="section-title">Explore the full experience</h2>
+        <div class="muted">These are the real pages you�ll use to learn and build.</div>
+
+        <div class="gallery">
+          <figure class="shot">
+            <a href="/basic/index.html" aria-label="Open YoBASIC Tutorial and IDE">
+              <img
+                src="assets/yobasic-ide.png"
+                alt="Screenshot of the YoBASIC Tutorial & IDE page"
+                loading="lazy"
+              />
+            </a>
+            <figcaption>
+              <b>YoBASIC Tutorial &amp; IDE</b><br />
+              Full tutorial flow, editor, and terminal. <a href="/basic/index.html">Launch ?</a>
+            </figcaption>
+          </figure>
+
+          <figure class="shot">
+            <a href="/basic/desktop.html" aria-label="Open YoBASIC Desktop Simulator">
+              <img
+                src="assets/yobasic-desktop.png"
+                alt="Screenshot of the YoBASIC Windows style desktop simulator"
+                loading="lazy"
+              />
+            </a>
+            <figcaption>
+              <b>Desktop Simulator (Windows-96 style)</b><br />
+              A playful environment with "apps" and desktop icons that run YoBASIC programs. <a href="/basic/desktop.html">Try it ?</a>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHY YO BASIC -->
+    <section>
+      <div class="wrap">
+        <h2 class="section-title">Why YoBASIC first?</h2>
+        <div class="cards3">
+          <div class="card">
+            <h3>Concepts transfer</h3>
+            <p>What you learn here maps directly to how professional code works in any major language.</p>
+          </div>
+          <div class="card">
+            <h3>Flexible syntax</h3>
+            <p>Begin BASIC-like for readability, then adopt more C-like patterns as your skills grow.</p>
+          </div>
+          <div class="card">
+            <h3>Core building blocks</h3>
+            <p>Variables, functions, objects/classes, types, flow control, and libraries - the universal toolkit.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOGIN CLARITY -->
+    <section id="login">
+      <div class="wrap">
+        <h2 class="section-title">No login required - but accounts unlock collaboration</h2>
+        <div class="muted">Choose the path that fits what you want to do today.</div>
+
+        <div class="compare">
+          <div class="panel pad">
+            <span class="badge">Start instantly</span>
+            <h3 style="margin:10px 0 8px;">Use YoBASIC without an account</h3>
+            <ul class="muted" style="margin:0 0 0 18px;">
+              <li>Run tutorials and sample programs</li>
+              <li>Experiment freely in the editor + terminal</li>
+              <li>Save locally in your browser (simple + fast)</li>
+            </ul>
+            <div style="margin-top:14px;">
+              <a class="btn primary" href="/basic/index.html">Launch IDE (No Login)</a>
+            </div>
+          </div>
+
+          <div class="panel pad">
+            <span class="badge">Collaborate</span>
+            <h3 style="margin:10px 0 8px;">Create a login when you're ready</h3>
+            <ul class="muted" style="margin:0 0 0 18px;">
+              <li>Join shared chat with other learners</li>
+              <li>Use the shared/virtual filesystem</li>
+              <li>Work together on projects and lessons</li>
+            </ul>
+            <div style="margin-top:14px;">
+              <!-- TODO: Replace href with your real signup/login endpoint -->
+              <a class="btn" href="/basic/index.html#login">Create Login</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BASIL BRIDGE -->
+    <section>
+      <div class="wrap">
+        <div class="panel pad">
+          <h2 class="section-title" style="margin-bottom:6px;">Next step: Basil</h2>
+          <div class="muted" style="max-width: 85ch;">
+            Basil is a powerful, modern BASIC designed for both students and engineers - and YoBASIC is the easiest way to learn
+            the core concepts and patterns you'll use in Basil and other major languages.
+          </div>
+          <div class="cta-row" style="margin-top:14px;">
+            <a class="btn primary" href="https://basilbasic.com" rel="noopener">Visit BasilBasic.com</a>
+            <a class="btn" href="/basic/index.html">Keep Learning in YoBASIC</a>
+            <a class="btn" href="/basic/test.html">Open Minimal/Test IDE</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer role="contentinfo">
+    <div class="wrap">
+      <div class="foot">
+        <div>
+          <b style="color:var(--ink)">YoBASIC</b>
+          <small>Education-first coding tutorials &amp; IDE.</small>
+        </div>
+
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <a href="/basic/index.html">Tutorial &amp; IDE</a>
+          <a href="/basic/desktop.html">Desktop Simulator</a>
+          <a href="/basic/test.html">Minimal/Test IDE</a>
+          <a href="https://basilbasic.com" rel="noopener">Basil</a>
+        </div>
+
+        <div>
+          <small>
+            Privacy: <span class="muted">Add a short privacy note here (accounts/chat/storage).</span>
+          </small>
+          <small>&copy; <span id="year"></span> Blackrush LLC</small>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ----------------------------
+    // Mobile menu toggle
+    // ----------------------------
+    const hamburger = document.getElementById('hamburger');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    hamburger?.addEventListener('click', () => {
+      const expanded = hamburger.getAttribute('aria-expanded') === 'true';
+      hamburger.setAttribute('aria-expanded', String(!expanded));
+      mobileMenu.hidden = expanded;
+    });
+
+    // ----------------------------
+    // Demo tutorial programs
+    // Replace/extend these with your real samples
+    // ----------------------------
+    const PROGRAMS = {
+      hello: `REM YoBASIC Demo: Hello + Variables
+CLS
+name$ = "World"
+score% = 7
+PRINT "Hello, " + name$ + "!"
+PRINT "Your score is: " + STR$(score%)
+PRINT ""
+PRINT "Try changing name$ or score% and run again."`,
+
+      loops: `REM YoBASIC Demo: Loops + Conditions
+CLS
+FOR i% = 1 TO 10
+  IF (i% MOD 2) = 0 THEN
+    PRINT STR$(i%) + " is even"
+  ELSE
+    PRINT STR$(i%) + " is odd"
+  ENDIF
+NEXT i%
+PRINT ""
+PRINT "Try changing the loop range or the condition."`,
+
+      funcs: `REM YoBASIC Demo: Functions
+CLS
+
+FUNCTION Add%(a%, b%)
+  Add% = a% + b%
+END FUNCTION
+
+x% = 12
+y% = 30
+PRINT "Add%(12, 30) = " + STR$(Add%(x%, y%))
+PRINT ""
+PRINT "Try writing another FUNCTION (e.g., Multiply%)."`
+    };
+
+    const editor = document.getElementById('editor');
+    const terminal = document.getElementById('terminal');
+    const runBtn = document.getElementById('runBtn');
+
+    function terminalClear(){
+      terminal.textContent = "";
+    }
+    function terminalPrint(text){
+      terminal.textContent += text + "\n";
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function loadProgram(id){
+      const src = PROGRAMS[id] ?? PROGRAMS.hello;
+      editor.value = src;
+      terminalClear();
+      terminalPrint("Loaded program: " + id);
+      terminalPrint("Press Run to execute (demo stub).");
+    }
+
+    // TODO: Replace this stub with real basic.js integration
+    // - Compile/interpret editor.value
+    // - Redirect PRINT output to terminalPrint()
+    // - Redirect errors to terminalPrint("Error: ...")
+    function runProgram(source){
+      terminalClear();
+      terminalPrint("? Running (stub)...");
+      terminalPrint("");
+      terminalPrint("Your program source has " + source.split(/\r?\n/).length + " lines.");
+      terminalPrint("Wire this to basic.js to see real execution output.");
+      terminalPrint("");
+      terminalPrint("Tip: In the full IDE, open /basic/index.html");
+    }
+
+    // Bind program buttons
+    document.querySelectorAll('[data-program]').forEach(btn => {
+      btn.addEventListener('click', () => loadProgram(btn.getAttribute('data-program')));
+    });
+
+    runBtn?.addEventListener('click', () => runProgram(editor.value));
+
+    // Initialize default program
+    loadProgram('hello');
+
+    // Footer year
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
