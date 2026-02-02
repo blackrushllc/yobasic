@@ -7,6 +7,52 @@
     username: null
   };
 
+  const TEAM_KEY = 'yobasic_current_team';
+  const HISTORY_KEY = 'yobasic_team_history';
+
+  function getCurrentTeam() {
+    return localStorage.getItem(TEAM_KEY) || 'Self';
+  }
+
+  function getTeamHistory() {
+    try {
+      const h = localStorage.getItem(HISTORY_KEY);
+      return h ? JSON.parse(h) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function setTeam(teamName) {
+    const t = String(teamName || 'Self').trim();
+    localStorage.setItem(TEAM_KEY, t);
+    if (t !== 'Self') {
+      const history = getTeamHistory();
+      if (!history.includes(t)) {
+        history.push(t);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      }
+    }
+    // Persist to Supabase if logged in
+    if (isLoggedIn()) {
+      const supabase = await global.getSupabase();
+      if (supabase) {
+        // We use maybeSingle/update and don't worry if column doesn't exist (it will just fail silently or log)
+        const { error } = await supabase.from('profiles').update({ team_name: t }).eq('id', state.userId);
+        if (error) console.warn('[Identity] Failed to sync team to profile (might need schema update):', error);
+      }
+    }
+  }
+
+  async function checkTeamExists(teamName) {
+    const t = String(teamName || '').trim();
+    if (!t || t.toLowerCase() === 'self') return true;
+    const supabase = await global.getSupabase();
+    if (!supabase) return false;
+    const { data, error } = await supabase.from('profiles').select('username').eq('username', t).maybeSingle();
+    return !!(data && !error);
+  }
+
   function isLoggedIn(){ return !!state.userId && !!state.username; }
   function getCurrentUser(){ return isLoggedIn() ? { id: state.userId, username: state.username } : null; }
 
@@ -15,9 +61,35 @@
     if (!supabase) return null;
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user){ state.userId = null; state.username = null; return null; }
-    // Fetch profile for username
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
-    if (profile && profile.username){ state.userId = user.id; state.username = profile.username; return getCurrentUser(); }
+    // Fetch profile for username and team_name
+    // Note: 'team_name' column must exist in 'profiles' table (see TEAMS_MODE.md for migration)
+    const { data: profile, error: pErr } = await supabase.from('profiles').select('username, team_name').eq('id', user.id).maybeSingle();
+    if (pErr) {
+      console.warn('[Identity] Profile fetch error (check if team_name column exists):', pErr);
+      // Fallback: try fetching only username
+      const { data: fallback } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+      if (fallback && fallback.username) {
+        state.userId = user.id;
+        state.username = fallback.username;
+        return getCurrentUser();
+      }
+      return null;
+    }
+    if (profile && profile.username){ 
+      state.userId = user.id; 
+      state.username = profile.username; 
+      if (profile.team_name) {
+        localStorage.setItem(TEAM_KEY, profile.team_name);
+        if (profile.team_name !== 'Self') {
+          const history = getTeamHistory();
+          if (!history.includes(profile.team_name)) {
+            history.push(profile.team_name);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+          }
+        }
+      }
+      return getCurrentUser(); 
+    }
     // if no profile row, treat as logged-out for our UI purposes
     state.userId = null; state.username = null; return null;
   }
@@ -77,9 +149,17 @@
     if (error) throw error;
     const user = data.user;
     // Fetch or create profile row
-    let profileResp = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
-    if (profileResp.error) throw profileResp.error;
+    let profileResp = await supabase.from('profiles').select('username, team_name').eq('id', user.id).maybeSingle();
+    if (profileResp.error) {
+       console.warn('[Identity] Profile fetch error during login (check if team_name column exists):', profileResp.error);
+       // Fallback to just username
+       profileResp = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+       if (profileResp.error) throw profileResp.error;
+    }
     let username = profileResp.data && profileResp.data.username;
+    if (profileResp.data && profileResp.data.team_name) {
+      await setTeam(profileResp.data.team_name); 
+    }
     if (!username){
       const metaUser = user.user_metadata && user.user_metadata.username;
       username = metaUser || (id.includes('@') ? (email.split('@')[0]) : id);
@@ -96,5 +176,8 @@
     state.userId = null; state.username = null;
   }
 
-  global.Identity = { isLoggedIn, getCurrentUser, signup, login, logout, initializeFromSession, validateUsername };
+  global.Identity = { 
+    isLoggedIn, getCurrentUser, signup, login, logout, initializeFromSession, validateUsername,
+    getCurrentTeam, setTeam, getTeamHistory, checkTeamExists
+  };
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

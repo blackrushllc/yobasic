@@ -167,8 +167,12 @@ body{
 .dropdown-menu{ position: absolute; display:none; min-width: 12rem; background: var(--menu-bg); color: var(--menu-fg); border: 1px solid var(--menu-border); border-radius:.375rem; padding:.25rem 0; box-shadow: var(--menu-shadow); z-index:1052; list-style: none; margin: 0; }
 .dropdown-menu > li{ list-style: none; }
 .dropdown-menu.show{ display:block; }
+.dropdown-menu-end{ right: 0; left: auto; }
 .dropdown-item{ padding:.375rem .75rem; color: var(--menu-fg); background: transparent; border:0; display:block; width:100%; text-align:left; }
-.dropdown-item:hover{ background: var(--menu-hover-bg); color: #fff; }
+.dropdown-item:hover, .dropdown-item.active{ background: var(--menu-hover-bg); color: #fff; }
+
+.dropdown-header{ display: block; padding: .25rem 1rem; font-size: .875rem; color: var(--muted-fg); white-space: nowrap; font-weight: 600; }
+
 .dropdown-divider{ height:0; margin:.25rem 0; overflow:hidden; border-top:1px solid var(--menu-border); }
 
 /* Buttons */

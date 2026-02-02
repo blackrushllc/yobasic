@@ -33,7 +33,12 @@ $(function() {
 
     // Initialize VFS
     const vfs = new VirtualFileSystem({ localStorageKey: 'yobasic.vfs' });
-    vfs.loadFromLocalStorage();
+    vfs.init().then(() => {
+        // Optional: refresh any open explorers if init finishes late
+        if (AppLauncher && AppLauncher.refreshAllExplorers) {
+            AppLauncher.refreshAllExplorers();
+        }
+    });
     window.vfs = vfs; 
     window.__vfsInstance__ = vfs;
 
@@ -48,6 +53,7 @@ $(function() {
         'folder-fill': 'bi-folder-fill',
         'folder-symlink': 'bi-folder-symlink',
         'file-text': 'bi-file-earmark-text',
+        'file-richtext': 'bi-file-earmark-richtext',
         'file-code': 'bi-file-earmark-code',
         'file-js': 'bi-filetype-js',
         'file-html': 'bi-filetype-html',
@@ -76,9 +82,10 @@ $(function() {
         if (ext === 'html') return IconMap['file-html'];
         if (ext === 'css') return IconMap['file-css'];
         if (ext === 'txt') return IconMap['file-text'];
+        if (ext === 'md') return IconMap['file-richtext'];
         if (ext === 'pdf') return IconMap['file-pdf'];
         if (ext === 'zip') return IconMap['file-zip'];
-        if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) return IconMap['file-img'];
+        if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) return IconMap['file-img'];
         if (['mp3', 'wav', 'ogg'].includes(ext)) return IconMap['file-music'];
         if (['mp4', 'webm', 'avi'].includes(ext)) return IconMap['file-play'];
         return IconMap['file-text'];
@@ -543,7 +550,10 @@ $(function() {
                     e.preventDefault();
                     e.stopPropagation();
                     const $ctx = $('.context-menu');
-                    const isEditable = (icon.path || icon.id || '').toLowerCase().match(/\.(bas|basil)$/);
+                    const itemPath = (icon.path || icon.id || '').toLowerCase();
+                    const isBas = itemPath.match(/\.(bas|basil)$/);
+                    const isText = itemPath.match(/\.(txt|md|html|css|js|json|xml)$/);
+                    const isEditable = isBas || isText;
                     $ctx.empty().append(`
                         <button class="dropdown-item" id="ctx-open">Open</button>
                         ${isEditable ? '<button class="dropdown-item" id="ctx-edit">Edit</button>' : ''}
@@ -679,12 +689,33 @@ $(function() {
 
         updateIdentity() {
             const user = Identity.getCurrentUser();
-            const $btn = $('#btn-identity');
-            if (user) {
-                $btn.html(`<i class="bi bi-person-check-fill"></i> ${user.username}`);
+            const currentTeam = Identity.getCurrentTeam ? Identity.getCurrentTeam() : 'Self';
+            const history = Identity.getTeamHistory ? Identity.getTeamHistory() : [];
+            
+            // Update label
+            let label = user ? user.username : 'Login';
+            if (currentTeam && currentTeam !== 'Self') label += ` (${currentTeam})`;
+            $('#identity-label').text(label);
+
+            // Populate Navbar dropdown
+            const $historyContainer = $('#team-history-items');
+            $historyContainer.empty();
+            if (history.length === 0) {
+                $historyContainer.append('<li><span class="dropdown-item-text text-secondary small">No history</span></li>');
             } else {
-                $btn.html(`<i class="bi bi-person-circle"></i> Login`);
+                history.forEach(t => {
+                    const $a = $(`<a class="dropdown-item" href="#">${t}</a>`);
+                    if (t === currentTeam) $a.addClass('active');
+                    $a.click((e) => {
+                        e.preventDefault();
+                        Identity.setTeam(t);
+                        this.updateIdentity();
+                        this.refreshAllExplorers();
+                    });
+                    $historyContainer.append($('<li>').append($a));
+                });
             }
+            
             this.renderIcons();
         },
 
@@ -805,13 +836,18 @@ $(function() {
                     try {
                         const data = JSON.parse(dataStr);
                         if (data.type === 'vfs-file') {
-                            const isBas = data.path.toLowerCase().match(/\.(bas|basil)$/);
+                            const ext = data.path.split('.').pop().toLowerCase();
+                            const viewerExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'md', 'pdf', 'mp4', 'webm', 'ogg', 'mp3', 'wav'];
+                            let launch = 'notepad';
+                            if (ext === 'bas' || ext === 'basil') launch = 'terminal';
+                            else if (viewerExts.includes(ext)) launch = 'viewer';
+
                             this.icons.push({
                                 id: 'custom-' + Date.now(),
                                 type: 'system',
                                 title: data.name,
                                 icon: data.icon,
-                                launch: isBas ? 'terminal' : 'notepad',
+                                launch: launch,
                                 path: data.path // Store the path to launch it correctly
                             });
 
@@ -938,6 +974,27 @@ $(function() {
             }
         }
 
+        // System modules (G)
+        if (mod === 'G' && window.YoBasicG) {
+            const parts = mem.split('.');
+            let target = window.YoBasicG;
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (target[parts[i]]) {
+                    target = target[parts[i]];
+                } else if (target[parts[i].charAt(0).toUpperCase() + parts[i].slice(1).toLowerCase()]) {
+                    // Try PascalCase for sub-modules if UPPERCASE fails
+                    target = target[parts[i].charAt(0).toUpperCase() + parts[i].slice(1).toLowerCase()];
+                } else {
+                    target = null;
+                    break;
+                }
+            }
+            const finalMem = parts[parts.length - 1];
+            if (target && typeof target[finalMem] === 'function') {
+                return target[finalMem](interpreter, ...args);
+            }
+        }
+
         try {
             if (window.ProjectManager && typeof ProjectManager.callModule === 'function' && ProjectManager.getCurrentProjectName && ProjectManager.getCurrentProjectName()) {
                 return ProjectManager.callModule(moduleName, memberName, args || [], interpreter);
@@ -950,6 +1007,38 @@ $(function() {
      * App Launcher
      */
     const AppLauncher = {
+        bindDragDrop(element, onDropCallback) {
+            const $el = $(element);
+            $el.on('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                $el.addClass('drag-over');
+            });
+            $el.on('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                $el.removeClass('drag-over');
+            });
+            $el.on('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                $el.removeClass('drag-over');
+                const files = e.originalEvent.dataTransfer.files;
+                if (files.length > 0) {
+                    onDropCallback(files[0]);
+                }
+            });
+        },
+
+        refreshAllExplorers() {
+            Object.values(WindowManager.windows).forEach(win => {
+                // VFS explorer
+                if (win.currentPath !== undefined && win.$el.find('.explorer-grid').length > 0) {
+                     this.renderVfsExplorer(win, win.currentPath);
+                }
+            });
+        },
+
         identity() {
             WindowManager.createWindow({
                 id: 'identity',
@@ -957,7 +1046,7 @@ $(function() {
                 title: 'Identity',
                 icon: 'bi-person-circle',
                 width: 400,
-                height: 350,
+                height: 450,
                 onOpen: (win) => {
                     const $body = win.$el.find('.window-body');
                     $body.html(`
@@ -977,6 +1066,11 @@ $(function() {
                                         <div class="mb-2">
                                             <label class="d-block small">Password</label>
                                             <input id="win-login-password" type="password" style="width:100%" />
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="d-block small">Team (Optional)</label>
+                                            <input id="win-login-team" type="text" style="width:100%" placeholder="team name or 'Self'" list="win-team-history-list" value="Self" />
+                                            <datalist id="win-team-history-list"></datalist>
                                         </div>
                                         <button id="win-btn-login" class="win-btn-action">Log In</button>
                                     </div>
@@ -999,18 +1093,40 @@ $(function() {
                             </div>
                             <div id="win-identity-loggedin" class="d-none">
                                 <p>You are logged in as <b id="win-whoami"></b>.</p>
-                                <button id="win-btn-logout" class="win-btn-action">Log Out</button>
+                                <div class="mb-3">
+                                    <label class="d-block small">Current Team: <b id="win-current-team">Self</b></label>
+                                    <div class="d-flex gap-1 mt-1">
+                                        <input id="win-switch-team-input" type="text" style="flex-grow:1" placeholder="Join another team..." list="win-team-history-list-2">
+                                        <datalist id="win-team-history-list-2"></datalist>
+                                        <button id="win-btn-switch-team" class="win-btn-action" style="margin:0; padding:2px 8px;">Join</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button id="win-btn-exit-team" class="win-btn-action" style="background:#850">Exit Team</button>
+                                    <button id="win-btn-logout" class="win-btn-action">Log Out</button>
+                                </div>
                             </div>
                         </div>
                     `);
 
                     const updateUI = () => {
                         const user = Identity.getCurrentUser();
+                        const currentTeam = Identity.getCurrentTeam();
+                        const history = Identity.getTeamHistory();
+
+                        // Populate datalists
+                        ['win-team-history-list', 'win-team-history-list-2'].forEach(id => {
+                            const dl = $body.find('#' + id);
+                            dl.empty();
+                            history.forEach(t => dl.append(`<option value="${t}">`));
+                        });
+
                         if (user) {
                             $('#win-identity-status').text('You are logged in.');
                             $('#win-identity-forms').addClass('d-none');
                             $('#win-identity-loggedin').removeClass('d-none');
                             $('#win-whoami').text(user.username);
+                            $('#win-current-team').text(currentTeam);
                         } else {
                             $('#win-identity-status').text('You are not logged in.');
                             $('#win-identity-forms').removeClass('d-none');
@@ -1024,15 +1140,43 @@ $(function() {
                         $body.find('.nav-tab').removeClass('active');
                         $(this).addClass('active');
                         $body.find('.tab-pane').addClass('d-none');
-                        $('#' + $(this).data('tab')).removeClass('d-none');
+                        $body.find('#' + $(this).data('tab')).removeClass('d-none');
                     });
 
                     $('#win-btn-login').click(async () => {
+                        let team = $('#win-login-team').val().trim();
+                        if (!team) team = 'Self';
                         try {
+                            if (!(await Identity.checkTeamExists(team))) {
+                                alert('Team (user) "' + team + '" does not exist.');
+                                return;
+                            }
+                            Identity.setTeam(team);
                             await Identity.login($('#win-login-username').val(), $('#win-login-password').val());
                             updateUI();
                             DesktopManager.updateIdentity();
                         } catch (e) { alert(e.message || e); }
+                    });
+
+                    $('#win-btn-switch-team').click(async () => {
+                        const team = $('#win-switch-team-input').val().trim();
+                        if (!team) return;
+                        try {
+                            if (await Identity.checkTeamExists(team)) {
+                                Identity.setTeam(team);
+                                updateUI();
+                                DesktopManager.updateIdentity();
+                                $('#win-switch-team-input').val('');
+                            } else {
+                                alert('Team does not exist.');
+                            }
+                        } catch (e) { alert(e.message || e); }
+                    });
+
+                    $('#win-btn-exit-team').click(() => {
+                        Identity.setTeam('Self');
+                        updateUI();
+                        DesktopManager.updateIdentity();
                     });
 
                     $('#win-btn-signup').click(async () => {
@@ -1108,6 +1252,91 @@ $(function() {
                     });
                     
                     // Logic to load themes/fonts could be added here similar to index.html
+                }
+            });
+        },
+
+        viewer(path, persistenceId = null) {
+            const id = 'viewer-' + Math.random().toString(36).substr(2, 9);
+            WindowManager.createWindow({
+                id,
+                singleton: false,
+                persistenceId: persistenceId || (path ? 'viewer-' + path : 'viewer'),
+                title: path ? `Viewer - ${path}` : 'File Viewer',
+                icon: getIconForExt(path ? path.split('.').pop() : ''),
+                onOpen: async (win) => {
+                    const file = await vfs.getFileAsync(path);
+                    if (!file) {
+                        win.$el.find('.window-body').html('<div class="p-3 text-danger">File not found.</div>');
+                        return;
+                    }
+                    const ext = (path.split('.').pop() || '').toLowerCase();
+                    const $body = win.$el.find('.window-body');
+                    
+                    $body.html(`
+                        <div class="d-flex flex-column h-100">
+                            <div class="window-toolbar p-1 border-bottom d-flex gap-2" style="background: rgba(0,0,0,0.05);">
+                                <button class="btn btn-sm btn-outline-secondary btn-download" title="Download"><i class="bi bi-download"></i> Download</button>
+                                <button class="btn btn-sm btn-outline-secondary btn-new-tab" title="Open in new tab"><i class="bi bi-box-arrow-up-right"></i> Open in New Tab</button>
+                            </div>
+                            <div class="viewer-content flex-grow-1 overflow-auto p-2 d-flex justify-content-center align-items-center" style="background: #f8f9fa;">
+                                <div class="spinner-border text-secondary" role="status"><span class="visually-hidden">Loading...</span></div>
+                            </div>
+                        </div>
+                    `);
+
+                    const $content = $body.find('.viewer-content');
+                    
+                    const renderContent = () => {
+                        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
+                            $content.html(`<img src="${file.content}" style="max-width:100%; max-height:100%; object-fit: contain; box-shadow: 0 0 10px rgba(0,0,0,0.1);">`);
+                        } else if (ext === 'pdf') {
+                            $content.removeClass('align-items-center justify-content-center').html(`<iframe src="${file.content}" width="100%" height="100%" frameborder="0"></iframe>`);
+                        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                            $content.html(`<video src="${file.content}" controls style="max-width:100%; max-height:100%;"></video>`);
+                        } else if (['mp3', 'wav'].includes(ext)) {
+                             $content.html(`<audio src="${file.content}" controls></audio>`);
+                        } else if (ext === 'md') {
+                            $content.removeClass('align-items-center justify-content-center').addClass('d-block p-4 bg-white').css('cursor', 'text');
+                            if (window.marked && window.DOMPurify) {
+                                try {
+                                    const rawHtml = marked.parse(file.content);
+                                    const cleanHtml = DOMPurify.sanitize(rawHtml);
+                                    $content.html(`<div class="markdown-body">${cleanHtml}</div>`);
+                                } catch (e) {
+                                    console.error('Markdown error', e);
+                                    $content.html(`<pre style="white-space: pre-wrap;">${file.content}</pre>`);
+                                }
+                            } else {
+                                $content.html(`<pre style="white-space: pre-wrap;">${file.content}</pre>`);
+                            }
+                        } else {
+                            $content.html(`<div class="text-muted">No viewer available for this file type.</div>`);
+                        }
+                    };
+
+                    renderContent();
+
+                    $body.find('.btn-download').click(() => {
+                        const link = document.createElement('a');
+                        link.href = file.content;
+                        link.download = path.split('/').pop();
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    });
+
+                    $body.find('.btn-new-tab').click(() => {
+                        const newWin = window.open();
+                        if (newWin) {
+                            if (file.content.startsWith('data:')) {
+                                newWin.document.write(`<html><head><title>${path}</title></head><body style="margin:0; padding:0; overflow:hidden;"><iframe src="${file.content}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe></body></html>`);
+                                newWin.document.close();
+                            } else {
+                                newWin.location.href = file.content;
+                            }
+                        }
+                    });
                 }
             });
         },
@@ -1209,6 +1438,30 @@ $(function() {
             `);
 
             const $grid = $body.find('.explorer-grid');
+
+            // Bind Drag & Drop for VFS
+            this.bindDragDrop($grid, async (file) => {
+                const targetPath = (currentPath ? currentPath + '/' : '') + file.name;
+                
+                // Read file
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        await vfs.writeFileAsync(targetPath, reader.result);
+                        this.renderVfsExplorer(win, currentPath);
+                    } catch (e) {
+                        alert('Upload failed: ' + e.message);
+                    }
+                };
+
+                const type = file.type;
+                if (type.startsWith('image/') || type.startsWith('audio/') || type.startsWith('video/') || 
+                    ['application/pdf', 'application/zip'].includes(type)) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
             
             $body.find('.btn-up').click(() => {
                 if (!currentPath) return;
@@ -1301,7 +1554,9 @@ $(function() {
                         WindowManager.closeWindow(win.id);
                         return;
                     }
+                    const viewerExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'md', 'pdf', 'mp4', 'webm', 'ogg', 'mp3', 'wav'];
                     if (ext === 'bas' || ext === 'basil') this.terminal(f.name);
+                    else if (viewerExts.includes(ext)) this.viewer(f.name);
                     else this.notepad(f.name);
                 }, false, '', f.name);
             });
@@ -1359,7 +1614,9 @@ $(function() {
                                 <button class="dropdown-item" id="ctx-vfs-delete">Delete</button>
                             `);
                             $('#ctx-vfs-open').click(() => {
+                                const viewerExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'md', 'pdf', 'mp4', 'webm', 'ogg', 'mp3', 'wav'];
                                 if (ext === 'bas' || ext === 'basil') this.terminal(fullPath);
+                                else if (viewerExts.includes(ext)) this.viewer(fullPath);
                                 else this.notepad(fullPath);
                             });
                             $('#ctx-vfs-edit').click(() => this.notepad(fullPath));
@@ -1725,6 +1982,33 @@ $(function() {
                 `);
 
                 const $grid = $body.find('.explorer-grid');
+
+                // Bind Drag & Drop for uploads
+                this.bindDragDrop($grid, (file) => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('path', path);
+                    
+                    $grid.html('<div class="p-2">Uploading...</div>');
+                    fetch('upload.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            this.loadDownloads(win, path);
+                        } else {
+                            alert('Upload failed: ' + (res.error || 'Unknown error'));
+                            this.loadDownloads(win, path);
+                        }
+                    })
+                    .catch(err => {
+                        alert('Upload error: ' + err.message);
+                        this.loadDownloads(win, path);
+                    });
+                });
+
                 data.items.forEach(item => {
                     const icon = item.type === 'dir' ? IconMap['folder'] : getIconForExt(item.ext);
                     const $item = $(`
@@ -1917,6 +2201,12 @@ $(function() {
     $(document).click(() => $('.dropdown-menu').removeClass('show'));
     
     $('#btn-identity').click(() => AppLauncher.identity());
+    $('#btn-navbar-exit-team').click((e) => {
+        e.preventDefault();
+        Identity.setTeam('Self');
+        DesktopManager.updateIdentity();
+        DesktopManager.refreshAllExplorers();
+    });
 
     $('#btn-settings').click(() => AppLauncher.settings());
 

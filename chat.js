@@ -83,11 +83,21 @@
                 return;
             }
 
-            const { data, error } = await supabase
+            const currentTeam = global.Identity && global.Identity.getCurrentTeam ? global.Identity.getCurrentTeam() : 'Self';
+            
+            let query = supabase
                 .from('comments')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(50);
+            
+            if (currentTeam && currentTeam !== 'Self') {
+                query = query.eq('team_name', currentTeam);
+            } else {
+                query = query.or('team_name.is.null,team_name.eq.Self');
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error('[Chat] Error loading comments:', error);
@@ -171,7 +181,11 @@
                 // Show delete button if user can delete
                 // 1. Users can delete their own comments (user_id matches)
                 // 2. Anyone can delete comments that don't have a linked user (guest comments)
-                const canDelete = !comment.user_id || (currentUser && currentUser.id === comment.user_id);
+                // 3. Team Owner can delete ANY comment in their team context
+                const team = global.Identity && global.Identity.getCurrentTeam ? global.Identity.getCurrentTeam() : 'Self';
+                const isTeamOwner = currentUser && team !== 'Self' && team === currentUser.username;
+                
+                const canDelete = !comment.user_id || (currentUser && currentUser.id === comment.user_id) || isTeamOwner;
                 
                 if (canDelete) {
                     const deleteBtn = document.createElement('button');
@@ -218,7 +232,8 @@
                 .insert({
                     handle: handle,
                     content: content,
-                    user_id: user ? user.id : null
+                    user_id: user ? user.id : null,
+                    team_name: global.Identity && global.Identity.getCurrentTeam ? global.Identity.getCurrentTeam() : 'Self'
                 })
                 .select();
 

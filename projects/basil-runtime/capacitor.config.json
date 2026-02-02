@@ -1,0 +1,6 @@
+{
+  "appId": "com.blackrush.basil.runtime",
+  "appName": "Basil Runtime",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
