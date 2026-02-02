@@ -57,7 +57,7 @@ print A$ + B$
 - The fourth line of actual code prompts the user to enter their name in a pop up box and assigns the user's input to the 
   - variable B$, no matter what they typed.
 - The fifth line prints the text A\$ plus B\$ again, this time using the value of B$ instead of the literal string " from YoBASIC".
-- Now here's an extra assignment. Use you mouse to only select the last line of the program and run it with F8. Hit F8 again and again to see what happens.
+- Now here's an extra assignment. Use your mouse to only select the last line of the program and run it with F8. Hit F8 again and again to see what happens.
 ### Example 3 – Decision Making with IF
 ```
 REM Print a message if the user's number is less than 5, equal to 5, or greater than 5
