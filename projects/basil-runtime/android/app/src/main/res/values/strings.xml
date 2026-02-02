@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Basil Runtime</string>
+    <string name="title_activity_main">Basil Runtime</string>
+    <string name="package_name">com.blackrush.basil.runtime</string>
+    <string name="custom_url_scheme">com.blackrush.basil.runtime</string>
+</resources>
