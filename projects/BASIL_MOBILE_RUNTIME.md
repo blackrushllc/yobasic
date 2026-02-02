@@ -261,7 +261,7 @@ Create a mobile runtime shell that can run Basil programs using our existing bas
 
 TARGET
 - Cross-platform via Capacitor (Android first; iOS should build but can be untested if time).
-- Create the project in a new folder: /projects/basil-runtime (or the most appropriate place if you have a convention).
+- Create the project in a new folder: /projects/basil-runtime.
 - Use TypeScript.
 - Keep UI simple and clean (one home screen + a runner screen).
 - The scaffold must include a bundled demo app package and a minimal loader to run it.
