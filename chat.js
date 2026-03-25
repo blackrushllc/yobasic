@@ -1,4 +1,4 @@
-// Chat manager for YoBASIC using Supabase
+// Chat manager for UI-BASIC using Supabase
 (function(global) {
     'use strict';
 
@@ -162,8 +162,8 @@
                     openBtn.innerHTML = 'Open';
                     openBtn.title = 'Open in IDE';
                     openBtn.onclick = () => {
-                        if (global.YoBasicIDE && global.YoBasicIDE.openExample) {
-                            global.YoBasicIDE.openExample({
+                        if (global.UIBASICIDE && global.UIBASICIDE.openExample) {
+                            global.UIBASICIDE.openExample({
                                 files: [{
                                     name: "CHAT_CODE.BAS",
                                     language: "basic",
@@ -172,7 +172,7 @@
                                 }]
                             });
                         } else {
-                            console.warn('[Chat] YoBasicIDE.openExample not available');
+                            console.warn('[Chat] UIBASICIDE.openExample not available');
                         }
                     };
                     div.appendChild(openBtn);

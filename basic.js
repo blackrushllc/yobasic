@@ -1,5 +1,5 @@
 /*
- YoBASIC 1.0 - Blackrush LLC - https://www.yobasic.com/basic
+ UI-BASIC 1.0 - Blackrush LLC - https://www.yobasic.com/basic
 */
 (function(global){
   'use strict';

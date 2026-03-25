@@ -1,4 +1,4 @@
-// Identity manager for YoBASIC using Supabase Auth
+// Identity manager for UI-BASIC using Supabase Auth
 (function(global){
   'use strict';
 

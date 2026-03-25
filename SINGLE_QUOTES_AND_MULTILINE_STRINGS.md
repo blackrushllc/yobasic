@@ -1,5 +1,5 @@
 ### Objective
-Introduce true single-quoted string literals to YoBASIC in `basic.js` alongside double-quoted strings with these rules:
+Introduce true single-quoted string literals to UI-BASIC in `basic.js` alongside double-quoted strings with these rules:
 
 - Both quote styles are valid and may span multiple physical lines.
 - A single-quoted string does NOT support interpolation; a double-quoted string DOES support `#{ ... }` interpolation.
@@ -290,4 +290,4 @@ Risks and mitigations:
 ---
 
 ### Summary
-By introducing a small pre-lex step to assemble logical lines, removing `'` as a comment, enforcing quote-specific escape semantics in `_readString`, keeping interpolation exclusive to double quotes, and correctly escaping line breaks when emitting JavaScript, YoBASIC will support robust single- and double-quoted strings, including multi-line literals, with precise and predictable behavior aligned with your spec and the new requirements.
+By introducing a small pre-lex step to assemble logical lines, removing `'` as a comment, enforcing quote-specific escape semantics in `_readString`, keeping interpolation exclusive to double quotes, and correctly escaping line breaks when emitting JavaScript, UI-BASIC will support robust single- and double-quoted strings, including multi-line literals, with precise and predictable behavior aligned with your spec and the new requirements.

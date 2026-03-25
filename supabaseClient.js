@@ -1,4 +1,4 @@
-// Supabase client initialization for YoBASIC playground
+// Supabase client initialization for UI-BASIC playground
 // NOTE: Fill in your Supabase URL and public anon key below (do NOT use service role keys)
 // When RLS is enabled, anon key is safe for frontend use.
 (function(global){
@@ -32,7 +32,7 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlZ2dtaWdlZXZzZHl4cWNicHV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NjE1NDgsImV4cCI6MjA3ODEzNzU0OH0.3Cvlflm9zKFWpZtMfSlgBpY8CBP7u_Pfph9A03QdSP0';
 
     if (SUPABASE_URL.startsWith('%%') || SUPABASE_ANON_KEY.startsWith('%%')){
-      console.warn('[YoBASIC] Supabase URL/key not configured. Remote examples/shared will be disabled.');
+      console.warn('[UI-BASIC] Supabase URL/key not configured. Remote examples/shared will be disabled.');
       return null;
     }
 

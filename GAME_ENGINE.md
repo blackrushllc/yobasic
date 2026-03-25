@@ -10,7 +10,7 @@ Students can learn the real fundamentals (game loop, sprites, animation, collisi
 Key principle: **same mental model** in both runtimes:
 
 * Basil: `obj-game` (Feature Object)
-* YoBASIC/basic.js: `G` (JS extension)
+* UI-BASIC/basic.js: `G` (JS extension)
 * Similar objects, similar method names, similar event/callback flow
 
 ---
@@ -136,8 +136,8 @@ GAME@.Run(OnInit, OnUpdate, OnDraw)
 Mirror the same shape:
 
 ```basic
-' in YoBASIC/basic.js
-G.Window 960, 540, "My YoBASIC Game"
+' in UI-BASIC/basic.js
+G.Window 960, 540, "My UI-BASIC Game"
 
 SUB OnInit()
   G.Assets.LoadTexture "player", "/assets/player.png"
@@ -312,7 +312,7 @@ This is your guardrail so Junie doesn’t drift.
 
     * `g.js` main
     * `g_assets.js`, `g_input.js`, `g_world.js`, `g_draw.js`
-* YoBASIC demo page or desktop page integration:
+* UI-BASIC demo page or desktop page integration:
 
     * “Run Game” uses the same IDE run button
     * Opens canvas in a window inside your windowing UI

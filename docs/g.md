@@ -1,6 +1,6 @@
 # G Library (Micro Game Engine)
 
-The `G` library provides a minimal 2D game engine foundation for YoBASIC. It is designed for teaching game development basics without requiring complex polling loops.
+The `G` library provides a minimal 2D game engine foundation for UI-BASIC. It is designed for teaching game development basics without requiring complex polling loops.
 
 ## Core API
 

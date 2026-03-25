@@ -40,7 +40,7 @@ Two safe tracks; pick Track A first for speed, then optionally proceed to Track 
    - JS APIs used: `bootstrap.Dropdown`, `bootstrap.Modal`, `bootstrap.Tab`, `bootstrap.Collapse`.
 
 2. Establish a base file pair
-   - Add `ybs.css` (YoBASIC Styles) with: reset + variables + component styles.
+   - Add `ybs.css` (UI-BASIC Styles) with: reset + variables + component styles.
    - Add `ybs-compat.css` that defines only the subset of Bootstrap class names we actually use, mapping them to our tokens. This allows removing Bootstrap CSS immediately without rewriting HTML.
    - Keep Bootstrap Icons CDN link.
 
@@ -75,7 +75,7 @@ Two safe tracks; pick Track A first for speed, then optionally proceed to Track 
 8. Verification pass (end of Track A)
    - Test: dropdowns open/close, modals show/hide, tabs switch, collapse works, forms usable, grid layouts intact.
    - Cross-browser skim: Chromium, Firefox, Safari (if available). Check high DPI.
-   - Adjust token defaults to match the current “YoBASIC Dark” theme; ensure “YoBASIC Light” remains legible.
+   - Adjust token defaults to match the current “UI-BASIC Dark” theme; ensure “UI-BASIC Light” remains legible.
 
 9. Optional Track B — Remove Bootstrap JS
    - Add `ybui.js` with minimal, dependency-free behaviors:

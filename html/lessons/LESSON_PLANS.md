@@ -3,33 +3,33 @@
 ## TUTORIAL PAGE 001 - Hello World and the Basics
 
 ### Introduction Video
-- KALA_FUNDAMENTAL: In this tutorial we are going to learn the fundamental concepts of programming with YoBASIC. 
+- KALA_FUNDAMENTAL: In this tutorial we are going to learn the fundamental concepts of programming with UI-BASIC. 
 - We are going to write simple applications the demonstrate the core concepts of programming.  
 - By the end of this tutorial you are going to have a general understanding how how to write code in any programming language.
 ### Example 1 - Hello World
 ```
-print "Hello from YoBASIC"
+print "Hello from UI-BASIC"
 ```
 #### Listen: This first example is what we call the "Hello World" program.
 - Whenever any programmer starts learning a new programming language, the first program they write is usually the "Hello World" program.
 - It is a simple program that prints the text "Hello World" to the screen.
 - Everyone does this, just to make sure that their programming language is working properly.
-- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in UI-BASIC Editor".
 - You will see a new editor tab open with the code for the first example.
 - Then, do 2 things. Click the yellow "Tron/Troff" button to turn off the "Tron" mode. This is a toggle button you can 
   - use to turn on or off extra messages in the terminal that can help you debug your program. We don't need this on.
 - After that, click the green "Clear" button or type the command "clear" in your terminal to clear the screen.
-- Finally, click the "Run" button or press F9 to run the program. You will see the text "Hello from YoBASIC" printed to the terminal screen.
-- Now do this, change the text inside the quotes to say "Hello World" or something else instead of "Hello from YoBASIC". 
+- Finally, click the "Run" button or press F9 to run the program. You will see the text "Hello from UI-BASIC" printed to the terminal screen.
+- Now do this, change the text inside the quotes to say "Hello World" or something else instead of "Hello from UI-BASIC". 
   - Then run the program again.
 - You should see the new text printed to the screen.
 - Now move on to the next example.
 ### Example 2 – Variables and Input
 ```
-// Run this example to see how variables and input work in YoBASIC
+// Run this example to see how variables and input work in UI-BASIC
 
 A$ = "Hello"
-B$ = " from YoBASIC"
+B$ = " from UI-BASIC"
 print A$ + B$
 
 INPUT "What is your name? ", B$
@@ -41,22 +41,22 @@ print A$ + B$
 
 ```
 #### Listen: Variables and Input...
-- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in UI-BASIC Editor".
 - You will see a new editor tab open with the code for this example.
 - Let's talk about variables. A variable is a place in memory where you can store data.
-- In YoBASIC, a variable that ends with a dollar sign ($) is a string variable, which means it can store text.
+- In UI-BASIC, a variable that ends with a dollar sign ($) is a string variable, which means it can store text.
 - Variables can be any name you want, but it is conventional to use all-caps letters and underscores to separate words in variable names.
 - In this example, we are creating 2 variables: we call them A\$ and B\$. We say "String" when we see the dollar signe, 
   - which helps to let us know that these variables are intended to hold strings of text and not something else like numbers or lists
 - Notice the first and last couple of lines that start with "//". These are comments. 
-- Comments are lines that you can add to your program to explain what the code is doing. They are not executed by YoBASIC.
-- Slash-Slash is a common watershed comment symbol in most programming languages. YoBASIC also gives you other ways to add comments.
+- Comments are lines that you can add to your program to explain what the code is doing. They are not executed by UI-BASIC.
+- Slash-Slash is a common watershed comment symbol in most programming languages. UI-BASIC also gives you other ways to add comments.
 - The first line of actual code assigns the value "Hello" to the variable A$.
-- The second line assigns the value " from YoBASIC" to the variable B$.
+- The second line assigns the value " from UI-BASIC" to the variable B$.
 - The third line prints the value of A\$ plus B\$.  When you plus together strings, it means to join them together.
 - The fourth line of actual code prompts the user to enter their name in a pop up box and assigns the user's input to the 
   - variable B$, no matter what they typed.
-- The fifth line prints the text A\$ plus B\$ again, this time using the value of B$ instead of the literal string " from YoBASIC".
+- The fifth line prints the text A\$ plus B\$ again, this time using the value of B$ instead of the literal string " from UI-BASIC".
 - Now here's an extra assignment. Use your mouse to only select the last line of the program and run it with F8. Hit F8 again and again to see what happens.
 ### Example 3 – Decision Making with IF
 ```
@@ -68,10 +68,10 @@ IF number% = 5 THEN print "The number is equal to 5"
 IF number% > 5 THEN print "The number is greater than 5"
 ```
 ####  Listen: Decision Making with IF...
-- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in UI-BASIC Editor".
 - You will see a new editor tab open with the code for this example.
 - Sometimes you will want your program to make a decision based on some condition. That's one of the main things we use computers for, after all!
-- In YoBASIC, we use the IF statement to make decisions.
+- In UI-BASIC, we use the IF statement to make decisions.
 - The first line of the program prompts the user to enter a number from 1 to 10.
 - The second line uses the IF statement to check if the number entered by the user is less than 5.
 - If it is, the program prints the message "The number is less than 5".
@@ -89,10 +89,10 @@ FOR i = 1 TO 10
 NEXT i
 ```
 ####  Listen: Loops with FOR/NEXT...
-- To start, click the button to open our first example in an editor tab. Click the button that says "Open in YoBASIC Editor".
+- To start, click the button to open our first example in an editor tab. Click the button that says "Open in UI-BASIC Editor".
 - You will see a new editor tab open with the code for this example.
 - Sometimes you will want your program to repeat a block of code multiple times. That's where loops come in.
-- In YoBASIC, we use the FOR/NEXT loop to repeat a block of code a specific number of times.
+- In UI-BASIC, we use the FOR/NEXT loop to repeat a block of code a specific number of times.
 - The first line of the program starts the FOR loop. It creates a variable called i and sets it to 1. 
 - The loop will continue as long as i is less than or equal to 10.
 - The second line prints the value of i, the text " squared is ", and the square of i (which is i multiplied by itself).
@@ -100,13 +100,13 @@ NEXT i
 - The loop will repeat until i is greater than 10.
 - We have lots of other ways we can do loops, and you'll learn more about them as we go through the lessons.
 ###  Recap Video (Todo: Kala)
-- In this lesson we learned the basics of programming with YoBASIC.
+- In this lesson we learned the basics of programming with UI-BASIC.
 - We wrote our first program, the "Hello World" program, which prints text to the screen.
 - We also learned about variables and input, decision making with "if" statements, and loops with "For" and "Next".
 - These are the fundamental concepts of programming that you will use in every programming language.
 - In the next lesson, we will dive deeper into variables and functions. See you there!
 
-- I den här lektionen lärde vi oss grunderna i programmering med YoBASIC.
+- I den här lektionen lärde vi oss grunderna i programmering med UI-BASIC.
 - Vi skrev vårt första program, programmet "Hello World", som skriver ut text på skärmen.
 - Vi lärde oss också om variabler och indata, beslutsfattande med "if"-satser och loopar med "For" och "Next".
 - Det här är de grundläggande programmeringsbegreppen som du kommer att använda i alla programmeringsspråk.
@@ -116,7 +116,7 @@ NEXT i
 ## TUTORIAL PAGE 002 - Variables and Functions
 
 ### Introduction Video (Todo Skye)
-- In this tutorial we are going to learn about variables and functions in YoBASIC.
+- In this tutorial we are going to learn about variables and functions in UI-BASIC.
 - Variables are used to store data in your program, and functions are used to group code together to perform a specific task.
 - By the end of this tutorial you will understand how variables and functions are used together in most programming languages.
 ### Example 1 - Using a very simple function, or "CALLING"

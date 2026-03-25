@@ -22,8 +22,8 @@
     {
       name: 'demo/HELLO.BAS', kind: 'program', readOnly: true, content: [
         'PRINTLN "HELLO, WORLD!"',
-        'PRINTLN "WELCOME TO 🌱YoBASIC"',
-        'PRINTLN "🌱YoBASIC IS A SUBSET OF THE Basil🌿 PROGRAMMING LANGUAGE"',
+        'PRINTLN "WELCOME TO 🌱UI-BASIC"',
+        'PRINTLN "🌱UI-BASIC IS A SUBSET OF THE Basil🌿 PROGRAMMING LANGUAGE"',
         'PRINTLN "FOR LEARNING PROGRAMMING BASICS"',
         'PRINTLN "HAVE A NICE DAY ☀️!"'
       ].join('\n')

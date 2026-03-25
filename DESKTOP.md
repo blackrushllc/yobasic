@@ -1,6 +1,6 @@
-# YoBASIC Desktop Design Specification (DESKTOP.md)
+# UI-BASIC Desktop Design Specification (DESKTOP.md)
 
-This document outlines the design and implementation requirements for `desktop.html`, a new web page for the YoBASIC project. This page aims to provide a simulated operating system desktop environment, inspired by Windows 95, where users can interact with multiple "applications" and system components within a single, fixed-size viewport.
+This document outlines the design and implementation requirements for `desktop.html`, a new web page for the UI-BASIC project. This page aims to provide a simulated operating system desktop environment, inspired by Windows 95, where users can interact with multiple "applications" and system components within a single, fixed-size viewport.
 
 ## 1. Vision and User Experience
 
@@ -74,7 +74,7 @@ Users can create icons on the desktop via:
 ## 5. Built-in Applications
 
 ### 5.1 Basic.JS Terminal
-- Provides the standard YoBASIC terminal experience.
+- Provides the standard UI-BASIC terminal experience.
 - Supports multiple concurrent instances, each with its own interpreter state.
 
 ### 5.2 File Explorer
@@ -94,7 +94,7 @@ Users can create icons on the desktop via:
 - Supports "File -> Save", "File -> Save As" and "File -> Close".
 
 ### 5.5 Chat Window
-- The standard YoBASIC chat component.
+- The standard UI-BASIC chat component.
 - Singleton instance.
 
 ### 5.6 iFrame Dialogs
@@ -227,7 +227,7 @@ To avoid confusion, define this ordering:
 * Downloads (1x)
 * iFrame Dialogs (listed in an array that I can edit)
 * URL Icons:
-  * /basic/index.html => "YoBASIC IDE"
+  * /basic/index.html => "UI-BASIC IDE"
   * https://blackrushbasic.com/ => "Basil Docs"
   * https://basilbasic.com/ => "Basil Website"
 * Other URL icons (listed in an array that I can edit)

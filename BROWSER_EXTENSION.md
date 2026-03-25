@@ -1,4 +1,4 @@
-### Implementation Plan: YoBASIC Browser Extension
+### Implementation Plan: UI-BASIC Browser Extension
 
 This plan outlines the steps and architectural considerations for porting the `desktop.html` functionality into a cross-browser extension (Chrome and Firefox) that supports modal and docked-tray interfaces.
 
@@ -8,13 +8,13 @@ This plan outlines the steps and architectural considerations for porting the `d
     *   **Permissions**: `storage`, `contextMenus`, `scripting`, `activeTab`.
     *   **Background Service Worker**: Manages the extension lifecycle, context menu registration, and inter-script communication.
 2.  **Shadow DOM Injection**:
-    *   To prevent CSS conflicts with host websites, the entire YoBASIC Desktop UI will be injected into a `Shadow Root` within a container div on the host page.
+    *   To prevent CSS conflicts with host websites, the entire UI-BASIC Desktop UI will be injected into a `Shadow Root` within a container div on the host page.
 3.  **Unified Messaging**:
     *   Implement a messaging bridge between the `Background Worker` (extension level) and `Content Scripts` (page level) to handle commands like "Open Modal" or "Toggle Tray".
 
 #### Phase 2: UI Implementation (Modal & Tray)
 1.  **Context Menu Integration**:
-    *   Register a "Open YoBASIC Desktop" item in the browser's right-click menu.
+    *   Register a "Open UI-BASIC Desktop" item in the browser's right-click menu.
     *   Upon selection, the Background Worker sends a message to the active tab's Content Script to instantiate the UI.
 2.  **Modal View**:
     *   A centered, draggable container mimicking the current `desktop.html` viewport.
@@ -70,7 +70,7 @@ This plan outlines the steps and architectural considerations for porting the `d
 ### Storage Discussion: VFS, Drive, and Supabase
 
 *   **Local Storage VFS**: This should be the default "fast" storage. It is ideal for small scripts, configuration files, and temporary data. It is isolated from the host website's own storage but shared across all extension instances.
-*   **Local Drive Storage**: This is crucial for users who want to treat YoBASIC as a professional tool. By using the File System Access API, the extension can read and write `.BAS` files directly to the user's "Documents" or "Projects" folder, bypassing the browser's sandbox limitations.
+*   **Local Drive Storage**: This is crucial for users who want to treat UI-BASIC as a professional tool. By using the File System Access API, the extension can read and write `.BAS` files directly to the user's "Documents" or "Projects" folder, bypassing the browser's sandbox limitations.
 *   **Supabase Storage**:
     *   **Persistence**: Solves the "New Browser" problem where local storage is empty.
     *   **Data Sharing**: The `shared/` directory allows for a community-driven repository of scripts.

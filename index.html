@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>YoBASIC</title>
-    <!-- YoBASIC Styles (Track A: no Bootstrap CSS) -->
+    <title>UI-BASIC</title>
+    <!-- UI-BASIC Styles (Track A: no Bootstrap CSS) -->
     <link rel="stylesheet" href="ybs.css">
     <link rel="stylesheet" href="ybs-compat.css">
     <!-- Bootstrap Icons -->
@@ -45,7 +45,7 @@
             --nav-height: 56px;
             --editor-caret-color: #FFD400;
             --tabs-pad: 40px; /* default tabs bar height reserve */
-            /* Theme variables (defaults match YoBASIC Dark) */
+            /* Theme variables (defaults match UI-BASIC Dark) */
             --app-bg: #0b1b3b;
             --app-fg: #e6f0ff;
             --accent: #FF6600;
@@ -160,10 +160,10 @@
     </style>
 </head>
 <body>
-<div id="splash-overlay"><img src="spash.png" alt="YoBASIC Splash" onerror="this.onerror=null; this.src='splash.png';"></div>
+<div id="splash-overlay"><img src="spash.png" alt="UI-BASIC Splash" onerror="this.onerror=null; this.src='splash.png';"></div>
 <nav id="topnav" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/basic/home.html">🌱YoBASIC</a>
+        <a class="navbar-brand" href="/basic/home.html">🌱UI-BASIC</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -264,10 +264,10 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p>YoBASIC is a subset of the Basil🌿 programming language and presented here as an interactive learning tool for beginners and a sandbox for experienced developers.</p>
+        <p>UI-BASIC is a subset of the Basil🌿 programming language and presented here as an interactive learning tool for beginners and a sandbox for experienced developers.</p>
         <p>Both the Editor and the file I/O functions in BASIC make use of a simulated file system that uses local storage in your browser and will persist between sessions. </p>
         <p><a class="link-info" href="https://basilbasic.com" target="_blank" rel="noopener">Visit basilbasic.com</a></p>
-          <p><a class="link-info" href="https://yobasic.com/basic/home.html" target="_blank" rel="noopener">YoBASIC.com Home</a></p>
+          <p><a class="link-info" href="https://yobasic.com/basic/home.html" target="_blank" rel="noopener">UI-BASIC.com Home</a></p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -432,8 +432,8 @@
                 <div class="mb-2">
                   <label class="form-label">Choose</label>
                   <select id="theme-select" class="form-select form-select-sm">
-                    <option value="themes/YoBASIC Dark.json">YoBASIC Dark (built-in)</option>
-                    <option value="themes/YoBASIC Light.json">YoBASIC Light (built-in)</option>
+                    <option value="themes/UI-BASIC Dark.json">UI-BASIC Dark (built-in)</option>
+                    <option value="themes/UI-BASIC Light.json">UI-BASIC Light (built-in)</option>
                   </select>
                 </div>
                 <div class="mb-2 d-flex gap-2 flex-wrap">
@@ -601,7 +601,7 @@
         const ACTIVE_REF_KEY = 'basic_active_theme_ref';
         const ACTIVE_JSON_KEY = 'basic_active_theme_json';
         const LOCAL_THEMES_KEY = 'basic_themes';
-        const BUILTIN_DEFAULT = 'themes/YoBASIC Dark.json';
+        const BUILTIN_DEFAULT = 'themes/UI-BASIC Dark.json';
 
         function getLocalThemesMap(){
             try { return JSON.parse(localStorage.getItem(LOCAL_THEMES_KEY) || '{}') || {}; } catch(e){ return {}; }
@@ -1460,7 +1460,7 @@
         vfs = new VirtualFileSystem({ localStorageKey: 'yobasic.vfs' });
         vfs.loadFromLocalStorage();
         window.__vfsInstance__ = vfs;
-        // Apply active theme or default (YoBASIC Dark) as early as possible
+        // Apply active theme or default (UI-BASIC Dark) as early as possible
         (async function(){ try{ await ThemeManager.applyActiveOrDefault(); }catch(_){ } })();
         // Set up Supabase-backed providers
         (async ()=>{
@@ -1479,7 +1479,7 @@
                 if (window.Chat && Chat.init) await Chat.init();
                 // After providers are ready, try loading sharedProject from URL
                 try{ await tryLoadSharedProjectFromUrl(); }catch(err){ console.warn('sharedProject load failed', err); }
-            }catch(e){ console.warn('[YoBASIC] Supabase init failed', e); }
+            }catch(e){ console.warn('[UI-BASIC] Supabase init failed', e); }
             finally{ try{ window.__splashReady__ && window.__splashReady__(); }catch(_){} }
         })();
 
@@ -1524,9 +1524,9 @@
                                 if (window.ProjectManager && typeof ProjectManager.callAny === 'function'){
                                     ProjectManager.callAny(handlerName, []);
                                 } else {
-                                    console.warn('[YoBASIC] ProjectManager not ready for handler', handlerName);
+                                    console.warn('[UI-BASIC] ProjectManager not ready for handler', handlerName);
                                 }
-                            }catch(e){ console.warn('[YoBASIC] handler error', handlerName, e); }
+                            }catch(e){ console.warn('[UI-BASIC] handler error', handlerName, e); }
                         });
                     });
                 }catch(e){ console.warn('Bind handlers failed', e); }
@@ -1566,9 +1566,9 @@
                     const res = fn.apply(window.YoBasicHost, args || []);
                     return (typeof res === 'string') ? res : '';
                 }
-                console.warn('[YoBASIC] Unknown host method', name);
+                console.warn('[UI-BASIC] Unknown host method', name);
                 return '';
-            }catch(e){ console.warn('[YoBASIC] hostExtern error', e); return ''; }
+            }catch(e){ console.warn('[UI-BASIC] hostExtern error', e); return ''; }
         }
         function hostCallModule(moduleName, memberName, args, interpreter){
             const mod = String(moduleName||'').toUpperCase();
@@ -1610,7 +1610,7 @@
                 }
             }
         }, {
-            greetings: '🌱YoBASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is OFF (TROFF).',
+            greetings: '🌱UI-BASIC v1.0 by Blackrush, LLC\nCopyright (C) 1979-2026\nPress [F6] to toggle terminal\n\nTRACE is OFF (TROFF).',
             name: 'js_demo',
             prompt: "\nOK\n\n"
         });
@@ -1954,8 +1954,8 @@
             // Reset to default
             $('#btn-theme-reset').on('click', async function(){
                 try{
-                    const th = await ThemeManager.loadRef('themes/YoBASIC Dark.json');
-                    if (th){ ThemeManager.apply(th, 'themes/YoBASIC Dark.json'); fillInputsFromTheme(th); $('#theme-select').val('themes/YoBASIC Dark.json'); }
+                    const th = await ThemeManager.loadRef('themes/UI-BASIC Dark.json');
+                    if (th){ ThemeManager.apply(th, 'themes/UI-BASIC Dark.json'); fillInputsFromTheme(th); $('#theme-select').val('themes/UI-BASIC Dark.json'); }
                 }catch(e){ alert(String(e && e.message ? e.message : e)); }
             });
             // Keep shared button in sync with identity changes when modal opens

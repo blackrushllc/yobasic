@@ -155,7 +155,7 @@ In index.html, replace the "Help 1", "Help 2" and "Help 3" options with 3 menu i
 = "Reference and Guide" - opens https://blackrushbasic.com/ in a new tab.
 
 In desktop.html, add 3 new options to the "Help" dropdown:
-= "YoBASIC IDE" - opens the index.html page in a new tab.
+= "UI-BASIC IDE" - opens the index.html page in a new tab.
 = "Minimal IDE" - opens the test.html page in a new tab.
 = "Reference and Guide" - opens https://blackrushbasic.com/ in a new tab.
 Add a single separator between the 3 new "Help" dropdown items and "About".

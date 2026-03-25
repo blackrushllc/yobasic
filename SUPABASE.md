@@ -474,7 +474,7 @@ Here’s what you (Erik) need to do in the Supabase dashboard to support all of 
     * Paste those into `js/supabaseClient.js` once Junie creates it.
 
 ```aiignore
-Supabase "YoBASIC" project PGvxA/4cwykrQTz password
+Supabase "UI-BASIC" project PGvxA/4cwykrQTz password
 Project URL https://deggmigeevsdyxqcbpuz.supabase.co
 API key eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlZ2dtaWdlZXZzZHl4cWNicHV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NjE1NDgsImV4cCI6MjA3ODEzNzU0OH0.3Cvlflm9zKFWpZtMfSlgBpY8CBP7u_Pfph9A03QdSP0
 

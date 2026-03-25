@@ -1,5 +1,5 @@
 /**
- * YoBASIC Desktop (desktop.js)
+ * UI-BASIC Desktop (desktop.js)
  */
 
 $(function() {
@@ -479,7 +479,7 @@ $(function() {
                 { id: 'settings', type: 'system', title: 'Settings', icon: IconMap['gear'], launch: 'settings' },
                 { id: 'about', type: 'system', title: 'About', icon: IconMap['info'], launch: 'about' },
                 { id: 'desktop', type: 'system', title: 'Desktop', icon: IconMap['display'], launch: 'explorer', path: 'projects' },
-                { id: 'ide', type: 'url', title: 'YoBASIC IDE', icon: IconMap['link'], url: 'index.html' },
+                { id: 'ide', type: 'url', title: 'UI-BASIC IDE', icon: IconMap['link'], url: 'index.html' },
                 { id: 'ide-minimal', type: 'url', title: 'Minimal IDE', icon: IconMap['link'], url: 'test.html' },
                 { id: 'docs', type: 'url', title: 'Basil Docs', icon: IconMap['link'], url: 'https://blackrushbasic.com/' },
                 { id: 'website', type: 'url', title: 'Basil Website', icon: IconMap['link'], url: 'https://basilbasic.com/' },
@@ -1378,7 +1378,7 @@ $(function() {
                             }
                         }
                     }, {
-                        greetings: (initialFile || initialCode) ? '' : '🌱YoBASIC v1.0 Terminal\nCopyright (C) 1979-2026\nType "HELP" for guidance.',
+                        greetings: (initialFile || initialCode) ? '' : '🌱UI-BASIC v1.0 Terminal\nCopyright (C) 2026\nType "HELP" for guidance.',
                         name: win.id,
                         height: '100%',
                         prompt: '> '
@@ -2099,15 +2099,15 @@ $(function() {
             WindowManager.createWindow({
                 id: 'about',
                 singleton: true,
-                title: 'About YoBASIC',
+                title: 'About UI-BASIC',
                 icon: IconMap['info'],
                 width: 400,
                 height: 250,
                 onOpen: (win) => {
                     win.$el.find('.window-body').html(`
                         <div class="p-3">
-                            <h5 class="mb-3">YoBASIC Desktop</h5>
-                            <p>YoBASIC is a subset of the Basil🌿 programming language and presented here as an interactive learning tool for beginners and a sandbox for experienced developers.</p>
+                            <h5 class="mb-3">UI-BASIC Desktop</h5>
+                            <p>UI-BASIC is a subset of the Basil🌿 programming language and presented here as an interactive learning tool for beginners and a sandbox for experienced developers.</p>
                             <p>Both the Editor and the file I/O functions in BASIC make use of a simulated file system that uses local storage in your browser and will persist between sessions. </p>
                             <p><a href="https://basilbasic.com" target="_blank" rel="noopener" style="color: #000080; text-decoration: underline;">Visit basilbasic.com</a></p>
                         </div>
@@ -2187,7 +2187,7 @@ $(function() {
             const sharedProvider = new SupabaseSharedProvider(Identity);
             vfs.setProviders({ examples: examplesProvider, shared: sharedProvider });
         } catch (e) {
-            console.error('[YoBASIC] Desktop VFS providers init failed', e);
+            console.error('[UI-BASIC] Desktop VFS providers init failed', e);
         }
         DesktopManager.init();
     });

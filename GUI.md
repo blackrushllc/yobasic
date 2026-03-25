@@ -1,8 +1,8 @@
-## Junie Prompt: YoBASIC UI Dialog Library (Event → SUB/FUNCTION, Browser-only, Node no-op)
+## Junie Prompt: UI-BASIC UI Dialog Library (Event → SUB/FUNCTION, Browser-only, Node no-op)
 
 ### Goal
 
-Add an optional **UI/dialog library** to `basic.js` (YoBASIC) that enables **event-driven GUI apps in the browser**, while being **ignored / no-op in Node**. Students should be able to build Visual BASIC–style GUI programs where DOM events (click/change/input/submit, etc.) directly call BASIC `SUB`s or `FUNCTION`s, without any polling loop in BASIC.
+Add an optional **UI/dialog library** to `basic.js` (UI-BASIC) that enables **event-driven GUI apps in the browser**, while being **ignored / no-op in Node**. Students should be able to build Visual BASIC–style GUI programs where DOM events (click/change/input/submit, etc.) directly call BASIC `SUB`s or `FUNCTION`s, without any polling loop in BASIC.
 
 The UI system must support:
 
@@ -25,7 +25,7 @@ The UI system must support:
 
 3. **Plays nicely with IDE wrapper**
 
-    * IDE wrapper can have its own JS event handlers; YoBASIC UI must not globally block or hijack the DOM.
+    * IDE wrapper can have its own JS event handlers; UI-BASIC UI must not globally block or hijack the DOM.
     * UI should render under a dedicated root element and use scoped event listeners.
 
 4. **Safe re-entrancy**

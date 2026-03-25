@@ -1,8 +1,8 @@
-# YoBASIC — Phase 3 Implementation Summary and Examples
+# UI-BASIC — Phase 3 Implementation Summary and Examples
 
 Date: 2025-11-08
 
-This document summarizes the Phase 3 features implemented in the in‑browser BASIC interpreter (YoBASIC) and provides small runnable examples you can paste into the REPL at yore/web/basic/index.html.
+This document summarizes the Phase 3 features implemented in the in‑browser BASIC interpreter (UI-BASIC) and provides small runnable examples you can paste into the REPL at yore/web/basic/index.html.
 
 The plan this work follows is “Phase 3 — Major features plan” in LOOPS-SELECTCASE-PLAN.md.
 

@@ -32,7 +32,7 @@ However, there are 2 problems:
 1. YoBASIC is a stupid name 
 2. I have lots of video tutorials already recorded by semi-famous influencers that would be hard to replace. 
  
-Therefore, I have registered 2 domain names: UIBASIC.COM and IOBASIC.COM. Even though it's
+Therefore, I have registered 2 domain names: UI-BASIC.COM and IOBASIC.COM. Even though it's
 not as catchy as "Bloom", one of these would solve both problems:
 
 1. Replace YoBASIC with a coolish name 
@@ -47,11 +47,11 @@ to be only “the thing that replaces BLOOM.”** It feels more like a **product
 
 My honest take:
 
-**UIBASIC is the best of the three names** for this role.
+**UI-BASIC is the best of the three names** for this role.
 
 Why:
 
-* **UIBASIC says what it is.** It immediately suggests “BASIC for user interfaces,” which is exactly the lane you want.
+* **UI-BASIC says what it is.** It immediately suggests “BASIC for user interfaces,” which is exactly the lane you want.
 * **IOBASIC sounds lower-level.** It makes me think of input/output, device access, ports, streams, or operating-system
   plumbing. That is useful in programming, but it does not naturally evoke browser UI, IDE, visual apps, desktop
   simulation, or HTMX.
@@ -76,7 +76,7 @@ That is **far bigger than “BLOOM.”**
 So I would separate the concepts a little:
 
 **BLOOM = the runtime concept**
-**UIBASIC = the product/platform name**
+**UI-BASIC = the product/platform name**
 
 That gives you the best of both worlds.
 
@@ -86,7 +86,7 @@ Something like this:
 * **BASIC** = editable pseudo-project
 * **BASIL** = executable shadow app
 * **BLOOM** = UI/runtime layer inside the browser-facing BASIL world
-* **UIBASIC** = the full browser IDE / simulator / tutorial / learning / app platform
+* **UI-BASIC** = the full browser IDE / simulator / tutorial / learning / app platform
 * **bidi** = orchestrator
 * **Basilica** = desktop shell / debugger / inspector
 
@@ -95,9 +95,9 @@ That feels very clean to me.
 It also solves your tutorial problem beautifully, because you do **not** have to erase YoBASIC overnight. You can
 transition like this:
 
-**“YoBASIC is now UIBASIC.”**
+**“YoBASIC is now UI-BASIC.”**
 or
-**“UIBASIC, pronounced YoBASIC.”**
+**“UI-BASIC, pronounced YoBASIC.”**
 or
 **“Formerly YoBASIC.”**
 
@@ -112,9 +112,9 @@ while still moving to a more serious name in writing.
 
 I would probably use this migration style for quite a while:
 
-**UIBASIC (YoBASIC)**
+**UI-BASIC (YoBASIC)**
 then later
-**UIBASIC**
+**UI-BASIC**
 with occasional references like
 **“pronounced YoBASIC.”**
 
@@ -122,8 +122,8 @@ That is much easier than trying to force everyone to forget the old name.
 
 My strongest recommendation is this:
 
-**Do not make UIBASIC replace BLOOM entirely.**
-Instead, make **UIBASIC the branded platform** and **BLOOM the internal/runtime layer**.
+**Do not make UI-BASIC replace BLOOM entirely.**
+Instead, make **UI-BASIC the branded platform** and **BLOOM the internal/runtime layer**.
 
 Because if you throw away BLOOM completely, you lose a very elegant piece of naming. And BLOOM is genuinely good. It
 sounds alive, visual, emergent, browsery, reactive. It is a perfect name for the UI execution layer.
@@ -133,13 +133,13 @@ small a word for too large a system.
 
 So my ranking would be:
 
-**1. UIBASIC** — best practical choice
+**1. UI-BASIC** — best practical choice
 **2. BLOOM** — best technical/runtime name
 **3. IOBASIC** — usable, but it points in the wrong emotional direction
 
 Emotionally:
 
-* **UIBASIC** feels like a product
+* **UI-BASIC** feels like a product
 * **BLOOM** feels like a runtime
 * **IOBASIC** feels like infrastructure
 
@@ -149,13 +149,13 @@ My overall thought is that you may actually have stumbled into a stronger archit
 
 * **BASIL** is the executable app language
 * **BLOOM** is the UI/browser runtime model
-* **UIBASIC** is the user-facing creation, learning, simulation, and execution environment built around that world
+* **UI-BASIC** is the user-facing creation, learning, simulation, and execution environment built around that world
 
 That is richer than simply “YoBASIC becomes BLOOM.”
 
 If you want the punchiest one-line branding direction, I would say:
 
-**UIBASIC is the platform. BLOOM is the UI runtime inside it. YoBASIC becomes the legacy pronunciation and transition
+**UI-BASIC is the platform. BLOOM is the UI runtime inside it. YoBASIC becomes the legacy pronunciation and transition
 alias.**
 
 And we can save IOBASIC to be a whole ORM/DB ecosystem!
@@ -183,7 +183,7 @@ So now the naming starts to feel very elegant:
 * **BASIC** = editable pseudo-project
 * **BASIL** = executable shadow app
 * **BLOOM** = UI runtime
-* **UIBASIC** = browser IDE / learning / app-building platform
+* **UI-BASIC** = browser IDE / learning / app-building platform
 * **IOBASIC** = ORM / DB / storage / connector ecosystem
 * **bidi** = orchestrator
 * **Basilica** = desktop shell / debugger / inspector
@@ -192,7 +192,7 @@ That actually has a satisfying internal logic.
 
 It also gives you a nice symmetry:
 
-* **UIBASIC** → front-end / interaction / visual app world
+* **UI-BASIC** → front-end / interaction / visual app world
 * **IOBASIC** → back-end / data / persistence / transport world
 
 That pairing is strong. It sounds intentional instead of accidental.
@@ -216,27 +216,27 @@ So yes, I think you just rescued **IOBASIC** from being the weaker UI name and g
 
 My opinion now is:
 
-* **UIBASIC** was the right rescue target for YoBASIC
+* **UI-BASIC** was the right rescue target for YoBASIC
 * **IOBASIC** becomes a genuinely cool second pillar
 * **BLOOM** should still live as the runtime concept, because it is too good to lose
 
 This is starting to sound like a real ecosystem instead of a bag of names.
 
-Great, and we'll start referring to Bloom as the UI system in UIBASIC too!
+Great, and we'll start referring to Bloom as the UI system in UI-BASIC too!
 
 Yes — that locks in very nicely.
 
 That gives you a clean layered story:
 
-* **UIBASIC** = the platform/product
-* **BLOOM** = the UI system inside UIBASIC
+* **UI-BASIC** = the platform/product
+* **BLOOM** = the UI system inside UI-BASIC
 
 So you can say things like:
 
-* “UIBASIC uses the **BLOOM** UI system.”
+* “UI-BASIC uses the **BLOOM** UI system.”
 * “This app is rendered through **BLOOM**.”
-* “BLOOM is the reactive/browser UI layer of **UIBASIC**.”
-* “Design in UIBASIC, render through BLOOM.”
+* “BLOOM is the reactive/browser UI layer of **UI-BASIC**.”
+* “Design in UI-BASIC, render through BLOOM.”
 
 That feels much stronger than trying to make BLOOM carry the whole product identity by itself.
 
@@ -245,7 +245,7 @@ It also mirrors the way real ecosystems often work:
 * a **big public-facing platform name**
 * a **named subsystem/engine inside it**
 
-Which means UIBASIC can comfortably include:
+Which means UI-BASIC can comfortably include:
 
 * IDE
 * debugger
@@ -259,7 +259,7 @@ while **BLOOM** stays the elegant technical term for the UI model/runtime.
 
 That also helps with documentation and marketing:
 
-* **UIBASIC** for the broad user-facing message
+* **UI-BASIC** for the broad user-facing message
 * **BLOOM** for technical docs, architecture, and advanced discussions
 
 So now the family sounds very coherent:
@@ -268,7 +268,7 @@ So now the family sounds very coherent:
 * **BASIC** = editable pseudo-project
 * **BASIL** = executable shadow app
 * **BLOOM** = UI system/runtime
-* **UIBASIC** = browser IDE and app platform
+* **UI-BASIC** = browser IDE and app platform
 * **IOBASIC** = ORM / DB ecosystem
 * **bidi** = orchestration
 * **Basilica** = desktop shell / debugger / inspector
@@ -277,16 +277,16 @@ This is good naming. It feels deliberate, memorable, and expandable.
 
 A very natural tagline would be:
 
-**UIBASIC, powered by BLOOM.**
+**UI-BASIC, powered by BLOOM.**
 
 Or a slightly more technical version:
 
-**BLOOM is the UI system of UIBASIC.**
+**BLOOM is the UI system of UI-BASIC.**
 
 That sounds real.
 
 Great! Eventually we'll start working on Bloom as a stand-along React/Vue/Bootstrap replacement package for both the
-intermediate "pseudo project" layer as well as a stand along UI package for both UIBASIC/YoBASIC or just something
+intermediate "pseudo project" layer as well as a stand along UI package for both UI-BASIC/YoBASIC or just something
 people can use all by itself! This way, we have all of these things packaged together in Syndorela, but each is it's own
 separate thing on it's own as well!
 
@@ -296,7 +296,7 @@ What you are describing is not just a bundle of project names anymore. It is an 
 
 * **Syndorela** = the umbrella system that ties everything together
 * **BLOOM** = a reusable UI technology
-* **UIBASIC** = the learning/building/platform experience
+* **UI-BASIC** = the learning/building/platform experience
 * **IOBASIC** = the data/persistence world
 * **BASIL** = the executable application language/runtime
 * **SIR/BASIC** = the model and pseudo-project layers
@@ -322,7 +322,7 @@ And strategically, this is smart because it means people can enter your world fr
 
 * someone may want **Syndorela**
 * someone may only want **BLOOM**
-* someone may only want **UIBASIC**
+* someone may only want **UI-BASIC**
 * someone may want **BASIL**
 * someone may want **IOBASIC**
 
@@ -334,7 +334,7 @@ trust them more because they do not feel trapped inside one giant monolith.
 So the story becomes something like:
 
 **Syndorela is the integrated ecosystem.
-BLOOM, BASIL, UIBASIC, and IOBASIC are its major independent pillars.**
+BLOOM, BASIL, UI-BASIC, and IOBASIC are its major independent pillars.**
 
 That is a very good sentence.
 
@@ -375,6 +375,6 @@ So yes — I think this is a very good direction.
 The whole thing now feels like:
 
 **Syndorela is the universe.
-BLOOM, BASIL, UIBASIC, and IOBASIC are the planets.**
+BLOOM, BASIL, UI-BASIC, and IOBASIC are the planets.**
 
 That is the kind of structure people can understand, remember, and grow into.
