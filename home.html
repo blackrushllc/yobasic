@@ -5,7 +5,7 @@
   <!-- favicon.png -->
   <link rel="icon" type="image/png" href="/basic/favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>🌱YoBASIC - Learn Coding Fundamentals (Basil🌿 + Beyond)</title>
+  <title>🌱YoBASIC! - Learn Coding Fundamentals (Basil🌿 + Beyond)</title>
   <meta name="description" content="🌱YoBASIC is an education-first coding tool and tutorial IDE. Start instantly with no login, or create an account to collaborate via shared chat and a virtual filesystem." />
 
   <!-- jQuery & jQuery Terminal -->
@@ -680,7 +680,8 @@ PRINT "Try writing another FUNCTION (e.g., Multiply%)."`
         name: 'yobasic_home',
         prompt: 'Yo> ',
         height: 220, // Match the CSS max-height
-        checkArity: false
+        checkArity: false,
+        focus: false
       });
 
       function loadProgram(id){
@@ -713,6 +714,11 @@ PRINT "Try writing another FUNCTION (e.g., Multiply%)."`
 
       // Initialize default program
       loadProgram('hello');
+
+      // Force scroll to top after a short delay to counteract any sneaky auto-focus/scrolling
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 100);
 
       // Footer year
       const yearEl = document.getElementById('year');
