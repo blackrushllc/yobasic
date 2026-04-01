@@ -1,6 +1,6 @@
 {
   "id": "yobasic-light",
-  "name": "YoBASIC Light",
+  "name": "UI-BASIC Light",
   "version": 1,
   "variables": {
     "--app-bg": "#f7f9fc",
@@ -21,7 +21,7 @@
     "fontSize": 16
   },
   "meta": {
-    "author": "YoBASIC",
+    "author": "UI-BASIC",
     "created": "2025-12-02",
     "updated": "2025-12-02"
   }

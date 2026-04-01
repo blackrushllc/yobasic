@@ -1,6 +1,6 @@
 ## IDE FRAMEWORK PHASE 3 PROMPT FOR JUNIE – Projects, Menus, Modules, Views & Build
 
-You’re working on the YoBASIC BASIC playground at `https://yobasic.com/basic`.
+You’re working on the UI-BASIC BASIC playground at `https://yobasic.com/basic`.
 
 We already have:
 
@@ -706,7 +706,7 @@ We want `basic.js` to remain as generic as possible (no direct DOM / VFS / Proje
 1. `READFILE$(path$)`
 2. `EXTERN(name$, arg1$, arg2$, ...)`
 
-These are the *only* YoBASIC-specific hooks we add to the BASIC core. The host (our page) wires them up to `YoBasicHost`. In other environments, they can be wired differently or left unimplemented.
+These are the *only* UI-BASIC-specific hooks we add to the BASIC core. The host (our page) wires them up to `YoBasicHost`. In other environments, they can be wired differently or left unimplemented.
 
 ---
 
@@ -748,7 +748,7 @@ Implementation:
 
     * Calls a host-provided callback, e.g. `hostReadFile(path: string): string`.
     * If the host callback is not provided or throws, raise a BASIC runtime error.
-* In the YoBASIC page, pass a host implementation that:
+* In the UI-BASIC page, pass a host implementation that:
 
     * Uses the existing VFS + project manager to resolve the file and return its content as text.
 
@@ -786,7 +786,7 @@ Implementation:
       hostExtern(methodName: string, args: string[]): string
       ```
     * If the host callback is not provided or the method is unknown, raise a BASIC runtime error (or return `""` and log; choose a consistent behavior and document it).
-* In the YoBASIC page, implement `hostExtern` by delegating into `YoBasicHost`:
+* In the UI-BASIC page, implement `hostExtern` by delegating into `YoBasicHost`:
 
   ```js
   const YoBasicHost = {
@@ -876,7 +876,7 @@ To keep `basic.js` generic:
         * Either throw a BASIC error like `Host function not available`
         * Or return `""` and log; decide & document.
 
-On the YoBASIC page:
+On the UI-BASIC page:
 
 * For the **project modules** and **menu script** interpreters, you **must** pass in these host functions so they can:
 
@@ -893,7 +893,7 @@ On other pages where you may reuse `basic.js`, you can:
 ### 15. Summary of Changes for You, Junie (Addendum)
 
 1. Add `READFILE$` and `EXTERN` built-ins to the BASIC interpreter, implemented via host callbacks (`hostReadFile`, `hostExtern`).
-2. Implement a `YoBasicHost` JS object in the YoBASIC page.
+2. Implement a `YoBasicHost` JS object in the UI-BASIC page.
 3. Implement `hostReadFile` to:
 
     * Resolve relative paths against the current project root (`projects/<CurrentProjectName>/...`).

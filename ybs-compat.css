@@ -1,4 +1,4 @@
-/* YoBASIC Bootstrap-compat (Track A): maps subset of Bootstrap class names to our tokens */
+/* UI-BASIC Bootstrap-compat (Track A): maps subset of Bootstrap class names to our tokens */
 
 /* Background and text utilities */
 .bg-dark{ background-color: var(--surface-2) !important; }

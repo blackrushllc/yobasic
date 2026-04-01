@@ -15,7 +15,7 @@
         .from('examples')
         .select('name, kind, content, updated_at')
         .order('name');
-      if (error){ console.warn('[YoBASIC] examples fetch error', error); this._loaded = true; this._cache = {}; return this._cache; }
+      if (error){ console.warn('[UI-BASIC] examples fetch error', error); this._loaded = true; this._cache = {}; return this._cache; }
       const map = {};
       (data||[]).forEach(row=>{
         const f = {

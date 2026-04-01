@@ -1,6 +1,6 @@
 {
   "id": "yobasic-dark",
-  "name": "YoBASIC Dark",
+  "name": "UI-BASIC Dark",
   "version": 1,
   "variables": {
     "--app-bg": "#0b1b3b",
@@ -21,7 +21,7 @@
     "fontSize": 16
   },
   "meta": {
-    "author": "YoBASIC",
+    "author": "UI-BASIC",
     "created": "2025-12-02",
     "updated": "2025-12-02"
   }

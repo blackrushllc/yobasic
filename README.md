@@ -1,6 +1,6 @@
-# YoBASIC — BASIC interpreter (basic.js) and in‑browser IDE
+# UI-BASIC — BASIC interpreter (basic.js) and in‑browser IDE
 
-YoBASIC is a modern, browser‑friendly implementation of the BASIC programming language plus a lightweight IDE you can open locally in your browser. It’s designed for learning, tinkering, and building cool things quickly — all powered by a single JavaScript file, basic.js, and a clean HTML IDE.
+UI-BASIC is a modern, browser‑friendly implementation of the BASIC programming language plus a lightweight IDE you can open locally in your browser. It’s designed for learning, tinkering, and building cool things quickly — all powered by a single JavaScript file, basic.js, and a clean HTML IDE.
 
 - Project site and docs: https://basilbasic.com
 - Live demo (run BASIC in your browser): https://yobasic.com/basic
@@ -9,7 +9,7 @@ YoBASIC is a modern, browser‑friendly implementation of the BASIC programming 
 What’s in this repo
 -------------------
 - basic.js — a full BASIC interpreter implemented in JavaScript
-- index.html — the YoBASIC IDE (a simple but capable development environment)
+- index.html — the UI-BASIC IDE (a simple but capable development environment)
 - supabaseClient.js + provider-*.js — optional cloud persistence (SupaBase)
 - vfs.js — a virtual file system used by the IDE and interpreter
 - KEYWORDS.md, Basic-Core-Language-Spec.md — language references and notes
@@ -17,7 +17,7 @@ What’s in this repo
 
 About the IDE (index.html)
 --------------------------
-The included YoBASIC IDE is a compact, fun development environment that showcases what you can do with basic.js. It features:
+The included UI-BASIC IDE is a compact, fun development environment that showcases what you can do with basic.js. It features:
 - A code editor for BASIC with examples and quick run/stop controls
 - Local storage for your programs and projects
 - Optional cloud sync using SupaBase for shared programs and collaboration
@@ -112,11 +112,11 @@ CLOSE #2
 ```
 
 
-YoBASIC.com and the Basil path
+UIBASIC.com and the Basil path
 ------------------------------
-YoBASIC.com is a learning tool and a friendly sandbox for BASIC in the browser. It’s also a stepping stone to Basil — a more advanced BASIC‑inspired language that runs on Windows, Linux, and macOS — and offers a sandbox for writing Basil code in a browser environment.
+UIBASIC.com is a learning tool and a friendly sandbox for BASIC in the browser. It’s also a stepping stone to Basil — a more advanced BASIC‑inspired language that runs on Windows, Linux, and macOS — and offers a sandbox for writing Basil code in a browser environment.
 
-If you’re curious about where YoBASIC can take you next, visit the Basil site for language guides and concepts:
+If you’re curious about where UI-BASIC can take you next, visit the Basil site for language guides and concepts:
 - https://basilbasic.com
 
 Developers: Basil source code is open on GitHub — contributions welcome!

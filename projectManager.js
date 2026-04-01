@@ -1,4 +1,4 @@
-// ProjectManager for YoBASIC Phase 3 (minimal implementation)
+// ProjectManager for UI-BASIC Phase 3 (minimal implementation)
 // - Local projects under projects/<Name>/...
 // - Loads Modules as resident BasicInterpreter instances
 // - Scans Menus to add toolbar buttons and dropdown menus

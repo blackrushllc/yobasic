@@ -1,4 +1,4 @@
-// Chat manager for YoBASIC using Supabase
+// Chat manager for UI-BASIC using Supabase
 (function(global) {
     'use strict';
 

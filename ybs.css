@@ -1,7 +1,7 @@
-/* YoBASIC Styles (Track A base) */
+/* UI-BASIC Styles (Track A base) */
 /* Reset and base */
 :root{
-  /* Core tokens (defaults tuned for YoBASIC Dark) */
+  /* Core tokens (defaults tuned for UI-BASIC Dark) */
   --app-bg: #0b1b3b;
   --app-fg: #e6f0ff;
   --muted-fg: #9aa4b2;

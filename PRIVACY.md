@@ -4,16 +4,16 @@ Below is **boilerplate privacy policy content** you can paste into a `/privacy.h
 
 ---
 
-# Privacy Policy (YoBASIC)
+# Privacy Policy (UI-BASIC)
 
 **Effective date:** [Month Day, Year]
 **Last updated:** [Month Day, Year]
 
-YoBASIC (“**YoBASIC**,” “**we**,” “**us**,” or “**our**”) is an education-focused coding tutorial and IDE. This Privacy Policy explains what information we collect, how we use it, and the choices you have when you use our website and services (the “**Service**”).
+UI-BASIC (“**UI-BASIC**,” “**we**,” “**us**,” or “**our**”) is an education-focused coding tutorial and IDE. This Privacy Policy explains what information we collect, how we use it, and the choices you have when you use our website and services (the “**Service**”).
 
 ## 1) Summary
 
-* You can use YoBASIC **without creating an account**.
+* You can use UI-BASIC **without creating an account**.
 * If you create an account, we collect basic account information (such as email and username) to provide login, collaboration features, and security.
 * If you use chat or shared files, we store the content you submit so collaboration works.
 * Some data may be stored **locally in your browser** (for example, editor state or recent files) to improve your experience.
@@ -60,7 +60,7 @@ When you use the Service, we may automatically collect:
 * **Log data** for security and reliability (e.g., IP address, request/response metadata, error logs)
 * **Cookies or similar technologies** for session management, preferences, and security
 
-> If you use YoBASIC without an account, we still collect limited technical/log data to keep the site secure and working.
+> If you use UI-BASIC without an account, we still collect limited technical/log data to keep the site secure and working.
 
 ## 3) How we use information
 
@@ -76,7 +76,7 @@ We use information to:
 
 ## 4) Local browser storage (guest mode)
 
-YoBASIC may store some information **on your device** (for example, in localStorage or IndexedDB) such as:
+UI-BASIC may store some information **on your device** (for example, in localStorage or IndexedDB) such as:
 
 * Editor contents and session state
 * UI preferences (theme, font size)
@@ -120,7 +120,7 @@ We use reasonable administrative, technical, and organizational measures to prot
 
 ## 9) Children’s privacy
 
-YoBASIC is designed for learning. If you allow minors to use YoBASIC, you are responsible for appropriate supervision and compliance with applicable laws.
+UI-BASIC is designed for learning. If you allow minors to use UI-BASIC, you are responsible for appropriate supervision and compliance with applicable laws.
 
 If we learn that we collected personal information from a child without appropriate consent where required, we will take steps to delete it.
 
@@ -176,7 +176,7 @@ You can paste one or more of these sections in if they apply:
 
 ### A) “If you use AI features”
 
-If YoBASIC includes AI-assisted coding or chat:
+If UI-BASIC includes AI-assisted coding or chat:
 
 * Describe what text/code is sent to AI providers and whether it’s used for training.
 * Provide an opt-out if possible.

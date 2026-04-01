@@ -28,7 +28,7 @@
         const { data, error } = await supabase.from('shared_files')
           .select('owner_name')
           .order('owner_name');
-        if (error){ console.warn('[YoBASIC] listOwners error', error); return []; }
+        if (error){ console.warn('[UI-BASIC] listOwners error', error); return []; }
         const set = new Set();
         (data||[]).forEach(r=>{ if (r.owner_name) set.add(r.owner_name); });
         return Array.from(set.values());
@@ -44,7 +44,7 @@
             .select('username')
             .or(`team_name.eq.${currentTeam},username.eq.${currentTeam}`)
             .order('username');
-          if (error){ console.warn('[YoBASIC] listOwners Team error', error); return []; }
+          if (error){ console.warn('[UI-BASIC] listOwners Team error', error); return []; }
           return (data||[]).map(r => r.username);
         } else {
           // Team members (and guests) only see themselves and the team owner
@@ -63,7 +63,7 @@
         .select('owner_name, path, kind, updated_at')
         .eq('owner_name', owner)
         .order('path');
-      if (error){ console.warn('[YoBASIC] listFilesForOwner error', error); return []; }
+      if (error){ console.warn('[UI-BASIC] listFilesForOwner error', error); return []; }
       const me = this.identity && this.identity.getCurrentUser ? this.identity.getCurrentUser() : null;
       const myname = me && me.username;
       return (data||[]).map(row=>({

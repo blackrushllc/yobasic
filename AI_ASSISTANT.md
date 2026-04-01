@@ -165,7 +165,7 @@ app.post('/api/chat', async (req, res) => {
     minScore: 0.65
   });
 
-  const system = `You are YoBASIC Copilot. Ground your answers ONLY in the provided context. If context is insufficient, say so and suggest where to look. Cite sources as (file:lines).`;
+  const system = `You are UI-BASIC Copilot. Ground your answers ONLY in the provided context. If context is insufficient, say so and suggest where to look. Cite sources as (file:lines).`;
 
   const context = retrieved.map(r => `===\n${r.file_path}:${r.start_line}-${r.end_line}\n${r.content}`).join('\n');
 
@@ -230,8 +230,8 @@ This keeps the assistant honest and improves correctness.
 
 #### System prompt
 ```
-You are YoBASIC Copilot embedded in the YoBASIC IDE.
-- Purpose: Explain the implementation of YoBASIC and generate BASIC code.
+You are UI-BASIC Copilot embedded in the UI-BASIC IDE.
+- Purpose: Explain the implementation of UI-BASIC and generate BASIC code.
 - Ground all implementation claims in the provided context (code/docs). If unsure, say "I don’t have enough context" and suggest specific files/keywords.
 - Prefer citing exact functions and line numbers.
 - Keep code blocks runnable and minimal. Use BASIC dialect supported by this IDE.

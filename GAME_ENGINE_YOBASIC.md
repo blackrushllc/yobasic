@@ -1,15 +1,15 @@
 JUNIE PROMPT (PhpStorm) — basic.js Extension Library: G (V1 foundation)
 
-You are working inside the YoBASIC / basic.js project. Implement a new extension library named `G` that provides a minimal 2D micro game engine foundation for teaching. This is the JS counterpart to Basil’s obj-game. The goal is a YoBASIC program that opens a canvas window/panel, loads an image, moves it with arrow keys, and draws each frame.
+You are working inside the UI-BASIC / basic.js project. Implement a new extension library named `G` that provides a minimal 2D micro game engine foundation for teaching. This is the JS counterpart to Basil’s obj-game. The goal is a UI-BASIC program that opens a canvas window/panel, loads an image, moves it with arrow keys, and draws each frame.
 
 Non-negotiables:
 - The BASIC program must NOT require a polling loop. `G.Run(initSub, updateSub, drawSub)` owns the loop via requestAnimationFrame.
-- Must integrate with YoBASIC’s IDE/windowing UI (if present). If the “desktop/windows 95-ish” UI exists, render the canvas inside a window; otherwise fall back to a simple full-width canvas container.
+- Must integrate with UI-BASIC’s IDE/windowing UI (if present). If the “desktop/windows 95-ish” UI exists, render the canvas inside a window; otherwise fall back to a simple full-width canvas container.
 - Use “object-dot” notation style consistent with other JS libs (e.g., UI lib).
 - Keep API aligned in spirit with Basil obj-game.
 
 V1 Success Criteria:
-1) A demo BASIC program runs in YoBASIC and creates a game surface (canvas) and loop.
+1) A demo BASIC program runs in UI-BASIC and creates a game surface (canvas) and loop.
 2) It loads `/assets/player.png` (or similar) and draws it.
 3) Arrow keys move sprite smoothly using dt.
 4) The browser close/stop (or IDE stop) halts loop cleanly.
@@ -46,10 +46,10 @@ Implementation Details / Guidance:
   - Draw sprite with ctx.drawImage.
 - Clean shutdown:
   - Provide `G.Quit()` to cancelAnimationFrame and detach listeners if needed.
-  - If YoBASIC has a “Stop” button/hook, wire into it so it calls G.Quit automatically.
+  - If UI-BASIC has a “Stop” button/hook, wire into it so it calls G.Quit automatically.
 
 Alignment with Basil:
-- Keep naming and behavior as close as possible, but follow JS/YoBASIC calling conventions.
+- Keep naming and behavior as close as possible, but follow JS/UI-BASIC calling conventions.
 - Document any intentional differences.
 
 Step Plan:

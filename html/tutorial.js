@@ -1,6 +1,6 @@
-// Shared tutorial script for YoBASIC chapters
+// Shared tutorial script for UI-BASIC chapters
 // - Prevent F5 reload inside iframe
-// - Wire "Open in YoBASIC Editor" buttons to postMessage with example files
+// - Wire "Open in UI-BASIC Editor" buttons to postMessage with example files
 
 (function () {
   // Prevent F5 inside the iframe from refreshing the whole IDE

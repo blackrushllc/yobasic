@@ -1,6 +1,6 @@
-# YoBASIC UI Library
+# UI-BASIC UI Library
 
-The YoBASIC UI library enables event-driven GUI applications in the browser. It follows a Visual BASIC-style model where DOM events call BASIC `SUB`s or `FUNCTION`s.
+The UI-BASIC UI library enables event-driven GUI applications in the browser. It follows a Visual BASIC-style model where DOM events call BASIC `SUB`s or `FUNCTION`s.
 
 ## Concept Overview
 
@@ -74,7 +74,7 @@ UI.ON%(dlg%, "click", "#btn", "SayHello")
 
 // The handler
 SUB SayHello(evt@)
-  UI.SET_TEXT%(evt@["DIALOGID%"], "#msg", "YoBASIC Rules!")
+  UI.SET_TEXT%(evt@["DIALOGID%"], "#msg", "UI-BASIC Rules!")
 END SUB
 ```
 
@@ -88,4 +88,4 @@ In **Node.js**, the UI module functions act as safe no-ops:
 
 ## Safety and Re-entrancy
 
-YoBASIC implements an **execution queue**. If multiple UI events fire rapidly, or an event fires while the main program is still running, the events are queued and executed sequentially. This prevents the interpreter from entering an invalid state.
+UI-BASIC implements an **execution queue**. If multiple UI events fire rapidly, or an event fires while the main program is still running, the events are queued and executed sequentially. This prevents the interpreter from entering an invalid state.

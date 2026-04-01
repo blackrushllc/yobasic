@@ -2,8 +2,22 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="efb9f136-e27d-462a-b9eb-a88cd07dc633" name="YoBASIC">
-        <fileTransfer rootFolder="/var/www/yore1/web/basic" accessType="SFTP" host="YoBASIC.com" port="22" sshConfigId="3bb7fb51-6276-4ab6-bf35-2dd3730af541" sshConfig="root@YoBASIC.com:22 password">
+      <webServer id="efb9f136-e27d-462a-b9eb-a88cd07dc633" name="YoBASIC" url="http://yobasic.com">
+        <fileTransfer rootFolder="/var/www/blackrush/yobasic.com" accessType="SFTP" host="YoBASIC.com" port="22" sshConfigId="3bb7fb51-6276-4ab6-bf35-2dd3730af541" sshConfig="root@YoBASIC.com:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="844d7eef-b2c5-43cd-ae23-bb0ba653b594" name="UIBASIC.COM" url="http://uibasic.com">
+        <fileTransfer rootFolder="/var/www/blackrush/uibasic.com" accessType="SFTP" host="YoBASIC.com" port="22" sshConfigId="3bb7fb51-6276-4ab6-bf35-2dd3730af541" sshConfig="root@YoBASIC.com:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="d3193029-fe6c-424b-ae32-1df904997a79" name="IOBASIC.COM" url="http://iobasic.com">
+        <fileTransfer rootFolder="/var/www/blackrush/iobasic.com" accessType="SFTP" host="YoBASIC.com" port="22" sshConfigId="3bb7fb51-6276-4ab6-bf35-2dd3730af541" sshConfig="root@YoBASIC.com:22 password">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>

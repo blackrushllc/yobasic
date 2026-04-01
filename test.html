@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>YoBASIC Minimal Test IDE</title>
-    <!-- YoBASIC Styles -->
+    <title>UI-BASIC Minimal Test IDE</title>
+    <script src="redirect.js"></script>
+    <!-- UI-BASIC Styles -->
     <link rel="stylesheet" href="ybs.css">
     <link rel="stylesheet" href="ybs-compat.css">
     <!-- Bootstrap Icons -->
@@ -37,7 +38,7 @@
             --ide-border: #333333;
             --ide-toolbar-bg: #111111;
             
-            /* Re-using YoBASIC Dark colors for Editor/Terminal as requested */
+            /* Re-using UI-BASIC Dark colors for Editor/Terminal as requested */
             --app-bg: var(--ide-bg);
             --app-fg: var(--ide-fg);
             --border: var(--ide-border);
@@ -119,7 +120,7 @@
             <div style="margin-left: auto; font-size: 11px; opacity: 0.4; letter-spacing: 1px;">YOBASIC TEST IDE</div>
         </div>
         <div id="editor-container">
-            <textarea id="editor">PRINT "YoBASIC Test Environment"
+            <textarea id="editor">PRINT "UI-BASIC Test Environment"
 PRINT "--------------------------"
 FOR I = 1 TO 3
   PRINT "Testing line ", I
@@ -208,7 +209,7 @@ PRINT "Done."</textarea>
                 }
             }
         }, {
-            greetings: '🌱YoBASIC Minimal Test IDE\nTRACE is OFF (TROFF).',
+            greetings: '🌱UI-BASIC Minimal Test IDE\nTRACE is OFF (TROFF).',
             name: 'yobasic_test',
             prompt: "OK\n"
         });

@@ -1,6 +1,6 @@
 ## IDE FRAMEWORK PHASE 3 PROMPT FOR JUNIE – Projects, Menus, Modules, Views & Build
 
-You’re working on the YoBASIC BASIC playground at `https://yobasic.com/basic`.
+You’re working on the UI-BASIC BASIC playground at `https://yobasic.com/basic`.
 
 We already have:
 
