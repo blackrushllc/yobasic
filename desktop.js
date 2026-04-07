@@ -3,6 +3,13 @@
  */
 
 $(function() {
+    const _yobUrl = (url) => {
+        if (!url) return url;
+        if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:')) return url;
+        const base = window.YOBASIC_BASE_URL || '';
+        return base + url;
+    };
+
     // Define BASIC mode for CodeMirror
     if (window.CodeMirror && CodeMirror.defineSimpleMode) {
         const BASIC_KEYWORDS = (window.YoBasic && YoBasic.getKeywords) ? YoBasic.getKeywords() : [
@@ -140,7 +147,9 @@ $(function() {
                         top += staggerOffset;
 
                         // If it goes too far right or down, wrap back
-                        if (left + width > $(window).width() - 40 || top + height > $(window).height() - 40) {
+                        const containerWidth = $(window).width();
+                        const containerHeight = $(window).height();
+                        if (left + width > containerWidth - 40 || top + height > containerHeight - 40) {
                             left = 40;
                             top = 40;
                         }
@@ -463,7 +472,16 @@ $(function() {
                     if (!isOccupied) return { x, y };
                 }
             }
-            return { x: 0, y: 0 };
+            return { x: this.GRID.padding, y: this.GRID.padding };
+        },
+
+        isOutOfBounds(pos) {
+            const containerWidth = $('#desktop-area').width() || window.innerWidth;
+            const containerHeight = $('#desktop-area').height() || window.innerHeight;
+            if (pos.x < 0 || pos.y < 0) return true;
+            if (pos.x + this.GRID.w > containerWidth) return true;
+            if (pos.y + this.GRID.h > containerHeight) return true;
+            return false;
         },
 
         // Todo: Add minimal IDE link for test.html and RESET button
@@ -518,10 +536,14 @@ $(function() {
 
                 if (pos) {
                     pos = this.snapToGrid(pos.x, pos.y);
-                    const isOccupied = Object.values(occupied).some(o => 
-                        Math.abs(o.x - pos.x) < 5 && Math.abs(o.y - pos.y) < 5
-                    );
-                    if (isOccupied) pos = null;
+                    if (this.isOutOfBounds(pos)) {
+                        pos = null;
+                    } else {
+                        const isOccupied = Object.values(occupied).some(o => 
+                            Math.abs(o.x - pos.x) < 5 && Math.abs(o.y - pos.y) < 5
+                        );
+                        if (isOccupied) pos = null;
+                    }
                 }
 
                 if (!pos) {
@@ -605,7 +627,14 @@ $(function() {
                         $icon.css('zIndex', '');
                         
                         const finalPos = $icon.position();
-                        const snapped = this.snapToGrid(finalPos.left, finalPos.top);
+                        let snapped = this.snapToGrid(finalPos.left, finalPos.top);
+
+                        // Constrain to bounds
+                        const containerWidth = $('#desktop-area').width() || window.innerWidth;
+                        const containerHeight = $('#desktop-area').height() || window.innerHeight;
+                        snapped.x = Math.max(this.GRID.padding, Math.min(snapped.x, containerWidth - this.GRID.w - this.GRID.padding));
+                        snapped.y = Math.max(this.GRID.padding, Math.min(snapped.y, containerHeight - this.GRID.h - this.GRID.padding));
+                        snapped = this.snapToGrid(snapped.x, snapped.y);
                         
                         let currentPositions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
                         
@@ -678,7 +707,7 @@ $(function() {
                 return;
             }
             if (icon.type === 'url') {
-                window.open(icon.url, '_blank');
+                window.open(_yobUrl(icon.url), '_blank');
             } else if (icon.type === 'system') {
                 const arg = icon.path || (icon.authScope === 'shared' ? 'shared' : undefined);
                 AppLauncher[icon.launch](arg, icon.id);
@@ -737,6 +766,14 @@ $(function() {
         },
 
         setupEvents() {
+            let resizeTimer;
+            $(window).on('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    this.renderIcons();
+                }, 200);
+            });
+
             const $ctx = $('<div class="context-menu"></div>');
             $('body').append($ctx);
 
@@ -858,7 +895,19 @@ $(function() {
                             // Set position where dropped
                             const lastIcon = this.icons[this.icons.length - 1];
                             const currentPositions = JSON.parse(localStorage.getItem('desktop.iconPositions') || '{}');
-                            currentPositions[lastIcon.id] = { x: e.clientX - 40, y: e.clientY - 40 };
+                            
+                            // Adjust e.clientX/Y to be relative to $desktop-area
+                            const offset = $('#desktop-area').offset();
+                            let dropX = e.clientX - offset.left - 40;
+                            let dropY = e.clientY - offset.top - 40;
+                            
+                            // Constrain
+                            const containerWidth = $('#desktop-area').width() || window.innerWidth;
+                            const containerHeight = $('#desktop-area').height() || window.innerHeight;
+                            dropX = Math.max(this.GRID.padding, Math.min(dropX, containerWidth - this.GRID.w - this.GRID.padding));
+                            dropY = Math.max(this.GRID.padding, Math.min(dropY, containerHeight - this.GRID.h - this.GRID.padding));
+
+                            currentPositions[lastIcon.id] = this.snapToGrid(dropX, dropY);
                             localStorage.setItem('desktop.iconPositions', JSON.stringify(currentPositions));
                             this.renderIcons();
                         }
@@ -1970,7 +2019,7 @@ $(function() {
             const $body = win.$el.find('.window-body');
             $body.html('<div class="p-2">Loading...</div>');
             try {
-                const resp = await fetch(`list.php?path=${encodeURIComponent(path)}`);
+                const resp = await fetch(_yobUrl(`list.php?path=${encodeURIComponent(path)}`));
                 const data = await resp.json();
                 
                 $body.html(`
@@ -1990,7 +2039,7 @@ $(function() {
                     formData.append('path', path);
                     
                     $grid.html('<div class="p-2">Uploading...</div>');
-                    fetch('upload.php', {
+                    fetch(_yobUrl('upload.php'), {
                         method: 'POST',
                         body: formData
                     })
@@ -2021,7 +2070,7 @@ $(function() {
                         if (item.type === 'dir') {
                             this.loadDownloads(win, (path === '/' ? '' : path) + '/' + item.name);
                         } else {
-                            window.open(item.url, '_blank');
+                            window.open(_yobUrl(item.url), '_blank');
                         }
                     });
                     $grid.append($item);
@@ -2037,6 +2086,7 @@ $(function() {
         },
 
         iframe(url, title, persistenceId = null) {
+            url = _yobUrl(url);
             WindowManager.createWindow({
                 title,
                 persistenceId: persistenceId || 'iframe-' + url,
@@ -2212,7 +2262,7 @@ $(function() {
 
     $('#btn-reset-desktop').click(() => DesktopManager.resetDesktop());
 
-    $('#btn-exit').click(() => window.location.href = 'index.html');
+    $('#btn-exit').click(() => window.location.href = _yobUrl('index.html'));
     $('#btn-new-project').click(() => alert('New Project dialog coming soon.'));
     $('#btn-open-explorer').click(() => AppLauncher.explorer());
     $('#btn-about').click(() => AppLauncher.about());
