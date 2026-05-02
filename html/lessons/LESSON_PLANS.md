@@ -334,7 +334,7 @@ print "Hello from UI-BASIC"
 
 ## TUTORIAL PAGE 006 - Web Pages
 
-### Introduction Video
+### Introduction Video Todo: Taleah
 - In this tutorial we are going to learn about how to create web pages with UI-BASIC.
 - UI-BASIC has built-in support for creating web pages and web applications, which makes it easy to build dynamic and interactive web content.
 - We will also learn how to create "Views" in UI-BASIC, which are reusable components that can be used to build web pages.
@@ -359,7 +359,7 @@ print "Hello from UI-BASIC"
 print "Hello from UI-BASIC"
 ```
 ####  Listen: Blah...
-###  Recap Video 
+###  Recap Video Todo: Taleah 
 - In this tutorial we learned about how to create web pages with UI-BASIC.
 - We learned how to create views, which are reusable components that can be used to build web pages.
 - We also learned how to use UI-BASIC's web server to host and share web pages online.
@@ -368,7 +368,7 @@ print "Hello from UI-BASIC"
 
 ## TUTORIAL PAGE 007 -  Storing Data
 
-### Introduction Video
+### Introduction Video Todo: Taleah
 - In this tutorial we are going to learn about how to store data in UI-BASIC.
 - UI-BASIC provides several ways to store data, including files, databases, and cloud storage.
 - UI-BASIC has built-in support for storing data in databases, which makes it easy to create applications that can save and retrieve data.
@@ -394,7 +394,7 @@ print "Hello from UI-BASIC"
 print "Hello from UI-BASIC"
 ```
 ####  Listen: Blah...
-###  Recap Video 
+###  Recap Video Todo: Taleah 
 - In this tutorial we learned about how to store data in UI-BASIC.
 - We learned how to use UI-BASIC's built-in database to store and retrieve data.
 - We also learned how to use SQL to interact with databases and perform operations like creating tables, inserting data, and querying data.
