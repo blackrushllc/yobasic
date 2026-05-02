@@ -298,7 +298,7 @@ print "Hello from UI-BASIC"
 
 ## TUTORIAL PAGE 005 - Classes and Objects
 
-### Introduction Video
+### Introduction Video Todo: Taleah
 - Objects are like arrays, lists and dictionaries, but they are more powerful and flexible because they can also contain functions and code.
 - Objects allow us to create complex data structures that can represent real-world entities and behaviors.
 - Classes are like blueprints for creating objects. They define the code and data that an object will have.
@@ -325,7 +325,7 @@ print "Hello from UI-BASIC"
 print "Hello from UI-BASIC"
 ```
 ####  Listen: Blah...
-###  Recap Video 
+###  Recap Video Todo: Taleah
 - In this tutorial we learned about classes and objects in UI-BASIC.
 - We learned how to create classes, which are like blueprints for creating objects.
 - We learned how to use objects, which are reusable components that can be used to build web pages.
