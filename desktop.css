@@ -154,7 +154,6 @@ body.desktop-mode {
     display: grid;
     grid-template-columns: repeat(auto-fill, 80px);
     grid-template-rows: repeat(auto-fill, 90px);
-    grid-auto-flow: column;
     padding: 10px;
     gap: 10px;
 }

@@ -178,7 +178,7 @@
       // OPFS root
       this.opfsRoot = null;
       // Providers for remote sources (Phase 2)
-      this.providers = { examples: null, shared: null };
+      this.providers = { examples: null, shared: null, server: null };
       // Seed with system examples (Phase 1). In Phase 2, UI fetches examples from Supabase.
       // Keep them seeded as a fallback when Supabase is not configured.
       for (const f of SYSTEM_EXAMPLES){
@@ -329,6 +329,12 @@
     // Async routed operations (Phase 2)
     async getFileAsync(name){
       const n = String(name);
+      if (n.startsWith('/')){
+        if (this.providers.server && this.providers.server.getFile){
+          const f = await this.providers.server.getFile(n);
+          if (f) return f;
+        }
+      }
       if (n.toLowerCase().startsWith('examples/')){
         if (this.providers.examples && this.providers.examples.getFile){
           const f = await this.providers.examples.getFile(n);

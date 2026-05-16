@@ -460,8 +460,8 @@ $(function() {
             const cols = Math.floor((containerWidth - this.GRID.padding * 2 + this.GRID.gap) / (this.GRID.w + this.GRID.gap));
             const rows = Math.floor((containerHeight - this.GRID.padding * 2 + this.GRID.gap) / (this.GRID.h + this.GRID.gap));
 
-            for (let c = 0; c < (cols || 10); c++) {
-                for (let r = 0; r < (rows || 10); r++) {
+            for (let r = 0; r < (rows || 10); r++) {
+                for (let c = 0; c < (cols || 10); c++) {
                     const x = this.GRID.padding + c * (this.GRID.w + this.GRID.gap);
                     const y = this.GRID.padding + r * (this.GRID.h + this.GRID.gap);
                     
@@ -2229,13 +2229,18 @@ $(function() {
         $('#taskbar-clock').text(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
 
+    window.AppLauncher = AppLauncher;
+    window.DesktopManager = DesktopManager;
+    window.WindowManager = WindowManager;
+
     // Initial Launch
     Identity.initializeFromSession().then(async () => {
         try {
             await getSupabase();
             const examplesProvider = new SupabaseExamplesProvider();
             const sharedProvider = new SupabaseSharedProvider(Identity);
-            vfs.setProviders({ examples: examplesProvider, shared: sharedProvider });
+            const serverProvider = new ServerProvider();
+            vfs.setProviders({ examples: examplesProvider, shared: sharedProvider, server: serverProvider });
         } catch (e) {
             console.error('[UI-BASIC] Desktop VFS providers init failed', e);
         }

@@ -840,8 +840,8 @@
         return;
       }
 
-      // Array element assignment like A(i,j) = expr
-      if (/^[A-Za-z_][A-Za-z0-9_\$%]*\s*\(/.test(stmt) && stmt.includes('=')){
+      // Array or Dictionary element assignment like A(i,j) = expr or OBJ["key"] = expr
+      if (/^[A-Za-z_][A-Za-z0-9_\$%@]*\s*[\[\(]/.test(stmt) && stmt.includes('=')){
         // Find top-level '='
         let depth=0,inS=false,inD=false,eq=-1; const s=stmt;
         for (let i=0;i<s.length;i++){
@@ -850,20 +850,29 @@
           if (c==='\'' && !inD){ inS=!inS; continue; }
           if ((inD||inS) && c==='\\'){ i++; continue; }
           if (!inD && !inS){
-            if (c==='(') depth++;
-            else if (c===')') depth=Math.max(0,depth-1);
+            if (c==='(' || c==='[') depth++;
+            else if (c===')' || c===']') depth=Math.max(0,depth-1);
             else if (c==='=' && depth===0){ eq=i; break; }
           }
         }
         if (eq > 0){
           const lhs = s.slice(0,eq).trim();
           const rhs = s.slice(eq+1);
-          const m = lhs.match(/^([A-Za-z_][A-Za-z0-9_\$%]*)\s*\((.*)\)\s*$/);
+          const m = lhs.match(/^([A-Za-z_][A-Za-z0-9_\$%@]*)\s*[\[\(](.*)[\)\]]\s*$/);
           if (m){
             const name = m[1].toUpperCase();
             const indicesText = m[2];
-            const indices = this._parseCommaExprList(indicesText);
             const value = this._evalExpression(rhs);
+
+            // If it's a DICT/Object (handled via hostCallModule or DIM AS DICT)
+            const obj = this._getVar(name);
+            if (obj && !obj.__dim) {
+                const key = this._evalExpression(indicesText);
+                obj[key] = value;
+                return;
+            }
+
+            const indices = this._parseCommaExprList(indicesText);
             this._dimSet(name, indices, value);
             return;
           }
@@ -1798,7 +1807,7 @@
         // single '=' should be '==' in comparisons (handled here to avoid touching strings)
         if (c === '='){ out += '=='; i++; continue; }
         // single char operators
-        if ('+-*/%^()[]{}.,?:<>'.includes(c)){
+        if ('!+-*/%^()[]{}.,?:<>'.includes(c)){
           if (c === '^'){ out += '**'; i++; continue; }
           out += c; i++; continue;
         }
@@ -2600,8 +2609,44 @@
       }
       if (cur.trim()!=='') parts.push(cur.trim());
       for (const p of parts){
-        const m = p.match(/^([A-Za-z_][A-Za-z0-9_\$%]*)\s*\((.*)\)\s*$/);
-        if (!m) throw new Error('Invalid DIM declaration: ' + p);
+        // Try DIM Name AS TYPE(args) form first
+        const mAs = p.match(/^([A-Za-z_][A-Za-z0-9_\$%@]*)\s+AS\s+([A-Za-z_][A-Za-z0-9_\$%@]*)(?:\s*\((.*)\))?$/i);
+        if (mAs) {
+            const nameRaw = mAs[1];
+            const name = nameRaw.toUpperCase();
+            const type = mAs[2].toUpperCase();
+            const argsText = mAs[3] || "";
+            const args = this._parseCommaExprList(argsText);
+            
+            // For Atomic Play, we store these as special objects in this.vars
+            // We can call hostCallModule to initialize them if needed, or just store the type info.
+            if (this.options.hostCallModule) {
+                const result = this.options.hostCallModule("ENGINE", "INIT_OBJECT", [name, type, ...args], this);
+                if (result !== undefined) {
+                    this.vars[name] = result;
+                    continue;
+                }
+            }
+            
+            this.vars[name] = { __ap_type: type, name: name, args: args };
+            continue;
+        }
+
+        const m = p.match(/^([A-Za-z_][A-Za-z0-9_\$%@]*)\s*\((.*)\)\s*$/);
+        if (!m) {
+            // Support simple DIM Name (without parens) for scalar initialization if needed, 
+            // but usually DIM is for arrays. 
+            // Kitchen Sink uses DIM for scalars too?
+            // "DIM gotCall% = 0"
+            const mScalar = p.match(/^([A-Za-z_][A-Za-z0-9_\$%@]*)\s*=\s*(.*)$/);
+            if (mScalar) {
+                const name = mScalar[1].toUpperCase();
+                const val = this._evalExpression(mScalar[2]);
+                this._assignVariable(name, val);
+                continue;
+            }
+            throw new Error('Invalid DIM declaration: ' + p);
+        }
         const nameRaw = m[1];
         const name = nameRaw.toUpperCase();
         const boundsText = m[2].trim();
