@@ -302,7 +302,7 @@ print "Hello from UI-BASIC"
 - Objects are like arrays, lists and dictionaries, but they are more powerful and flexible because they can also contain functions and code.
 - Objects allow us to create complex data structures that can represent real-world entities and behaviors.
 - Classes are like blueprints for creating objects. They define the code and data that an object will have.
-- Classes and Objects are a fundamental concept in object-oriented programming (OOP), which is a popular programming paradigm used in many modern programming languages.
+- Classes and Objects are a fundamental concept in object-oriented programming, which is a popular paradigm used in many modern programming languages.
 - Classes and Objects are especially cool because you can create reusable code that can be shared and extended across different programs.
 - By the end of this tutorial you will understand how to create classes and use objects in UI-BASIC
 ### Example 1 - Blah
@@ -325,12 +325,7 @@ print "Hello from UI-BASIC"
 print "Hello from UI-BASIC"
 ```
 ####  Listen: Blah...
-###  Recap Video Todo: Taleah
-- In this tutorial we learned about classes and objects in UI-BASIC.
-- We learned how to create classes, which are like blueprints for creating objects.
-- We learned how to use objects, which are reusable components that can be used to build web pages.
-- In the next tutorial, we will learn about how to store data in UI-BASIC.
----
+git
 
 ## TUTORIAL PAGE 006 - Web Pages
 
